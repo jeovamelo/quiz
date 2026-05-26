@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, AArrowDown, AArrowUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,20 @@ type Q = {
 };
 
 const DEVICE_TOKEN_KEY = "qp:device_token";
+const FONT_SIZE_KEY = "qp:font_size";
+
+const FONT_SCALE = [
+  { label: "Padrão", question: "text-lg", option: "text-base" },
+  { label: "Médio", question: "text-2xl", option: "text-xl" },
+  { label: "Grande", question: "text-3xl", option: "text-2xl" },
+] as const;
+
+const MC_COLORS: Record<string, string> = {
+  A: "bg-[#1E5BFF] text-white",
+  B: "bg-[#F26B1F] text-white",
+  C: "bg-[#7A3FF2] text-white",
+  D: "bg-[#D81B6A] text-white",
+};
 
 function ensureDeviceToken(): string {
   if (typeof window === "undefined") return "";
@@ -40,6 +54,7 @@ function ensureDeviceToken(): string {
 function Join() {
   const { session: sessionId } = Route.useSearch();
   const [deviceToken, setDeviceToken] = useState<string>("");
+  const [fontIdx, setFontIdx] = useState<number>(0);
   const [presentationId, setPresentationId] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [resolvingIdentity, setResolvingIdentity] = useState(true);
@@ -67,6 +82,24 @@ function Join() {
   useEffect(() => {
     setDeviceToken(ensureDeviceToken());
   }, []);
+
+  // Carregar preferência de fonte
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem(FONT_SIZE_KEY);
+    const n = raw ? parseInt(raw, 10) : 0;
+    if (!Number.isNaN(n) && n >= 0 && n < FONT_SCALE.length) setFontIdx(n);
+  }, []);
+
+  function changeFont(delta: number) {
+    setFontIdx((prev) => {
+      const next = Math.min(FONT_SCALE.length - 1, Math.max(0, prev + delta));
+      try {
+        localStorage.setItem(FONT_SIZE_KEY, String(next));
+      } catch {}
+      return next;
+    });
+  }
 
   // Resolver identidade do participante para a sessão atual
   useEffect(() => {
@@ -448,46 +481,83 @@ function Join() {
   const optionKeys = question.question_type === "true_false" ? ["A", "B"] : ["A", "B", "C", "D"];
   const revealed = !!session?.question_revealed;
   const userCorrect = revealed && myAnswer === question.correct_option;
+  const scale = FONT_SCALE[fontIdx];
+  const isTF = question.question_type === "true_false";
 
   return (
-    <div className="flex min-h-screen flex-col bg-background p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Pontuação: {score}</span>
-        {!revealed && (
-          <span className="rounded bg-primary px-2 py-1 text-sm font-bold text-primary-foreground">
-            {remaining}s
-          </span>
-        )}
+    <div className="flex h-[100dvh] flex-col justify-between bg-background p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">
+          Pontuação: <span className="font-semibold text-foreground">{score}</span>
+        </span>
+        <div className="flex items-center gap-2">
+          {!revealed && (
+            <span className="rounded bg-primary px-2 py-1 text-sm font-bold text-primary-foreground">
+              {remaining}s
+            </span>
+          )}
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+            <button
+              type="button"
+              onClick={() => changeFont(-1)}
+              disabled={fontIdx === 0}
+              aria-label="Diminuir tamanho do texto"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-foreground transition active:scale-95 disabled:opacity-40"
+            >
+              <AArrowDown className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => changeFont(1)}
+              disabled={fontIdx === FONT_SCALE.length - 1}
+              aria-label="Aumentar tamanho do texto"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-foreground transition active:scale-95 disabled:opacity-40"
+            >
+              <AArrowUp className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
       </div>
-      <h2 className="mb-6 text-lg font-semibold">{question.question_text}</h2>
 
-      <div className="flex flex-col gap-3">
+      <h2 className={`my-4 font-semibold leading-snug ${scale.question}`}>
+        {question.question_text}
+      </h2>
+
+      <div className="flex flex-col gap-3 pb-2">
         {optionKeys.map((k) => {
           const selected = myAnswer === k;
           const isCorrect = question.correct_option === k;
-          let cls = "border-border bg-card";
-          if (revealed) {
-            if (isCorrect) cls = "border-[oklch(0.66_0.14_165)] bg-[oklch(0.66_0.14_165)]/20";
-            else if (selected) cls = "border-destructive bg-destructive/20";
-          } else if (selected) cls = "border-primary bg-primary/20";
 
-          // True/False — botões coloridos
-          const tfColor =
-            question.question_type === "true_false"
-              ? k === "A"
-                ? "border-[oklch(0.66_0.14_165)]"
-                : "border-destructive"
-              : "";
+          let base: string;
+          if (isTF) {
+            base =
+              k === "A"
+                ? "bg-[#07A684] text-white"
+                : "bg-[#A6193C] text-white";
+          } else {
+            base = MC_COLORS[k] ?? "bg-card text-foreground";
+          }
+
+          let stateCls = "border-transparent";
+          if (revealed) {
+            if (isCorrect) stateCls = "border-[#FFCB05] ring-2 ring-[#FFCB05]";
+            else if (selected) stateCls = "border-destructive opacity-70";
+            else stateCls = "border-transparent opacity-60";
+          } else if (selected) {
+            stateCls = "border-[#FFCB05] ring-2 ring-[#FFCB05]";
+          }
+
+          const label = isTF ? (k === "A" ? "Verdadeiro" : "Falso") : question.options[k];
 
           return (
             <button
               key={k}
               disabled={revealed || !!myAnswer || remaining === 0}
               onClick={() => answer(k)}
-              className={`rounded-xl border-2 px-4 py-5 text-left text-base transition ${cls} ${tfColor} disabled:cursor-not-allowed disabled:opacity-70`}
+              className={`flex min-h-[64px] w-full items-center rounded-2xl border-2 px-5 py-4 text-left font-bold shadow-sm transition active:scale-95 disabled:cursor-not-allowed ${base} ${stateCls} ${scale.option}`}
             >
-              <span className="mr-2 font-bold">{k}.</span>
-              {question.options[k]}
+              {!isTF && <span className="mr-3 opacity-90">{k}.</span>}
+              <span className="flex-1">{label}</span>
             </button>
           );
         })}
@@ -495,7 +565,7 @@ function Join() {
 
       {revealed && (
         <div
-          className={`mt-6 rounded-xl p-4 text-center ${
+          className={`mt-3 rounded-xl p-3 text-center ${
             userCorrect
               ? "bg-[oklch(0.66_0.14_165)]/20 text-[oklch(0.66_0.14_165)]"
               : "bg-destructive/20 text-destructive"
