@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, AArrowDown, AArrowUp } from "lucide-react";
+import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ function Join() {
   const [presentationId, setPresentationId] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [resolvingIdentity, setResolvingIdentity] = useState(true);
+  const [winnerPlace, setWinnerPlace] = useState<1 | 2 | 3 | null>(null);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [participantCreatedAt, setParticipantCreatedAt] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -218,6 +220,29 @@ function Join() {
       supabase.removeChannel(ch);
     };
   }, [sessionId]);
+
+  // Escuta a revelação dramática do evento e celebra no celular do vencedor
+  useEffect(() => {
+    if (!eventId || !deviceToken) return;
+    const ch = supabase
+      .channel(`event-finale-${eventId}`)
+      .on("broadcast", { event: "winner" }, (msg: any) => {
+        const payload = msg?.payload ?? {};
+        if (payload?.device_token && payload.device_token === deviceToken) {
+          const place = payload.place as 1 | 2 | 3;
+          setWinnerPlace(place);
+          try {
+            (navigator as any)?.vibrate?.([200, 80, 200, 80, 400]);
+          } catch {
+            /* sem vibração */
+          }
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [eventId, deviceToken]);
 
   // reset answer when question changes
   useEffect(() => {
@@ -382,6 +407,7 @@ function Join() {
   }
 
   if (!participantId) {
+    if (winnerPlace) return <WinnerCelebration place={winnerPlace} />;
     if (resolvingIdentity) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
@@ -414,6 +440,7 @@ function Join() {
   }
 
   // Sessão encerrada → tela de colocação personalizada
+  if (winnerPlace) return <WinnerCelebration place={winnerPlace} />;
   if (session?.status === "ended") {
     if (!finalRank) {
       return (
@@ -582,6 +609,50 @@ function Join() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function WinnerCelebration({ place }: { place: 1 | 2 | 3 }) {
+  useEffect(() => {
+    const end = Date.now() + 6000;
+    const colors =
+      place === 1
+        ? ["#FFCB05", "#F68B1F", "#FFFFFF", "#FFE6CB"]
+        : place === 2
+        ? ["#C0C0C0", "#FFFFFF", "#9CA3AF"]
+        : ["#FFE6CB", "#F68B1F", "#A6193C"];
+    (function frame() {
+      confetti({ particleCount: 6, angle: 60, spread: 80, origin: { x: 0, y: 0.7 }, colors });
+      confetti({ particleCount: 6, angle: 120, spread: 80, origin: { x: 1, y: 0.7 }, colors });
+      confetti({ particleCount: 4, startVelocity: 50, spread: 360, origin: { x: 0.5, y: 0.4 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+  }, [place]);
+
+  const title =
+    place === 1
+      ? "Incrível! Você é o Campeão do HUBINE!"
+      : place === 2
+      ? "Espetacular! Você é o Vice-Campeão!"
+      : "Parabéns! Você ficou em 3º lugar!";
+  const medal = place === 1 ? "🏆" : place === 2 ? "🥈" : "🥉";
+  const bg =
+    place === 1
+      ? "from-[#FFCB05] via-[#F68B1F] to-[#A6193C]"
+      : place === 2
+      ? "from-[#E5E7EB] via-[#9CA3AF] to-[#4B5563]"
+      : "from-[#FFE6CB] via-[#F68B1F] to-[#A6193C]";
+
+  return (
+    <div
+      className={`flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-gradient-to-br p-8 text-center ${bg}`}
+    >
+      <div className="text-8xl drop-shadow">{medal}</div>
+      <h1 className="text-3xl font-extrabold text-white drop-shadow md:text-4xl">{title}</h1>
+      <p className="text-lg font-semibold text-white/95 drop-shadow">
+        {place}º lugar no Grande Pódio do Evento
+      </p>
     </div>
   );
 }
