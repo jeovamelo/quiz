@@ -478,7 +478,12 @@ function Join() {
     );
   }
 
-  const optionKeys = question.question_type === "true_false" ? ["A", "B"] : ["A", "B", "C", "D"];
+  const optionKeys =
+    question.question_type === "true_false"
+      ? ["A", "B"]
+      : ["A", "B", "C", "D"].filter(
+          (k) => ((question.options?.[k] ?? "") as string).trim() !== "",
+        );
   const revealed = !!session?.question_revealed;
   const userCorrect = revealed && myAnswer === question.correct_option;
   const scale = FONT_SCALE[fontIdx];
