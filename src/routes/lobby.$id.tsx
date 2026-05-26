@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Play, Users, Loader2 } from "lucide-react";
+import { Copy, Play, Users, Loader2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -79,9 +79,14 @@ function Lobby() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50">
-        <div className="mx-auto max-w-6xl px-6 py-4">
-          <h1 className="text-2xl font-bold">Lobby de Espera</h1>
-          <p className="text-sm text-muted-foreground">Compartilhe o acesso com seus participantes</p>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div>
+            <h1 className="text-2xl font-bold">Lobby de Espera</h1>
+            <p className="text-sm text-muted-foreground">Compartilhe o acesso com seus participantes</p>
+          </div>
+          <Button variant="ghost" onClick={() => navigate({ to: "/dashboard" })}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+          </Button>
         </div>
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-2">
