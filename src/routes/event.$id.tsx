@@ -25,6 +25,9 @@ type Pres = {
   file_url: string;
   sort_order: number;
   created_at: string;
+  execution_status?: string | null;
+  presented_at?: string | null;
+  chronological_index?: number | null;
 };
 
 type AvailablePres = {
@@ -58,7 +61,7 @@ function EventManage() {
     queryKey: ["event-presentations", id],
     queryFn: async () => {
       const { data, error } = await (supabase.from("presentations") as any)
-        .select("id, title, file_url, sort_order, created_at")
+        .select("id, title, file_url, sort_order, created_at, execution_status, presented_at, chronological_index")
         .eq("event_id", id)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -190,6 +193,13 @@ function EventManage() {
   }
 
   async function startSession(presentationId: string) {
+    // Calcula chronological_index: quantas apresentações deste evento já têm presented_at
+    const { count: presentedCount } = await (supabase.from("presentations") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", id)
+      .not("presented_at", "is", null);
+    const nextIndex = (presentedCount ?? 0) + 1;
+
     const { data: session, error } = await supabase
       .from("sessions")
       .insert({ presentation_id: presentationId, status: "lobby", current_slide: 1 })
@@ -199,6 +209,16 @@ function EventManage() {
       toast.error("Não foi possível iniciar a sessão");
       return;
     }
+
+    // Marca apresentação como em andamento, com horário e ordem cronológica
+    await (supabase.from("presentations") as any)
+      .update({
+        execution_status: "active",
+        presented_at: new Date().toISOString(),
+        chronological_index: nextIndex,
+      })
+      .eq("id", presentationId);
+
     navigate({ to: "/lobby/$id", params: { id: session.id } });
   }
 
