@@ -6,6 +6,8 @@ const Input = z.object({
   context: z.string().max(5000).optional().default(""),
   count: z.number().min(1).max(20).default(5),
   numPages: z.number().min(1).max(500),
+  difficulty: z.enum(["easy", "medium", "hard"]).optional().default("medium"),
+  displayMode: z.enum(["simultaneous", "after_slide"]).optional().default("simultaneous"),
 });
 
 export const generateQuestions = createServerFn({ method: "POST" })
@@ -13,6 +15,18 @@ export const generateQuestions = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = process.env.DEEPSEEK_API_KEY;
     if (!key) throw new Error("DEEPSEEK_API_KEY ausente");
+
+    const difficultyInstruction =
+      data.difficulty === "easy"
+        ? "NÍVEL DE DIFICULDADE: FÁCIL. Gere perguntas diretas e conceituais, com enunciados curtos e respostas óbvias para quem prestou atenção no slide."
+        : data.difficulty === "hard"
+        ? "NÍVEL DE DIFICULDADE: DIFÍCIL. Gere perguntas analíticas e desafiadoras, que exijam interpretação, análise crítica e atenção a detalhes sutis do conteúdo."
+        : "NÍVEL DE DIFICULDADE: MÉDIO. Gere perguntas que exijam atenção aos detalhes do conteúdo, equilibrando clareza e desafio.";
+
+    const displayModeInstruction =
+      data.displayMode === "after_slide"
+        ? "MOMENTO DE ENVIO PADRÃO: defina 'display_mode' = 'after_slide' em TODAS as perguntas."
+        : "MOMENTO DE ENVIO PADRÃO: defina 'display_mode' = 'simultaneous' em TODAS as perguntas.";
 
     const sys =
       "Você gera perguntas de fixação ESTRITAMENTE em Português do Brasil (PT-BR) a partir do conteúdo de slides de uma apresentação corporativa. " +
@@ -24,7 +38,8 @@ export const generateQuestions = createServerFn({ method: "POST" })
       "Alternativas de múltipla escolha devem ser extremamente curtas, diretas e objetivas (palavras-chave, números ou frases curtas). " +
       "Evite pegadinhas, enunciados longos e alternativas parecidas — o usuário responde pelo celular e precisa de leitura rápida. " +
       "Vincule cada pergunta ao número do slide mais relevante via 'slide_number'. " +
-      "Defina 'display_mode' como 'simultaneous' (mostrada junto com o slide) ou 'after_slide' (após o slide). " +
+      displayModeInstruction + " " +
+      difficultyInstruction + " " +
       "Sempre responda chamando a função generate_quiz.";
 
     const truncated = data.pdfText.slice(0, 80000);

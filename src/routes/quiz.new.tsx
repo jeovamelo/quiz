@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2, Shield, Zap, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GLOBAL_USER_ID } from "@/lib/constants";
 import { extractPdfText } from "@/lib/pdf-extract";
@@ -73,6 +73,8 @@ function NewQuiz() {
   const [timeLimit, setTimeLimit] = useState(10);
   const [count, setCount] = useState(5);
   const [aiContext, setAiContext] = useState("");
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [displayMode, setDisplayMode] = useState<"simultaneous" | "after_slide">("simultaneous");
   const [generating, setGenerating] = useState(false);
 
   // step 3
@@ -111,7 +113,7 @@ function NewQuiz() {
     setGenerating(true);
     try {
       const res = await generateFn({
-        data: { pdfText, context: aiContext, count, numPages },
+        data: { pdfText, context: aiContext, count, numPages, difficulty, displayMode },
       });
       const drafts: DraftQuestion[] = res.questions.map((q) => ({
         question_text: q.question_text,
@@ -123,7 +125,7 @@ function NewQuiz() {
         ) as Record<string, string>,
         correct_option: q.correct_option,
         slide_number: Math.min(Math.max(1, q.slide_number || 1), numPages),
-        display_mode: "simultaneous",
+        display_mode: displayMode,
         time_limit: timeLimit,
       }));
       setQuestions(drafts);
@@ -304,6 +306,80 @@ function NewQuiz() {
                 rows={4}
               />
             </div>
+
+            <div>
+              <Label className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" /> Nível de Dificuldade
+              </Label>
+              <div className="mt-2 grid gap-2 md:grid-cols-3">
+                {([
+                  { value: "easy", label: "Fácil", hint: "Perguntas diretas e conceituais" },
+                  { value: "medium", label: "Médio", hint: "Exige atenção aos detalhes do conteúdo" },
+                  { value: "hard", label: "Difícil", hint: "Perguntas analíticas e desafiadoras" },
+                ] as const).map((opt) => {
+                  const selected = difficulty === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setDifficulty(opt.value)}
+                      className={`rounded-lg border p-3 text-left transition-colors ${
+                        selected
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-background/50 hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{opt.label}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">{opt.hint}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" /> Momento de Envio das Perguntas
+              </Label>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                {([
+                  {
+                    value: "simultaneous",
+                    label: "Simultâneo",
+                    icon: Zap,
+                    hint: "A pergunta é liberada no celular do usuário no mesmo instante em que você abre o slide correspondente.",
+                  },
+                  {
+                    value: "after_slide",
+                    label: "Pós-Slide",
+                    icon: Clock,
+                    hint: "O slide é exibido para sua explicação. A votação só abre quando você acionar o gatilho ou encerrar o slide.",
+                  },
+                ] as const).map((opt) => {
+                  const selected = displayMode === opt.value;
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setDisplayMode(opt.value)}
+                      className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+                        selected
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-background/50 hover:border-primary/50"
+                      }`}
+                    >
+                      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? "text-primary" : "text-muted-foreground"}`} />
+                      <div>
+                        <div className="text-sm font-semibold">{opt.label}</div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">{opt.hint}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex justify-between">
               <Button variant="ghost" onClick={() => setStep(1)}>
                 <ChevronLeft className="mr-2 h-4 w-4" /> Voltar
