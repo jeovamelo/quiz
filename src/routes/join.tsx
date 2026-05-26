@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, AArrowDown, AArrowUp } from "lucide-react";
+import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -439,6 +440,7 @@ function Join() {
   }
 
   // Sessão encerrada → tela de colocação personalizada
+  if (winnerPlace) return <WinnerCelebration place={winnerPlace} />;
   if (session?.status === "ended") {
     if (!finalRank) {
       return (
