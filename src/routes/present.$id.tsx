@@ -264,7 +264,9 @@ function Present() {
   const optionKeys = activeQuestion
     ? activeQuestion.question_type === "true_false"
       ? ["A", "B"]
-      : ["A", "B", "C", "D"]
+      : ["A", "B", "C", "D"].filter(
+          (k) => ((activeQuestion.options?.[k] ?? "") as string).trim() !== "",
+        )
     : [];
 
   // === TELA DE PÓDIO ===

@@ -120,7 +120,9 @@ function ReviewPresentation() {
   const optionKeys = slideQuestion
     ? slideQuestion.question_type === "true_false"
       ? ["A", "B"]
-      : ["A", "B", "C", "D"]
+      : ["A", "B", "C", "D"].filter(
+          (k) => ((slideQuestion.options?.[k] ?? "") as string).trim() !== "",
+        )
     : [];
 
   const distribution = useMemo(() => {
