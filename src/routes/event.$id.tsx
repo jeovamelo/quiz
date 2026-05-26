@@ -129,20 +129,70 @@ function EventManage() {
     },
   });
 
-  async function move(index: number, dir: -1 | 1) {
+  // ===== Drag & drop reordenação =====
+  const [orderedIds, setOrderedIds] = useState<string[] | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+
+  // Sincroniza a lista local com o servidor (apenas quando não está arrastando)
+  useEffect(() => {
     if (!presentations) return;
-    const j = index + dir;
-    if (j < 0 || j >= presentations.length) return;
-    const a = presentations[index];
-    const b = presentations[j];
-    // swap sort_order
-    await (supabase.from("presentations") as any)
-      .update({ sort_order: b.sort_order })
-      .eq("id", a.id);
-    await (supabase.from("presentations") as any)
-      .update({ sort_order: a.sort_order })
-      .eq("id", b.id);
-    refetch();
+    if (draggingId) return;
+    if (saveState === "saving") return;
+    setOrderedIds(presentations.map((p) => p.id));
+  }, [presentations, draggingId, saveState]);
+
+  // Lista efetiva exibida (ordem local sobrepõe a do servidor)
+  const displayList: Pres[] = (() => {
+    if (!presentations) return [];
+    if (!orderedIds) return presentations;
+    const byId = new Map(presentations.map((p) => [p.id, p]));
+    const out: Pres[] = [];
+    for (const id of orderedIds) {
+      const p = byId.get(id);
+      if (p) out.push(p);
+    }
+    // garante que apresentações novas (ainda não no orderedIds) apareçam
+    for (const p of presentations) if (!orderedIds.includes(p.id)) out.push(p);
+    return out;
+  })();
+
+  async function persistOrder(ids: string[]) {
+    setSaveState("saving");
+    try {
+      await Promise.all(
+        ids.map((pid, idx) =>
+          (supabase.from("presentations") as any)
+            .update({ sort_order: idx })
+            .eq("id", pid),
+        ),
+      );
+      setSaveState("saved");
+      window.setTimeout(() => setSaveState("idle"), 1800);
+      refetch();
+    } catch {
+      setSaveState("idle");
+      toast.error("Não foi possível salvar a nova ordem");
+    }
+  }
+
+  function handleDrop(targetId: string) {
+    if (!draggingId || draggingId === targetId || !orderedIds) {
+      setDraggingId(null);
+      setDragOverId(null);
+      return;
+    }
+    const from = orderedIds.indexOf(draggingId);
+    const to = orderedIds.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...orderedIds];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrderedIds(next);
+    setDraggingId(null);
+    setDragOverId(null);
+    void persistOrder(next);
   }
 
   async function detach(presentationId: string) {
