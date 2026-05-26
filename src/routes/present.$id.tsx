@@ -252,15 +252,16 @@ function Present() {
   if (isEnded) {
     const top3 = ranking.slice(0, 3);
     const rest = ranking.slice(3, 10);
-    const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean); // 2º, 1º, 3º
-    const heights = ["h-48", "h-72", "h-36"];
-    const colors = [
-      "from-[oklch(0.85_0.02_240)] to-[oklch(0.6_0.02_240)]", // prata
-      "from-[oklch(0.85_0.18_85)] to-[oklch(0.6_0.2_40)]", // ouro
-      "from-[oklch(0.65_0.12_50)] to-[oklch(0.45_0.12_40)]", // bronze
-    ];
-    const labels = ["2º", "1º", "3º"];
-    const medals = ["🥈", "🥇", "🥉"];
+    // [place index 0..2 = posição real, participant]
+    const slots: Array<{ place: 1 | 2 | 3; p: ParticipantRow }> = [];
+    if (top3[1]) slots.push({ place: 2, p: top3[1] });
+    if (top3[0]) slots.push({ place: 1, p: top3[0] });
+    if (top3[2]) slots.push({ place: 3, p: top3[2] });
+    const styleByPlace = {
+      1: { h: "h-72", color: "from-[oklch(0.85_0.18_85)] to-[oklch(0.6_0.2_40)]", medal: "🥇", label: "1º" },
+      2: { h: "h-48", color: "from-[oklch(0.85_0.02_240)] to-[oklch(0.6_0.02_240)]", medal: "🥈", label: "2º" },
+      3: { h: "h-36", color: "from-[oklch(0.65_0.12_50)] to-[oklch(0.45_0.12_40)]", medal: "🥉", label: "3º" },
+    } as const;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-10 bg-gradient-to-br from-background via-card to-background p-10">
         <div className="text-center">
@@ -272,18 +273,21 @@ function Present() {
           <p className="text-xl text-muted-foreground">Nenhum participante.</p>
         ) : (
           <div className="flex items-end gap-8">
-            {podiumOrder.map((p, i) => (
-              <div key={p.id} className="flex w-56 flex-col items-center gap-3">
-                <div className="text-6xl">{medals[i]}</div>
-                <div className="text-2xl font-bold">{p.name}</div>
-                <div className="text-lg text-muted-foreground">{p.score} pts</div>
-                <div
-                  className={`flex w-full items-start justify-center rounded-t-xl bg-gradient-to-b pt-4 text-4xl font-black text-white shadow-2xl ${heights[i]} ${colors[i]}`}
-                >
-                  {labels[i]}
+            {slots.map(({ place, p }) => {
+              const s = styleByPlace[place];
+              return (
+                <div key={p.id} className="flex w-56 flex-col items-center gap-3">
+                  <div className="text-6xl">{s.medal}</div>
+                  <div className="text-2xl font-bold">{p.name}</div>
+                  <div className="text-lg text-muted-foreground">{p.score} pts</div>
+                  <div
+                    className={`flex w-full items-start justify-center rounded-t-xl bg-gradient-to-b pt-4 text-4xl font-black text-white shadow-2xl ${s.h} ${s.color}`}
+                  >
+                    {s.label}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
