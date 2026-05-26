@@ -95,6 +95,8 @@ export const generateQuestions = createServerFn({ method: "POST" })
           },
         ],
         tool_choice: { type: "function", function: { name: "generate_quiz" } },
+        max_tokens: 8000,
+        temperature: 0.7,
       }),
     });
 
@@ -113,7 +115,40 @@ export const generateQuestions = createServerFn({ method: "POST" })
     if (!toolCall?.function?.arguments) {
       throw new Error("IA não retornou perguntas estruturadas");
     }
-    const parsed = JSON.parse(toolCall.function.arguments) as {
+    const rawArgs: string = toolCall.function.arguments;
+    const finishReason = json.choices?.[0]?.finish_reason;
+    if (finishReason === "length") {
+      console.error("DeepSeek truncou a resposta (finish_reason=length)");
+      throw new Error("Resposta da IA foi truncada. Reduza a quantidade de perguntas ou o tamanho do PDF.");
+    }
+
+    // Extração robusta: alguns modelos concatenam mais de um objeto JSON.
+    // Pegamos apenas o primeiro objeto JSON bem-formado equilibrando chaves.
+    function extractFirstJsonObject(s: string): string {
+      const start = s.indexOf("{");
+      if (start < 0) return s;
+      let depth = 0;
+      let inStr = false;
+      let esc = false;
+      for (let i = start; i < s.length; i++) {
+        const ch = s[i];
+        if (inStr) {
+          if (esc) esc = false;
+          else if (ch === "\\") esc = true;
+          else if (ch === '"') inStr = false;
+          continue;
+        }
+        if (ch === '"') inStr = true;
+        else if (ch === "{") depth++;
+        else if (ch === "}") {
+          depth--;
+          if (depth === 0) return s.slice(start, i + 1);
+        }
+      }
+      return s.slice(start);
+    }
+
+    let parsed: {
       questions: Array<{
         question_text: string;
         question_type: "multiple_choice" | "true_false";
@@ -123,6 +158,23 @@ export const generateQuestions = createServerFn({ method: "POST" })
         display_mode: "simultaneous" | "after_slide";
       }>;
     };
+    try {
+      parsed = JSON.parse(rawArgs);
+    } catch {
+      const cleaned = extractFirstJsonObject(rawArgs);
+      parsed = JSON.parse(cleaned);
+    }
+    const _typed = parsed as {
+      questions: Array<{
+        question_text: string;
+        question_type: "multiple_choice" | "true_false";
+        options: Record<string, string>;
+        correct_option: string;
+        slide_number: number;
+        display_mode: "simultaneous" | "after_slide";
+      }>;
+    };
+    void _typed;
 
     // Normalização defensiva: garante V/F com A=VERDADEIRO/B=FALSO e MC com no máximo 3 opções
     const normalized = parsed.questions.map((q) => {
