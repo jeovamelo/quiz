@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Loader2, StopCircle } from "lucide-react";
+import { Copy, Loader2, StopCircle, Trophy } from "lucide-react";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ function Present() {
   const [now, setNow] = useState(Date.now());
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [joinUrl, setJoinUrl] = useState("");
+  const [showRanking, setShowRanking] = useState(false);
   const confettiFiredRef = useRef(false);
 
   useEffect(() => {
