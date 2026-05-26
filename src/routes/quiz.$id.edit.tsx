@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/quiz/$id/edit")({
   head: () => ({ meta: [{ title: "Editar Quiz — QuizPulse" }] }),
