@@ -12,4 +12,16 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    // Pre-bundle pdfjs-dist so the first PDF upload doesn't trigger a
+    // dep-optimization full-page reload that wipes form state.
+    optimizeDeps: {
+      include: ["pdfjs-dist"],
+    },
+    // pdfjs-dist must NEVER load on the server (uses DOMMatrix, Worker, etc.)
+    ssr: {
+      noExternal: [],
+      external: ["pdfjs-dist"],
+    },
+  },
 });
