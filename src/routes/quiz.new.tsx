@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2, Shield, Zap, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GLOBAL_USER_ID } from "@/lib/constants";
 import { extractPdfText } from "@/lib/pdf-extract";
@@ -73,6 +73,8 @@ function NewQuiz() {
   const [timeLimit, setTimeLimit] = useState(10);
   const [count, setCount] = useState(5);
   const [aiContext, setAiContext] = useState("");
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [displayMode, setDisplayMode] = useState<"simultaneous" | "after_slide">("simultaneous");
   const [generating, setGenerating] = useState(false);
 
   // step 3
@@ -111,7 +113,7 @@ function NewQuiz() {
     setGenerating(true);
     try {
       const res = await generateFn({
-        data: { pdfText, context: aiContext, count, numPages },
+        data: { pdfText, context: aiContext, count, numPages, difficulty, displayMode },
       });
       const drafts: DraftQuestion[] = res.questions.map((q) => ({
         question_text: q.question_text,
@@ -123,7 +125,7 @@ function NewQuiz() {
         ) as Record<string, string>,
         correct_option: q.correct_option,
         slide_number: Math.min(Math.max(1, q.slide_number || 1), numPages),
-        display_mode: "simultaneous",
+        display_mode: displayMode,
         time_limit: timeLimit,
       }));
       setQuestions(drafts);
