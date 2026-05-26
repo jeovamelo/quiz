@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 
 type Search = { session?: string };
 
@@ -27,6 +28,7 @@ type Q = {
 function Join() {
   const { session: sessionId } = Route.useSearch();
   const [participantId, setParticipantId] = useState<string | null>(null);
+  const [participantCreatedAt, setParticipantCreatedAt] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [birth, setBirth] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -36,6 +38,7 @@ function Join() {
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [now, setNow] = useState(Date.now());
+  const [finalRank, setFinalRank] = useState<{ position: number; total: number; score: number } | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -48,6 +51,24 @@ function Join() {
     const saved = localStorage.getItem(`qp:participant:${sessionId}`);
     if (saved) setParticipantId(saved);
   }, [sessionId]);
+
+  // load participant created_at
+  useEffect(() => {
+    if (!participantId) return;
+    supabase
+      .from("participants")
+      .select("created_at")
+      .eq("id", participantId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setParticipantCreatedAt(data.created_at);
+        else {
+          // participant no longer exists (sessão deletada)
+          localStorage.removeItem(`qp:participant:${sessionId!}`);
+          setParticipantId(null);
+        }
+      });
+  }, [participantId, sessionId]);
 
   // subscribe to session
   useEffect(() => {
@@ -124,7 +145,7 @@ function Join() {
     const { data, error } = await supabase
       .from("participants")
       .insert({ session_id: sessionId, name: name.trim(), birth_date: birth })
-      .select("id")
+      .select("id, created_at")
       .single();
     setSubmitting(false);
     if (error) {
@@ -133,17 +154,25 @@ function Join() {
     }
     localStorage.setItem(`qp:participant:${sessionId}`, data.id);
     setParticipantId(data.id);
+    setParticipantCreatedAt(data.created_at);
   }
 
   async function answer(option: string) {
     if (!question || !participantId || !session?.question_started_at) return;
+    // Bloqueio entrada tardia: pergunta começou antes do participante entrar
+    if (participantCreatedAt && new Date(session.question_started_at) < new Date(participantCreatedAt)) return;
     setMyAnswer(option);
     try {
       if (navigator.vibrate) navigator.vibrate(50);
     } catch {}
     const elapsedMs = now - new Date(session.question_started_at).getTime();
     const isCorrect = option === question.correct_option;
-    const points = isCorrect ? Math.max(100, Math.round(1000 - elapsedMs / 10)) : 0;
+    // Novo cálculo: Base 500 + bônus proporcional ao tempo restante
+    const totalMs = (question.time_limit || 10) * 1000;
+    const remainingMs = Math.max(0, totalMs - elapsedMs);
+    const BASE = 500;
+    const BONUS = 500;
+    const points = isCorrect ? BASE + Math.round((remainingMs / totalMs) * BONUS) : 0;
     const { error } = await supabase.from("answers").insert({
       session_id: sessionId,
       question_id: question.id,
@@ -174,6 +203,19 @@ function Join() {
         .eq("id", participantId);
     }
   }
+
+  // Quando sessão é encerrada, calcular colocação
+  useEffect(() => {
+    if (session?.status !== "ended" || !participantId) return;
+    (async () => {
+      const { data } = await supabase.from("participants").select("*").eq("session_id", sessionId);
+      if (!data) return;
+      const ranked = sortRanking(data as ParticipantRow[]);
+      const idx = ranked.findIndex((p) => p.id === participantId);
+      const me = ranked[idx];
+      if (me) setFinalRank({ position: idx + 1, total: ranked.length, score: me.score });
+    })();
+  }, [session?.status, participantId, sessionId]);
 
   if (!sessionId) {
     return (
@@ -210,14 +252,62 @@ function Join() {
     );
   }
 
+  // Sessão encerrada → tela de colocação personalizada
+  if (session?.status === "ended") {
+    if (!finalRank) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Calculando sua colocação...
+        </div>
+      );
+    }
+    const pos = finalRank.position;
+    const isChampion = pos === 1;
+    const isPodium = pos <= 3;
+    const medal = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : "🎯";
+    const bg = isChampion
+      ? "bg-gradient-to-br from-[oklch(0.85_0.18_85)] via-[oklch(0.75_0.18_60)] to-[oklch(0.6_0.2_40)]"
+      : pos === 2
+      ? "bg-gradient-to-br from-[oklch(0.85_0.02_240)] to-[oklch(0.65_0.02_240)]"
+      : pos === 3
+      ? "bg-gradient-to-br from-[oklch(0.65_0.12_50)] to-[oklch(0.45_0.12_40)]"
+      : "bg-card";
+    return (
+      <div className={`flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center ${bg}`}>
+        <div className="text-7xl">{medal}</div>
+        <h1 className="text-3xl font-bold text-white drop-shadow">
+          {isChampion ? "Parabéns, Campeão!" : isPodium ? "Pódio!" : "Obrigado pela participação!"}
+        </h1>
+        <p className="text-xl text-white/95 drop-shadow">
+          Você terminou em <span className="font-extrabold">{pos}º lugar</span>
+          {isPodium ? "" : ` de ${finalRank.total}`}
+        </p>
+        <p className="text-lg text-white/90">
+          com <span className="font-bold">{finalRank.score}</span> pontos
+        </p>
+      </div>
+    );
+  }
+
+  // Entrada tardia: pergunta ativa começou antes do participante entrar
+  const lateForCurrent =
+    !!question &&
+    !!session?.question_started_at &&
+    !!participantCreatedAt &&
+    new Date(session.question_started_at) < new Date(participantCreatedAt);
+
   // Esperando pergunta
-  if (!question) {
+  if (!question || lateForCurrent) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
         <div className="rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary">Conectado</div>
-        <h2 className="text-xl font-semibold">Acompanhe a explicação na tela principal</h2>
+        <h2 className="text-xl font-semibold">
+          {lateForCurrent ? "Você entrou após o início desta pergunta" : "Acompanhe a explicação na tela principal"}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Sua próxima pergunta aparecerá aqui automaticamente.
+          {lateForCurrent
+            ? "Aguarde a próxima pergunta para participar."
+            : "Sua próxima pergunta aparecerá aqui automaticamente."}
         </p>
         <p className="mt-6 text-xs text-muted-foreground">
           Pontuação: <span className="font-semibold text-foreground">{score}</span> · Acertos:{" "}

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { QRCodeSVG } from "qrcode.react";
+import { Copy, Loader2, StopCircle } from "lucide-react";
+import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { sortRanking, type ParticipantRow } from "@/lib/ranking";
@@ -24,12 +26,20 @@ type Question = {
 
 function Present() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
   const [presentation, setPresentation] = useState<{ file_url: string; title: string } | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [answers, setAnswers] = useState<Array<{ question_id: string; selected_option: string; participant_id: string }>>([]);
   const [now, setNow] = useState(Date.now());
+  const [totalPages, setTotalPages] = useState<number | null>(null);
+  const [joinUrl, setJoinUrl] = useState("");
+  const confettiFiredRef = useRef(false);
+
+  useEffect(() => {
+    setJoinUrl(`${window.location.origin}/join?session=${id}`);
+  }, [id]);
 
   // tick
   useEffect(() => {
@@ -78,6 +88,26 @@ function Present() {
     };
   }, [id]);
 
+  // Carrega total de páginas do PDF via pdfjs
+  useEffect(() => {
+    if (!presentation?.file_url) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const pdfjs: any = await import("pdfjs-dist");
+        const worker = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+        pdfjs.GlobalWorkerOptions.workerSrc = (worker as any).default;
+        const doc = await pdfjs.getDocument(presentation.file_url).promise;
+        if (!cancelled) setTotalPages(doc.numPages);
+      } catch (e) {
+        console.error("Falha ao contar páginas do PDF", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [presentation?.file_url]);
+
   const currentSlide: number = session?.current_slide || 1;
   const slideQuestion = useMemo(
     () => questions.find((q) => q.slide_number === currentSlide) || null,
@@ -106,8 +136,12 @@ function Present() {
   }, [now, activeQuestion?.id, session?.question_revealed]);
 
   async function setSlide(n: number) {
-    const total = questions.reduce((max, q) => Math.max(max, q.slide_number), 1);
     const next = Math.max(1, n);
+    // Encerramento automático ao avançar além da última página
+    if (totalPages && n > totalPages) {
+      await endSession();
+      return;
+    }
     const q = questions.find((qq) => qq.slide_number === next) || null;
     const patch: any = {
       current_slide: next,
@@ -140,6 +174,38 @@ function Present() {
     await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
   }
 
+  async function endSession() {
+    const { error } = await supabase
+      .from("sessions")
+      .update({ status: "ended", active_question_id: null, question_started_at: null, question_revealed: false })
+      .eq("id", id);
+    if (error) {
+      toast.error("Falha ao encerrar");
+      return;
+    }
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      toast.success("Link copiado!");
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = joinUrl;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        toast.success("Link copiado!");
+      } catch {
+        toast.error("Não foi possível copiar");
+      }
+      document.body.removeChild(ta);
+    }
+  }
+
   // keyboard nav
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -153,6 +219,20 @@ function Present() {
 
   const questionAnswers = answers.filter((a) => a.question_id === activeQuestion?.id);
   const ranking = sortRanking(participants);
+  const isEnded = session?.status === "ended";
+
+  // Confete quando encerra
+  useEffect(() => {
+    if (!isEnded || confettiFiredRef.current) return;
+    confettiFiredRef.current = true;
+    const end = Date.now() + 4000;
+    const colors = ["#ffd700", "#c0c0c0", "#cd7f32", "#ff7a18", "#ffffff"];
+    (function frame() {
+      confetti({ particleCount: 4, angle: 60, spread: 70, origin: { x: 0 }, colors });
+      confetti({ particleCount: 4, angle: 120, spread: 70, origin: { x: 1 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+  }, [isEnded]);
 
   if (!presentation) {
     return (
@@ -167,6 +247,76 @@ function Present() {
       ? ["A", "B"]
       : ["A", "B", "C", "D"]
     : [];
+
+  // === TELA DE PÓDIO ===
+  if (isEnded) {
+    const top3 = ranking.slice(0, 3);
+    const rest = ranking.slice(3, 10);
+    // [place index 0..2 = posição real, participant]
+    const slots: Array<{ place: 1 | 2 | 3; p: ParticipantRow }> = [];
+    if (top3[1]) slots.push({ place: 2, p: top3[1] });
+    if (top3[0]) slots.push({ place: 1, p: top3[0] });
+    if (top3[2]) slots.push({ place: 3, p: top3[2] });
+    const styleByPlace = {
+      1: { h: "h-72", color: "from-[oklch(0.85_0.18_85)] to-[oklch(0.6_0.2_40)]", medal: "🥇", label: "1º" },
+      2: { h: "h-48", color: "from-[oklch(0.85_0.02_240)] to-[oklch(0.6_0.02_240)]", medal: "🥈", label: "2º" },
+      3: { h: "h-36", color: "from-[oklch(0.65_0.12_50)] to-[oklch(0.45_0.12_40)]", medal: "🥉", label: "3º" },
+    } as const;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-10 bg-gradient-to-br from-background via-card to-background p-10">
+        <div className="text-center">
+          <p className="text-sm uppercase tracking-widest text-muted-foreground">{presentation.title}</p>
+          <h1 className="mt-2 text-6xl font-extrabold text-foreground">Pódio Final</h1>
+        </div>
+
+        {top3.length === 0 ? (
+          <p className="text-xl text-muted-foreground">Nenhum participante.</p>
+        ) : (
+          <div className="flex items-end gap-8">
+            {slots.map(({ place, p }) => {
+              const s = styleByPlace[place];
+              return (
+                <div key={p.id} className="flex w-56 flex-col items-center gap-3">
+                  <div className="text-6xl">{s.medal}</div>
+                  <div className="text-2xl font-bold">{p.name}</div>
+                  <div className="text-lg text-muted-foreground">{p.score} pts</div>
+                  <div
+                    className={`flex w-full items-start justify-center rounded-t-xl bg-gradient-to-b pt-4 text-4xl font-black text-white shadow-2xl ${s.h} ${s.color}`}
+                  >
+                    {s.label}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {rest.length > 0 && (
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-4">
+            <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Classificação geral</h3>
+            <ol className="space-y-1">
+              {rest.map((p, idx) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between rounded border border-border bg-background/40 px-3 py-2 text-sm"
+                >
+                  <span>
+                    <span className="mr-2 inline-block w-6 text-right text-muted-foreground">{idx + 4}.</span>
+                    {p.name}
+                  </span>
+                  <span className="font-semibold text-primary">{p.score} pts</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        <Button variant="outline" onClick={() => navigate({ to: "/dashboard" })}>
+          Voltar ao Painel
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -190,13 +340,34 @@ function Present() {
 
         {/* Coluna direita — painel admin */}
         <aside className="flex w-[400px] flex-col gap-3 overflow-y-auto border-l border-border bg-card p-4">
+          {/* Convite sempre visível */}
+          <div className="rounded-lg border border-border bg-background/40 p-3 text-center">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Entre na sala a qualquer momento
+            </p>
+            <div className="mx-auto inline-block rounded-md bg-white p-2">
+              {joinUrl && <QRCodeSVG value={joinUrl} size={130} />}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="flex-1 truncate rounded bg-background/60 px-2 py-1 text-[10px] text-muted-foreground">
+                {joinUrl}
+              </code>
+              <Button size="sm" variant="outline" onClick={copyLink}>
+                <Copy className="mr-1 h-3 w-3" /> Copiar
+              </Button>
+            </div>
+          </div>
+
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{presentation.title}</p>
             <div className="mt-2 flex items-center justify-between gap-2">
               <Button size="sm" variant="outline" onClick={() => setSlide(currentSlide - 1)}>
                 ◀ Anterior
               </Button>
-              <span className="text-sm font-semibold">Slide {currentSlide}</span>
+              <span className="text-sm font-semibold">
+                Slide {currentSlide}
+                {totalPages ? ` / ${totalPages}` : ""}
+              </span>
               <Button size="sm" variant="outline" onClick={() => setSlide(currentSlide + 1)}>
                 Próximo ▶
               </Button>
@@ -288,7 +459,7 @@ function Present() {
                     <span className="mr-2 inline-block w-5 text-right text-muted-foreground">{idx + 1}.</span>
                     {p.name}
                   </span>
-                  <span className="text-xs font-semibold text-primary">{p.correct_count} ✓</span>
+                  <span className="text-xs font-semibold text-primary">{p.score} pts</span>
                 </li>
               ))}
               {ranking.length === 0 && (
@@ -296,6 +467,18 @@ function Present() {
               )}
             </ol>
           </div>
+
+          <Button
+            variant="destructive"
+            className="mt-auto"
+            onClick={async () => {
+              if (confirm("Encerrar a apresentação agora? Os participantes verão o pódio.")) {
+                await endSession();
+              }
+            }}
+          >
+            <StopCircle className="mr-2 h-4 w-4" /> Encerrar Apresentação
+          </Button>
         </aside>
       </div>
     </div>
