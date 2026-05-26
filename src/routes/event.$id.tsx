@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, FileText, Link2, Loader2, Play, Plus, Sparkles, Trash2, Trophy } from "lucide-react";
+import { ArrowDown, ArrowUp, BarChart3, FileText, Link2, Loader2, Play, Plus, Sparkles, Trash2, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +63,28 @@ function EventManage() {
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Pres[];
+    },
+  });
+
+  // Mapa: presentation_id → último sessionId encerrado (para o botão "Ver Resultados")
+  const { data: endedSessions } = useQuery({
+    queryKey: ["event-ended-sessions", id, presentations?.length ?? 0],
+    enabled: !!presentations && presentations.length > 0,
+    queryFn: async () => {
+      const ids = (presentations ?? []).map((p) => p.id);
+      if (ids.length === 0) return {} as Record<string, string>;
+      const { data, error } = await supabase
+        .from("sessions")
+        .select("id, presentation_id, created_at, status")
+        .in("presentation_id", ids)
+        .eq("status", "ended")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const s of (data ?? []) as any[]) {
+        if (!map[s.presentation_id]) map[s.presentation_id] = s.id;
+      }
+      return map;
     },
   });
 
@@ -266,9 +288,24 @@ function EventManage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" onClick={() => startSession(p.id)}>
-                    <Play className="mr-1 h-4 w-4" /> Iniciar
-                  </Button>
+                  {endedSessions && endedSessions[p.id] ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() =>
+                        navigate({
+                          to: "/present/$id/review",
+                          params: { id: endedSessions[p.id] },
+                        })
+                      }
+                    >
+                      <BarChart3 className="mr-1 h-4 w-4" /> Ver Resultados
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => startSession(p.id)}>
+                      <Play className="mr-1 h-4 w-4" /> Iniciar
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => detach(p.id)} title="Desvincular do evento">
                     <Trash2 className="h-4 w-4" />
                   </Button>

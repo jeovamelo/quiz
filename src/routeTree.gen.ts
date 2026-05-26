@@ -18,6 +18,7 @@ import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
 import { Route as EventNewRouteImport } from './routes/event.new'
 import { Route as EventIdRouteImport } from './routes/event.$id'
 import { Route as QuizIdEditRouteImport } from './routes/quiz.$id.edit'
+import { Route as PresentIdReviewRouteImport } from './routes/present.$id.review'
 import { Route as EventIdPodiumRouteImport } from './routes/event.$id.podium'
 
 const JoinRoute = JoinRouteImport.update({
@@ -65,6 +66,11 @@ const QuizIdEditRoute = QuizIdEditRouteImport.update({
   path: '/quiz/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PresentIdReviewRoute = PresentIdReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => PresentIdRoute,
+} as any)
 const EventIdPodiumRoute = EventIdPodiumRouteImport.update({
   id: '/podium',
   path: '/podium',
@@ -78,9 +84,10 @@ export interface FileRoutesByFullPath {
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
-  '/present/$id': typeof PresentIdRoute
+  '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
+  '/present/$id/review': typeof PresentIdReviewRoute
   '/quiz/$id/edit': typeof QuizIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -90,9 +97,10 @@ export interface FileRoutesByTo {
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
-  '/present/$id': typeof PresentIdRoute
+  '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
+  '/present/$id/review': typeof PresentIdReviewRoute
   '/quiz/$id/edit': typeof QuizIdEditRoute
 }
 export interface FileRoutesById {
@@ -103,9 +111,10 @@ export interface FileRoutesById {
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
-  '/present/$id': typeof PresentIdRoute
+  '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
+  '/present/$id/review': typeof PresentIdReviewRoute
   '/quiz/$id/edit': typeof QuizIdEditRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/present/$id'
     | '/quiz/new'
     | '/event/$id/podium'
+    | '/present/$id/review'
     | '/quiz/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/present/$id'
     | '/quiz/new'
     | '/event/$id/podium'
+    | '/present/$id/review'
     | '/quiz/$id/edit'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/present/$id'
     | '/quiz/new'
     | '/event/$id/podium'
+    | '/present/$id/review'
     | '/quiz/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -154,7 +166,7 @@ export interface RootRouteChildren {
   EventIdRoute: typeof EventIdRouteWithChildren
   EventNewRoute: typeof EventNewRoute
   LobbyIdRoute: typeof LobbyIdRoute
-  PresentIdRoute: typeof PresentIdRoute
+  PresentIdRoute: typeof PresentIdRouteWithChildren
   QuizNewRoute: typeof QuizNewRoute
   QuizIdEditRoute: typeof QuizIdEditRoute
 }
@@ -224,6 +236,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuizIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/present/$id/review': {
+      id: '/present/$id/review'
+      path: '/review'
+      fullPath: '/present/$id/review'
+      preLoaderRoute: typeof PresentIdReviewRouteImport
+      parentRoute: typeof PresentIdRoute
+    }
     '/event/$id/podium': {
       id: '/event/$id/podium'
       path: '/podium'
@@ -245,6 +264,18 @@ const EventIdRouteChildren: EventIdRouteChildren = {
 const EventIdRouteWithChildren =
   EventIdRoute._addFileChildren(EventIdRouteChildren)
 
+interface PresentIdRouteChildren {
+  PresentIdReviewRoute: typeof PresentIdReviewRoute
+}
+
+const PresentIdRouteChildren: PresentIdRouteChildren = {
+  PresentIdReviewRoute: PresentIdReviewRoute,
+}
+
+const PresentIdRouteWithChildren = PresentIdRoute._addFileChildren(
+  PresentIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
@@ -252,7 +283,7 @@ const rootRouteChildren: RootRouteChildren = {
   EventIdRoute: EventIdRouteWithChildren,
   EventNewRoute: EventNewRoute,
   LobbyIdRoute: LobbyIdRoute,
-  PresentIdRoute: PresentIdRoute,
+  PresentIdRoute: PresentIdRouteWithChildren,
   QuizNewRoute: QuizNewRoute,
   QuizIdEditRoute: QuizIdEditRoute,
 }
