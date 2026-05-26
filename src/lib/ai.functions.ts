@@ -11,8 +11,8 @@ const Input = z.object({
 export const generateQuestions = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => Input.parse(d))
   .handler(async ({ data }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY ausente");
+    const key = process.env.DEEPSEEK_API_KEY;
+    if (!key) throw new Error("DEEPSEEK_API_KEY ausente");
 
     const sys =
       "Você gera perguntas de fixação ESTRITAMENTE em Português do Brasil (PT-BR) a partir do conteúdo de slides de uma apresentação corporativa. " +
@@ -34,11 +34,11 @@ export const generateQuestions = createServerFn({ method: "POST" })
       `Texto extraído dos slides:\n${truncated}\n\n` +
       `Gere exatamente ${data.count} perguntas variadas.`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: sys },
           { role: "user", content: user },
