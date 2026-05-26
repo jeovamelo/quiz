@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, AArrowDown, AArrowUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,20 @@ type Q = {
 };
 
 const DEVICE_TOKEN_KEY = "qp:device_token";
+const FONT_SIZE_KEY = "qp:font_size";
+
+const FONT_SCALE = [
+  { label: "Padrão", question: "text-lg", option: "text-base" },
+  { label: "Médio", question: "text-2xl", option: "text-xl" },
+  { label: "Grande", question: "text-3xl", option: "text-2xl" },
+] as const;
+
+const MC_COLORS: Record<string, string> = {
+  A: "bg-[#1E5BFF] text-white",
+  B: "bg-[#F26B1F] text-white",
+  C: "bg-[#7A3FF2] text-white",
+  D: "bg-[#D81B6A] text-white",
+};
 
 function ensureDeviceToken(): string {
   if (typeof window === "undefined") return "";
@@ -40,6 +54,7 @@ function ensureDeviceToken(): string {
 function Join() {
   const { session: sessionId } = Route.useSearch();
   const [deviceToken, setDeviceToken] = useState<string>("");
+  const [fontIdx, setFontIdx] = useState<number>(0);
   const [presentationId, setPresentationId] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [resolvingIdentity, setResolvingIdentity] = useState(true);
@@ -67,6 +82,24 @@ function Join() {
   useEffect(() => {
     setDeviceToken(ensureDeviceToken());
   }, []);
+
+  // Carregar preferência de fonte
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem(FONT_SIZE_KEY);
+    const n = raw ? parseInt(raw, 10) : 0;
+    if (!Number.isNaN(n) && n >= 0 && n < FONT_SCALE.length) setFontIdx(n);
+  }, []);
+
+  function changeFont(delta: number) {
+    setFontIdx((prev) => {
+      const next = Math.min(FONT_SCALE.length - 1, Math.max(0, prev + delta));
+      try {
+        localStorage.setItem(FONT_SIZE_KEY, String(next));
+      } catch {}
+      return next;
+    });
+  }
 
   // Resolver identidade do participante para a sessão atual
   useEffect(() => {
