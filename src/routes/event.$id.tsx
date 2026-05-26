@@ -303,9 +303,59 @@ function EventManage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate font-semibold">{p.title}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
-                  </p>
+                  {p.presented_at ? (
+                    <p className="text-xs text-[#9CA3AF]">
+                      Exibida em:{" "}
+                      {new Date(p.presented_at).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}{" "}
+                      às{" "}
+                      {new Date(p.presented_at).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                      h
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  )}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {(() => {
+                      const status = p.execution_status ?? "pending";
+                      const map: Record<string, { label: string; className: string }> = {
+                        pending: {
+                          label: "Pendente",
+                          className: "bg-[#262D3D] text-[#9CA3AF]",
+                        },
+                        active: {
+                          label: "Em Andamento",
+                          className: "bg-blue-500/15 text-blue-400 border border-blue-500/30",
+                        },
+                        completed_full: {
+                          label: "Apresentação Completa",
+                          className: "bg-[#07A684]/15 text-[#07A684] border border-[#07A684]/30",
+                        },
+                        completed_partial: {
+                          label: "Apresentação Parcial",
+                          className: "bg-[#F68B1F]/15 text-[#F68B1F] border border-[#F68B1F]/30",
+                        },
+                      };
+                      const s = map[status] ?? map.pending;
+                      return (
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.className}`}>
+                          {s.label}
+                        </span>
+                      );
+                    })()}
+                    {p.chronological_index ? (
+                      <span className="rounded-full border border-[#FFCB05]/40 bg-[#FFCB05]/15 px-2 py-0.5 text-[11px] font-semibold text-[#FFCB05]">
+                        {p.chronological_index}ª Apresentada do Evento
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {endedSessions && endedSessions[p.id] ? (
