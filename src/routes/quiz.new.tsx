@@ -14,6 +14,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/quiz/new")({
   head: () => ({ meta: [{ title: "Novo Quiz — QuizPulse" }] }),
+  validateSearch: (s: Record<string, unknown>): { eventId?: string } => ({
+    eventId: (s.eventId as string) || undefined,
+  }),
   component: NewQuiz,
 });
 
@@ -59,6 +62,7 @@ function Stepper({ step }: { step: number }) {
 
 function NewQuiz() {
   const navigate = useNavigate();
+  const { eventId } = Route.useSearch();
   const [step, setStep] = useState(1);
 
   // step 1
@@ -161,14 +165,30 @@ function NewQuiz() {
     if (!fileUrl) return;
     setSaving(true);
     try {
-      const { data: pres, error: pErr } = await supabase
-        .from("presentations")
-        .insert({
-          user_id: GLOBAL_USER_ID,
-          title,
-          file_url: fileUrl,
-          ai_context: aiContext || null,
-        })
+      // Calcula sort_order = (maior atual + 1) dentro do evento
+      let nextSortOrder = 0;
+      if (eventId) {
+        const { data: existing } = await (supabase.from("presentations") as any)
+          .select("sort_order")
+          .eq("event_id", eventId)
+          .order("sort_order", { ascending: false })
+          .limit(1);
+        if (existing && existing.length > 0) {
+          nextSortOrder = (existing[0].sort_order ?? 0) + 1;
+        }
+      }
+      const insertPayload: Record<string, unknown> = {
+        user_id: GLOBAL_USER_ID,
+        title,
+        file_url: fileUrl,
+        ai_context: aiContext || null,
+      };
+      if (eventId) {
+        insertPayload.event_id = eventId;
+        insertPayload.sort_order = nextSortOrder;
+      }
+      const { data: pres, error: pErr } = await (supabase.from("presentations") as any)
+        .insert(insertPayload)
         .select("id")
         .single();
       if (pErr) throw pErr;
@@ -186,7 +206,11 @@ function NewQuiz() {
       const { error: qErr } = await supabase.from("questions").insert(rows);
       if (qErr) throw qErr;
       toast.success("Quiz salvo com sucesso!");
-      navigate({ to: "/dashboard" });
+      if (eventId) {
+        navigate({ to: "/event/$id", params: { id: eventId } });
+      } else {
+        navigate({ to: "/dashboard" });
+      }
     } catch (e: any) {
       toast.error(e.message || "Falha ao salvar");
     } finally {

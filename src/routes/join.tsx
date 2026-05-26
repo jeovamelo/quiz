@@ -25,8 +25,24 @@ type Q = {
   time_limit: number;
 };
 
+const DEVICE_TOKEN_KEY = "qp:device_token";
+
+function ensureDeviceToken(): string {
+  if (typeof window === "undefined") return "";
+  let tok = localStorage.getItem(DEVICE_TOKEN_KEY);
+  if (!tok) {
+    tok = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    localStorage.setItem(DEVICE_TOKEN_KEY, tok);
+  }
+  return tok;
+}
+
 function Join() {
   const { session: sessionId } = Route.useSearch();
+  const [deviceToken, setDeviceToken] = useState<string>("");
+  const [presentationId, setPresentationId] = useState<string | null>(null);
+  const [eventId, setEventId] = useState<string | null>(null);
+  const [resolvingIdentity, setResolvingIdentity] = useState(true);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [participantCreatedAt, setParticipantCreatedAt] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -37,6 +53,8 @@ function Join() {
   const [myAnswer, setMyAnswer] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [pName, setPName] = useState("");
+  const [pBirth, setPBirth] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [finalRank, setFinalRank] = useState<{ position: number; total: number; score: number } | null>(null);
 
@@ -45,26 +63,100 @@ function Join() {
     return () => clearInterval(t);
   }, []);
 
-  // restore from localStorage
+  // Garantir device token persistente (uma vez por aparelho)
   useEffect(() => {
-    if (!sessionId) return;
-    const saved = localStorage.getItem(`qp:participant:${sessionId}`);
-    if (saved) setParticipantId(saved);
-  }, [sessionId]);
+    setDeviceToken(ensureDeviceToken());
+  }, []);
+
+  // Resolver identidade do participante para a sessão atual
+  useEffect(() => {
+    if (!sessionId || !deviceToken) return;
+    let cancelled = false;
+    (async () => {
+      setResolvingIdentity(true);
+      // 1. Carregar sessão → presentation_id → event_id
+      const { data: sessRow } = await supabase
+        .from("sessions")
+        .select("presentation_id")
+        .eq("id", sessionId)
+        .maybeSingle();
+      if (!sessRow) {
+        if (!cancelled) setResolvingIdentity(false);
+        return;
+      }
+      const presId = sessRow.presentation_id as string;
+      if (!cancelled) setPresentationId(presId);
+
+      const { data: presRow } = await (supabase.from("presentations") as any)
+        .select("event_id")
+        .eq("id", presId)
+        .maybeSingle();
+      const evId = (presRow?.event_id as string | null) ?? null;
+      if (!cancelled) setEventId(evId);
+
+      // 2. Já existe participante desta sessão com este device token?
+      const { data: existingThisSession } = await (supabase.from("participants") as any)
+        .select("id, created_at, name, birth_date")
+        .eq("session_id", sessionId)
+        .eq("device_token", deviceToken)
+        .maybeSingle();
+      if (existingThisSession) {
+        if (!cancelled) {
+          setParticipantId(existingThisSession.id);
+          setParticipantCreatedAt(existingThisSession.created_at);
+          setResolvingIdentity(false);
+        }
+        return;
+      }
+
+      // 3. Existe registro do mesmo device em outra apresentação do mesmo evento?
+      if (evId) {
+        const { data: priorInEvent } = await (supabase.from("participants") as any)
+          .select("name, birth_date")
+          .eq("event_id", evId)
+          .eq("device_token", deviceToken)
+          .limit(1);
+        if (priorInEvent && priorInEvent.length > 0) {
+          // Reaproveita identidade: cria participante desta sessão sem pedir formulário
+          const prev = priorInEvent[0];
+          const { data: created, error: insErr } = await (supabase.from("participants") as any)
+            .insert({
+              session_id: sessionId,
+              name: prev.name,
+              birth_date: prev.birth_date,
+              device_token: deviceToken,
+              event_id: evId,
+            })
+            .select("id, created_at")
+            .single();
+          if (!cancelled && created && !insErr) {
+            setParticipantId(created.id);
+            setParticipantCreatedAt(created.created_at);
+          }
+        }
+      }
+      if (!cancelled) setResolvingIdentity(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, deviceToken]);
 
   // load participant created_at
   useEffect(() => {
     if (!participantId) return;
     supabase
       .from("participants")
-      .select("created_at")
+      .select("created_at, name, birth_date")
       .eq("id", participantId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setParticipantCreatedAt(data.created_at);
-        else {
+        if (data) {
+          setParticipantCreatedAt(data.created_at);
+          setPName(data.name);
+          setPBirth(data.birth_date);
+        } else {
           // participant no longer exists (sessão deletada)
-          localStorage.removeItem(`qp:participant:${sessionId!}`);
           setParticipantId(null);
         }
       });
@@ -142,9 +234,14 @@ function Join() {
       return;
     }
     setSubmitting(true);
-    const { data, error } = await supabase
-      .from("participants")
-      .insert({ session_id: sessionId, name: name.trim(), birth_date: birth })
+    const { data, error } = await (supabase.from("participants") as any)
+      .insert({
+        session_id: sessionId,
+        name: name.trim(),
+        birth_date: birth,
+        device_token: deviceToken,
+        event_id: eventId,
+      })
       .select("id, created_at")
       .single();
     setSubmitting(false);
@@ -152,7 +249,6 @@ function Join() {
       toast.error("Erro ao entrar na sala");
       return;
     }
-    localStorage.setItem(`qp:participant:${sessionId}`, data.id);
     setParticipantId(data.id);
     setParticipantCreatedAt(data.created_at);
   }
@@ -192,15 +288,40 @@ function Join() {
       .eq("id", participantId)
       .single();
     if (p) {
+      const newScore = p.score + points;
+      const newCorrect = p.correct_count + (isCorrect ? 1 : 0);
+      const newTotalMs = p.total_response_ms + elapsedMs;
+      const newAnswerCount = p.answer_count + 1;
       await supabase
         .from("participants")
         .update({
-          score: p.score + points,
-          correct_count: p.correct_count + (isCorrect ? 1 : 0),
-          total_response_ms: p.total_response_ms + elapsedMs,
-          answer_count: p.answer_count + 1,
+          score: newScore,
+          correct_count: newCorrect,
+          total_response_ms: newTotalMs,
+          answer_count: newAnswerCount,
         })
         .eq("id", participantId);
+
+      // Upsert no agregado por apresentação (alimenta o Grande Pódio do Evento)
+      if (presentationId) {
+        await (supabase.from("participant_scores") as any).upsert(
+          {
+            event_id: eventId,
+            presentation_id: presentationId,
+            session_id: sessionId,
+            participant_id: participantId,
+            device_token: deviceToken,
+            participant_name: pName || name || "",
+            birth_date: pBirth || birth || null,
+            score: newScore,
+            correct_count: newCorrect,
+            answer_count: newAnswerCount,
+            total_response_ms: newTotalMs,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "presentation_id,participant_id" },
+        );
+      }
     }
   }
 
@@ -228,6 +349,13 @@ function Join() {
   }
 
   if (!participantId) {
+    if (resolvingIdentity) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Conectando seu celular...
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-6">

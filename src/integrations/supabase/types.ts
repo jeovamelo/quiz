@@ -69,12 +69,83 @@ export type Database = {
           },
         ]
       }
+      events: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      participant_scores: {
+        Row: {
+          answer_count: number
+          birth_date: string | null
+          correct_count: number
+          device_token: string | null
+          event_id: string | null
+          id: string
+          participant_id: string
+          participant_name: string
+          presentation_id: string
+          score: number
+          session_id: string
+          total_response_ms: number
+          updated_at: string
+        }
+        Insert: {
+          answer_count?: number
+          birth_date?: string | null
+          correct_count?: number
+          device_token?: string | null
+          event_id?: string | null
+          id?: string
+          participant_id: string
+          participant_name?: string
+          presentation_id: string
+          score?: number
+          session_id: string
+          total_response_ms?: number
+          updated_at?: string
+        }
+        Update: {
+          answer_count?: number
+          birth_date?: string | null
+          correct_count?: number
+          device_token?: string | null
+          event_id?: string | null
+          id?: string
+          participant_id?: string
+          participant_name?: string
+          presentation_id?: string
+          score?: number
+          session_id?: string
+          total_response_ms?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       participants: {
         Row: {
           answer_count: number
           birth_date: string
           correct_count: number
           created_at: string
+          device_token: string | null
+          event_id: string | null
           id: string
           name: string
           score: number
@@ -86,6 +157,8 @@ export type Database = {
           birth_date: string
           correct_count?: number
           created_at?: string
+          device_token?: string | null
+          event_id?: string | null
           id?: string
           name: string
           score?: number
@@ -97,6 +170,8 @@ export type Database = {
           birth_date?: string
           correct_count?: number
           created_at?: string
+          device_token?: string | null
+          event_id?: string | null
           id?: string
           name?: string
           score?: number
@@ -117,28 +192,42 @@ export type Database = {
         Row: {
           ai_context: string | null
           created_at: string
+          event_id: string | null
           file_url: string
           id: string
+          sort_order: number
           title: string
           user_id: string
         }
         Insert: {
           ai_context?: string | null
           created_at?: string
+          event_id?: string | null
           file_url: string
           id?: string
+          sort_order?: number
           title: string
           user_id?: string
         }
         Update: {
           ai_context?: string | null
           created_at?: string
+          event_id?: string | null
           file_url?: string
           id?: string
+          sort_order?: number
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "presentations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       questions: {
         Row: {
