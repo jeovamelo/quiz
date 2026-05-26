@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, BarChart3, FileText, Link2, Loader2, Play, Plus, Sparkles, Trash2, Trophy } from "lucide-react";
+import { ArrowDown, ArrowUp, BarChart3, FileText, Link2, Loader2, Pencil, Play, Plus, Sparkles, Trash2, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -287,7 +287,7 @@ function EventManage() {
                     Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {endedSessions && endedSessions[p.id] ? (
                     <Button
                       size="sm"
@@ -306,6 +306,21 @@ function EventManage() {
                       <Play className="mr-1 h-4 w-4" /> Iniciar
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      navigate({
+                        to: "/quiz/$id/edit",
+                        params: { id: p.id },
+                        search: { redirect_to_event: id },
+                      })
+                    }
+                    className="border-[#262D3D] text-[#9CA3AF] hover:border-[#F68B1F] hover:text-[#F68B1F]"
+                    title="Editar apresentação"
+                  >
+                    <Pencil className="mr-1 h-4 w-4" /> Editar
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => detach(p.id)} title="Desvincular do evento">
                     <Trash2 className="h-4 w-4" />
                   </Button>
