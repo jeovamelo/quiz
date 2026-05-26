@@ -1,9 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2 } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GLOBAL_USER_ID, GLOBAL_USER_NAME } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
@@ -37,6 +48,27 @@ function Dashboard() {
       return;
     }
     navigate({ to: "/lobby/$id", params: { id: session.id } });
+  }
+
+  async function deletePresentation(presentationId: string) {
+    const { data: sessionsList } = await supabase
+      .from("sessions")
+      .select("id")
+      .eq("presentation_id", presentationId);
+    const sessionIds = (sessionsList ?? []).map((s) => s.id);
+    if (sessionIds.length > 0) {
+      await supabase.from("answers").delete().in("session_id", sessionIds);
+      await supabase.from("participants").delete().in("session_id", sessionIds);
+      await supabase.from("sessions").delete().in("id", sessionIds);
+    }
+    await supabase.from("questions").delete().eq("presentation_id", presentationId);
+    const { error } = await supabase.from("presentations").delete().eq("id", presentationId);
+    if (error) {
+      toast.error("Não foi possível excluir o quiz");
+      return;
+    }
+    toast.success("Quiz excluído");
+    refetch();
   }
 
   return (
@@ -107,6 +139,31 @@ function Dashboard() {
                         <Pencil className="h-4 w-4" />
                       </Link>
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir quiz?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. O quiz "{p.title}", suas perguntas
+                            e sessões associadas serão removidos permanentemente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deletePresentation(p.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </div>
