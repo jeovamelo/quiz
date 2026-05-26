@@ -116,10 +116,11 @@ function NewQuiz() {
       const drafts: DraftQuestion[] = res.questions.map((q) => ({
         question_text: q.question_text,
         question_type: q.question_type,
-        options:
+        options: (
           q.question_type === "true_false"
             ? { A: "Verdadeiro", B: "Falso" }
-            : { A: q.options.A || "", B: q.options.B || "", C: q.options.C || "", D: q.options.D || "" },
+            : { A: q.options.A || "", B: q.options.B || "", C: q.options.C || "", D: q.options.D || "" }
+        ) as Record<string, string>,
         correct_option: q.correct_option,
         slide_number: Math.min(Math.max(1, q.slide_number || 1), numPages),
         display_mode: "simultaneous",
