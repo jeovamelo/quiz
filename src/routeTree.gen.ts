@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QuizNewRouteImport } from './routes/quiz.new'
+import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -28,34 +29,43 @@ const QuizNewRoute = QuizNewRouteImport.update({
   path: '/quiz/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LobbyIdRoute = LobbyIdRouteImport.update({
+  id: '/lobby/$id',
+  path: '/lobby/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/lobby/$id': typeof LobbyIdRoute
   '/quiz/new': typeof QuizNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/lobby/$id': typeof LobbyIdRoute
   '/quiz/new': typeof QuizNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/lobby/$id': typeof LobbyIdRoute
   '/quiz/new': typeof QuizNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/quiz/new'
+  fullPaths: '/' | '/dashboard' | '/lobby/$id' | '/quiz/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/quiz/new'
-  id: '__root__' | '/' | '/dashboard' | '/quiz/new'
+  to: '/' | '/dashboard' | '/lobby/$id' | '/quiz/new'
+  id: '__root__' | '/' | '/dashboard' | '/lobby/$id' | '/quiz/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  LobbyIdRoute: typeof LobbyIdRoute
   QuizNewRoute: typeof QuizNewRoute
 }
 
@@ -82,12 +92,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuizNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lobby/$id': {
+      id: '/lobby/$id'
+      path: '/lobby/$id'
+      fullPath: '/lobby/$id'
+      preLoaderRoute: typeof LobbyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  LobbyIdRoute: LobbyIdRoute,
   QuizNewRoute: QuizNewRoute,
 }
 export const routeTree = rootRouteImport
