@@ -1,8 +1,17 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, FileText, Loader2, Play, Plus, Trash2, Trophy } from "lucide-react";
+import { ArrowDown, ArrowUp, FileText, Link2, Loader2, Play, Plus, Sparkles, Trash2, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/event/$id")({
@@ -18,9 +27,20 @@ type Pres = {
   created_at: string;
 };
 
+type AvailablePres = {
+  id: string;
+  title: string;
+  created_at: string;
+  question_count: number;
+};
+
 function EventManage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const [addOpen, setAddOpen] = useState(false);
+  const [mode, setMode] = useState<"choose" | "link">("choose");
+  const [linking, setLinking] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: event } = useQuery({
     queryKey: ["event", id],
@@ -46,6 +66,30 @@ function EventManage() {
     },
   });
 
+  const { data: available, refetch: refetchAvailable, isFetching: loadingAvailable } = useQuery({
+    queryKey: ["available-presentations", id, addOpen, mode],
+    enabled: addOpen && mode === "link",
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("presentations") as any)
+        .select("id, title, created_at")
+        .is("event_id", null)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const list = (data ?? []) as Array<{ id: string; title: string; created_at: string }>;
+      // Buscar contagem de perguntas para cada
+      const withCounts: AvailablePres[] = await Promise.all(
+        list.map(async (p) => {
+          const { count } = await supabase
+            .from("questions")
+            .select("id", { count: "exact", head: true })
+            .eq("presentation_id", p.id);
+          return { ...p, question_count: count ?? 0 };
+        }),
+      );
+      return withCounts;
+    },
+  });
+
   async function move(index: number, dir: -1 | 1) {
     if (!presentations) return;
     const j = index + dir;
@@ -68,6 +112,59 @@ function EventManage() {
       .eq("id", presentationId);
     toast.success("Apresentação desvinculada");
     refetch();
+  }
+
+  function openAddModal() {
+    setMode("choose");
+    setSelectedIds(new Set());
+    setAddOpen(true);
+  }
+
+  function toggleSelected(presId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(presId)) next.delete(presId);
+      else next.add(presId);
+      return next;
+    });
+  }
+
+  async function confirmLink() {
+    if (selectedIds.size === 0) {
+      toast.error("Selecione ao menos uma apresentação");
+      return;
+    }
+    setLinking(true);
+    try {
+      // Calcula próximo sort_order
+      const { data: maxRow } = await (supabase.from("presentations") as any)
+        .select("sort_order")
+        .eq("event_id", id)
+        .order("sort_order", { ascending: false })
+        .limit(1);
+      let next = maxRow && maxRow.length > 0 ? (maxRow[0].sort_order ?? 0) + 1 : 0;
+      const ids = Array.from(selectedIds);
+      for (const presId of ids) {
+        const { error } = await (supabase.from("presentations") as any)
+          .update({ event_id: id, sort_order: next })
+          .eq("id", presId);
+        if (error) throw error;
+        next += 1;
+      }
+      toast.success(
+        ids.length === 1
+          ? "Apresentação vinculada ao evento"
+          : `${ids.length} apresentações vinculadas ao evento`,
+      );
+      setAddOpen(false);
+      setSelectedIds(new Set());
+      refetch();
+      refetchAvailable();
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao vincular");
+    } finally {
+      setLinking(false);
+    }
   }
 
   async function startSession(presentationId: string) {
@@ -97,10 +194,11 @@ function EventManage() {
                 <Trophy className="mr-2 h-4 w-4" /> Grande Pódio
               </Link>
             </Button>
-            <Button asChild>
-              <Link to="/quiz/new" search={{ eventId: id }}>
-                <Plus className="mr-2 h-4 w-4" /> Nova Apresentação
-              </Link>
+            <Button
+              onClick={openAddModal}
+              className="bg-gradient-to-r from-[#A6193C] to-[#F26B1F] text-white hover:opacity-90"
+            >
+              <Plus className="mr-2 h-4 w-4" /> Adicionar Apresentação ao Evento
             </Button>
           </div>
         </div>
@@ -119,12 +217,13 @@ function EventManage() {
             <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
             <h2 className="mt-4 text-lg font-semibold">Nenhuma apresentação ainda</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Adicione uma apresentação em PDF para começar este evento.
+              Vincule uma apresentação existente ou crie uma nova para começar este evento.
             </p>
-            <Button asChild className="mt-6">
-              <Link to="/quiz/new" search={{ eventId: id }}>
-                <Plus className="mr-2 h-4 w-4" /> Adicionar Apresentação
-              </Link>
+            <Button
+              onClick={openAddModal}
+              className="mt-6 bg-gradient-to-r from-[#A6193C] to-[#F26B1F] text-white hover:opacity-90"
+            >
+              <Plus className="mr-2 h-4 w-4" /> Adicionar Apresentação ao Evento
             </Button>
           </div>
         ) : (
@@ -179,6 +278,117 @@ function EventManage() {
           </ol>
         )}
       </main>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-w-2xl border-[#262D3D] bg-[#0E1015] text-foreground">
+          {mode === "choose" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Adicionar Apresentação ao Evento</DialogTitle>
+                <DialogDescription>
+                  Escolha como deseja adicionar uma apresentação ao cronograma deste evento.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 md:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setMode("link")}
+                  className="group flex flex-col items-start gap-3 rounded-xl border border-[#262D3D] bg-[#131722] p-6 text-left transition hover:border-primary"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                    <Link2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Vincular Apresentação Existente</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Escolha entre as apresentações que você já criou e que ainda não estão em
+                      nenhum evento.
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddOpen(false);
+                    navigate({ to: "/quiz/new", search: { eventId: id } });
+                  }}
+                  className="group flex flex-col items-start gap-3 rounded-xl border border-[#262D3D] bg-[#131722] p-6 text-left transition hover:border-primary"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#A6193C] to-[#F26B1F] text-white">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Criar Nova Apresentação</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Envie um PDF e gere as perguntas com IA. A apresentação já será vinculada
+                      automaticamente a este evento.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Vincular Apresentação Existente</DialogTitle>
+                <DialogDescription>
+                  Selecione uma ou mais apresentações avulsas para incluir neste evento.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[50vh] overflow-y-auto rounded-lg border border-[#262D3D] bg-[#131722]">
+                {loadingAvailable ? (
+                  <div className="flex items-center justify-center gap-2 p-8 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando apresentações...
+                  </div>
+                ) : !available || available.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">
+                    Nenhuma apresentação avulsa disponível. Crie uma nova ou desvincule de outro
+                    evento.
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-[#262D3D]">
+                    {available.map((p) => {
+                      const checked = selectedIds.has(p.id);
+                      return (
+                        <li key={p.id}>
+                          <label className="flex cursor-pointer items-center gap-3 p-4 transition hover:bg-white/5">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleSelected(p.id)}
+                              className="h-4 w-4 accent-primary"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <h4 className="truncate font-semibold">{p.title}</h4>
+                              <p className="text-xs text-muted-foreground">
+                                {p.question_count} {p.question_count === 1 ? "pergunta" : "perguntas"} ·
+                                Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                              </p>
+                            </div>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="ghost" onClick={() => setMode("choose")} disabled={linking}>
+                  Voltar
+                </Button>
+                <Button
+                  onClick={confirmLink}
+                  disabled={linking || selectedIds.size === 0}
+                  className="bg-gradient-to-r from-[#A6193C] to-[#F26B1F] text-white hover:opacity-90"
+                >
+                  {linking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Confirmar Vínculo {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
