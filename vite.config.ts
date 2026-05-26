@@ -18,10 +18,5 @@ export default defineConfig({
     optimizeDeps: {
       include: ["pdfjs-dist"],
     },
-    // pdfjs-dist must NEVER load on the server (uses DOMMatrix, Worker, etc.)
-    ssr: {
-      noExternal: [],
-      external: ["pdfjs-dist"],
-    },
   },
 });
