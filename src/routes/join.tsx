@@ -58,6 +58,7 @@ function Join() {
   const [presentationId, setPresentationId] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [resolvingIdentity, setResolvingIdentity] = useState(true);
+  const [winnerPlace, setWinnerPlace] = useState<1 | 2 | 3 | null>(null);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [participantCreatedAt, setParticipantCreatedAt] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -218,6 +219,29 @@ function Join() {
       supabase.removeChannel(ch);
     };
   }, [sessionId]);
+
+  // Escuta a revelação dramática do evento e celebra no celular do vencedor
+  useEffect(() => {
+    if (!eventId || !deviceToken) return;
+    const ch = supabase
+      .channel(`event-finale-${eventId}`)
+      .on("broadcast", { event: "winner" }, (msg: any) => {
+        const payload = msg?.payload ?? {};
+        if (payload?.device_token && payload.device_token === deviceToken) {
+          const place = payload.place as 1 | 2 | 3;
+          setWinnerPlace(place);
+          try {
+            (navigator as any)?.vibrate?.([200, 80, 200, 80, 400]);
+          } catch {
+            /* sem vibração */
+          }
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [eventId, deviceToken]);
 
   // reset answer when question changes
   useEffect(() => {
@@ -382,6 +406,7 @@ function Join() {
   }
 
   if (!participantId) {
+    if (winnerPlace) return <WinnerCelebration place={winnerPlace} />;
     if (resolvingIdentity) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
