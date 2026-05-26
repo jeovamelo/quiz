@@ -9,38 +9,134 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as JoinRouteImport } from './routes/join'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as QuizNewRouteImport } from './routes/quiz.new'
+import { Route as PresentIdRouteImport } from './routes/present.$id'
+import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
+import { Route as QuizIdEditRouteImport } from './routes/quiz.$id.edit'
 
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuizNewRoute = QuizNewRouteImport.update({
+  id: '/quiz/new',
+  path: '/quiz/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PresentIdRoute = PresentIdRouteImport.update({
+  id: '/present/$id',
+  path: '/present/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LobbyIdRoute = LobbyIdRouteImport.update({
+  id: '/lobby/$id',
+  path: '/lobby/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizIdEditRoute = QuizIdEditRouteImport.update({
+  id: '/quiz/$id/edit',
+  path: '/quiz/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/join': typeof JoinRoute
+  '/lobby/$id': typeof LobbyIdRoute
+  '/present/$id': typeof PresentIdRoute
+  '/quiz/new': typeof QuizNewRoute
+  '/quiz/$id/edit': typeof QuizIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/join': typeof JoinRoute
+  '/lobby/$id': typeof LobbyIdRoute
+  '/present/$id': typeof PresentIdRoute
+  '/quiz/new': typeof QuizNewRoute
+  '/quiz/$id/edit': typeof QuizIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/join': typeof JoinRoute
+  '/lobby/$id': typeof LobbyIdRoute
+  '/present/$id': typeof PresentIdRoute
+  '/quiz/new': typeof QuizNewRoute
+  '/quiz/$id/edit': typeof QuizIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/join'
+    | '/lobby/$id'
+    | '/present/$id'
+    | '/quiz/new'
+    | '/quiz/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/join'
+    | '/lobby/$id'
+    | '/present/$id'
+    | '/quiz/new'
+    | '/quiz/$id/edit'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/join'
+    | '/lobby/$id'
+    | '/present/$id'
+    | '/quiz/new'
+    | '/quiz/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
+  JoinRoute: typeof JoinRoute
+  LobbyIdRoute: typeof LobbyIdRoute
+  PresentIdRoute: typeof PresentIdRoute
+  QuizNewRoute: typeof QuizNewRoute
+  QuizIdEditRoute: typeof QuizIdEditRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +144,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quiz/new': {
+      id: '/quiz/new'
+      path: '/quiz/new'
+      fullPath: '/quiz/new'
+      preLoaderRoute: typeof QuizNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/present/$id': {
+      id: '/present/$id'
+      path: '/present/$id'
+      fullPath: '/present/$id'
+      preLoaderRoute: typeof PresentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lobby/$id': {
+      id: '/lobby/$id'
+      path: '/lobby/$id'
+      fullPath: '/lobby/$id'
+      preLoaderRoute: typeof LobbyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quiz/$id/edit': {
+      id: '/quiz/$id/edit'
+      path: '/quiz/$id/edit'
+      fullPath: '/quiz/$id/edit'
+      preLoaderRoute: typeof QuizIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
+  JoinRoute: JoinRoute,
+  LobbyIdRoute: LobbyIdRoute,
+  PresentIdRoute: PresentIdRoute,
+  QuizNewRoute: QuizNewRoute,
+  QuizIdEditRoute: QuizIdEditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
