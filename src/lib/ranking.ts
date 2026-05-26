@@ -10,6 +10,7 @@ export type ParticipantRow = {
 
 export function sortRanking(rows: ParticipantRow[]): ParticipantRow[] {
   return [...rows].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
     if (b.correct_count !== a.correct_count) return b.correct_count - a.correct_count;
     const avgA = a.answer_count ? a.total_response_ms / a.answer_count : Number.MAX_SAFE_INTEGER;
     const avgB = b.answer_count ? b.total_response_ms / b.answer_count : Number.MAX_SAFE_INTEGER;
