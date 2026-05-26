@@ -191,30 +191,39 @@ export type Database = {
       presentations: {
         Row: {
           ai_context: string | null
+          chronological_index: number | null
           created_at: string
           event_id: string | null
+          execution_status: string
           file_url: string
           id: string
+          presented_at: string | null
           sort_order: number
           title: string
           user_id: string
         }
         Insert: {
           ai_context?: string | null
+          chronological_index?: number | null
           created_at?: string
           event_id?: string | null
+          execution_status?: string
           file_url: string
           id?: string
+          presented_at?: string | null
           sort_order?: number
           title: string
           user_id?: string
         }
         Update: {
           ai_context?: string | null
+          chronological_index?: number | null
           created_at?: string
           event_id?: string | null
+          execution_status?: string
           file_url?: string
           id?: string
+          presented_at?: string | null
           sort_order?: number
           title?: string
           user_id?: string
