@@ -15,9 +15,17 @@ export const generateQuestions = createServerFn({ method: "POST" })
     if (!key) throw new Error("LOVABLE_API_KEY ausente");
 
     const sys =
-      "Você gera perguntas de fixação em Português do Brasil a partir do conteúdo de slides de uma apresentação corporativa. " +
-      "Misture perguntas de Múltipla Escolha (4 alternativas A, B, C, D) e Verdadeiro/Falso (use as chaves A='Verdadeiro' e B='Falso'). " +
-      "Vincule cada pergunta ao número do slide mais relevante. Sempre responda chamando a função generate_quiz.";
+      "Você gera perguntas de fixação ESTRITAMENTE em Português do Brasil (PT-BR) a partir do conteúdo de slides de uma apresentação corporativa. " +
+      "VOCABULÁRIO OBRIGATÓRIO PT-BR: use 'tela', 'celular', 'usuário'. NUNCA use termos de Português de Portugal (ex.: 'ecrã', 'telemóvel', 'utilizador'). " +
+      "REGRA DE PROPORÇÃO (OBRIGATÓRIA): exatamente 80% das perguntas devem ser do tipo 'true_false' e 20% do tipo 'multiple_choice'. " +
+      "Arredonde a favor de V/F. Ex.: 5 perguntas => 4 V/F + 1 MC; 10 => 8 V/F + 2 MC; 3 => 2 V/F + 1 MC; 1 => 1 V/F. " +
+      "Para 'true_false', use SEMPRE apenas as chaves A='VERDADEIRO' e B='FALSO'. " +
+      "Para 'multiple_choice', use APENAS 2 ou 3 alternativas (A e B, opcionalmente C). NUNCA gere 4 opções. " +
+      "Alternativas de múltipla escolha devem ser extremamente curtas, diretas e objetivas (palavras-chave, números ou frases curtas). " +
+      "Evite pegadinhas, enunciados longos e alternativas parecidas — o usuário responde pelo celular e precisa de leitura rápida. " +
+      "Vincule cada pergunta ao número do slide mais relevante via 'slide_number'. " +
+      "Defina 'display_mode' como 'simultaneous' (mostrada junto com o slide) ou 'after_slide' (após o slide). " +
+      "Sempre responda chamando a função generate_quiz.";
 
     const truncated = data.pdfText.slice(0, 80000);
     const user =
@@ -60,12 +68,15 @@ export const generateQuestions = createServerFn({ method: "POST" })
                             A: { type: "string" },
                             B: { type: "string" },
                             C: { type: "string" },
-                            D: { type: "string" },
                           },
                           required: ["A", "B"],
                         },
-                        correct_option: { type: "string", enum: ["A", "B", "C", "D"] },
+                        correct_option: { type: "string", enum: ["A", "B", "C"] },
                         slide_number: { type: "number" },
+                        display_mode: {
+                          type: "string",
+                          enum: ["simultaneous", "after_slide"],
+                        },
                       },
                       required: [
                         "question_text",
@@ -73,6 +84,7 @@ export const generateQuestions = createServerFn({ method: "POST" })
                         "options",
                         "correct_option",
                         "slide_number",
+                        "display_mode",
                       ],
                     },
                   },
@@ -108,7 +120,28 @@ export const generateQuestions = createServerFn({ method: "POST" })
         options: Record<string, string>;
         correct_option: string;
         slide_number: number;
+        display_mode: "simultaneous" | "after_slide";
       }>;
     };
-    return { questions: parsed.questions };
+
+    // Normalização defensiva: garante V/F com A=VERDADEIRO/B=FALSO e MC com no máximo 3 opções
+    const normalized = parsed.questions.map((q) => {
+      if (q.question_type === "true_false") {
+        return {
+          ...q,
+          options: { A: "VERDADEIRO", B: "FALSO" },
+          correct_option: q.correct_option === "B" ? "B" : "A",
+        };
+      }
+      const opts: Record<string, string> = { A: q.options.A, B: q.options.B };
+      if (q.options.C) opts.C = q.options.C;
+      const allowed = Object.keys(opts);
+      return {
+        ...q,
+        options: opts,
+        correct_option: allowed.includes(q.correct_option) ? q.correct_option : "A",
+      };
+    });
+
+    return { questions: normalized };
   });
