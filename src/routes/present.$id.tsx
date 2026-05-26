@@ -152,7 +152,7 @@ function Present() {
     const next = Math.max(1, n);
     // Encerramento automático ao avançar além da última página
     if (totalPages && n > totalPages) {
-      await endSession();
+      await endSession(true);
       return;
     }
     const q = questions.find((qq) => qq.slide_number === next) || null;
@@ -187,7 +187,7 @@ function Present() {
     await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
   }
 
-  async function endSession() {
+  async function endSession(full = false) {
     const { error } = await supabase
       .from("sessions")
       .update({ status: "ended", active_question_id: null, question_started_at: null, question_revealed: false })
@@ -195,6 +195,12 @@ function Present() {
     if (error) {
       toast.error("Falha ao encerrar");
       return;
+    }
+    // Atualiza status de execução da apresentação
+    if (session?.presentation_id) {
+      await (supabase.from("presentations") as any)
+        .update({ execution_status: full ? "completed_full" : "completed_partial" })
+        .eq("id", session.presentation_id);
     }
   }
 

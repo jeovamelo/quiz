@@ -25,6 +25,9 @@ type Pres = {
   file_url: string;
   sort_order: number;
   created_at: string;
+  execution_status?: string | null;
+  presented_at?: string | null;
+  chronological_index?: number | null;
 };
 
 type AvailablePres = {
@@ -58,7 +61,7 @@ function EventManage() {
     queryKey: ["event-presentations", id],
     queryFn: async () => {
       const { data, error } = await (supabase.from("presentations") as any)
-        .select("id, title, file_url, sort_order, created_at")
+        .select("id, title, file_url, sort_order, created_at, execution_status, presented_at, chronological_index")
         .eq("event_id", id)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -190,6 +193,13 @@ function EventManage() {
   }
 
   async function startSession(presentationId: string) {
+    // Calcula chronological_index: quantas apresentações deste evento já têm presented_at
+    const { count: presentedCount } = await (supabase.from("presentations") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", id)
+      .not("presented_at", "is", null);
+    const nextIndex = (presentedCount ?? 0) + 1;
+
     const { data: session, error } = await supabase
       .from("sessions")
       .insert({ presentation_id: presentationId, status: "lobby", current_slide: 1 })
@@ -199,6 +209,16 @@ function EventManage() {
       toast.error("Não foi possível iniciar a sessão");
       return;
     }
+
+    // Marca apresentação como em andamento, com horário e ordem cronológica
+    await (supabase.from("presentations") as any)
+      .update({
+        execution_status: "active",
+        presented_at: new Date().toISOString(),
+        chronological_index: nextIndex,
+      })
+      .eq("id", presentationId);
+
     navigate({ to: "/lobby/$id", params: { id: session.id } });
   }
 
@@ -283,9 +303,59 @@ function EventManage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate font-semibold">{p.title}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
-                  </p>
+                  {p.presented_at ? (
+                    <p className="text-xs text-[#9CA3AF]">
+                      Exibida em:{" "}
+                      {new Date(p.presented_at).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}{" "}
+                      às{" "}
+                      {new Date(p.presented_at).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                      h
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  )}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {(() => {
+                      const status = p.execution_status ?? "pending";
+                      const map: Record<string, { label: string; className: string }> = {
+                        pending: {
+                          label: "Pendente",
+                          className: "bg-[#262D3D] text-[#9CA3AF]",
+                        },
+                        active: {
+                          label: "Em Andamento",
+                          className: "bg-blue-500/15 text-blue-400 border border-blue-500/30",
+                        },
+                        completed_full: {
+                          label: "Apresentação Completa",
+                          className: "bg-[#07A684]/15 text-[#07A684] border border-[#07A684]/30",
+                        },
+                        completed_partial: {
+                          label: "Apresentação Parcial",
+                          className: "bg-[#F68B1F]/15 text-[#F68B1F] border border-[#F68B1F]/30",
+                        },
+                      };
+                      const s = map[status] ?? map.pending;
+                      return (
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.className}`}>
+                          {s.label}
+                        </span>
+                      );
+                    })()}
+                    {p.chronological_index ? (
+                      <span className="rounded-full border border-[#FFCB05]/40 bg-[#FFCB05]/15 px-2 py-0.5 text-[11px] font-semibold text-[#FFCB05]">
+                        {p.chronological_index}ª Apresentada do Evento
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {endedSessions && endedSessions[p.id] ? (
