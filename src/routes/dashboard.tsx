@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GLOBAL_USER_ID, GLOBAL_USER_NAME } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,17 @@ function Dashboard() {
             <p className="text-sm text-muted-foreground">{GLOBAL_USER_NAME}</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              title="Ir para a página inicial"
+              className="text-[#9CA3AF] hover:bg-[#1E2235] hover:text-[#F68B1F]"
+            >
+              <Link to="/">
+                <Home className="h-5 w-5" />
+              </Link>
+            </Button>
             <Button asChild size="lg" variant="outline">
               <Link to="/event/new">
                 <CalendarPlus className="mr-2 h-5 w-5" /> Novo Evento

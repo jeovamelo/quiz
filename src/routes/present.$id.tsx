@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Loader2, StopCircle, Trophy } from "lucide-react";
+import { Copy, Loader2, LogOut, Trophy } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -596,17 +607,38 @@ function Present() {
             </ol>
           </div>
 
-          <Button
-            variant="destructive"
-            className="mt-auto"
-            onClick={async () => {
-              if (confirm("Encerrar a apresentação agora? Os participantes verão o pódio.")) {
-                await endSession();
-              }
-            }}
-          >
-            <StopCircle className="mr-2 h-4 w-4" /> Encerrar Apresentação
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="mt-auto border-[#A6193C]/60 text-[#9CA3AF] hover:bg-[#A6193C]/10 hover:text-white"
+              >
+                <LogOut className="mr-2 h-4 w-4" /> Sair da Apresentação
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="border-[#262D3D] bg-[#0E1015] text-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">Deseja realmente sair?</AlertDialogTitle>
+                <AlertDialogDescription className="text-[#9CA3AF]">
+                  Isso encerrará a conexão realtime com os celulares de todos os participantes ativos nesta palestra.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-white">
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    await endSession();
+                    navigate({ to: "/dashboard" });
+                  }}
+                  className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-95"
+                >
+                  Sim, encerrar e sair
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </aside>
       </div>
     </div>

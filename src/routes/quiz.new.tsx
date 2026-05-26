@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2, Shield, Zap, Clock } from "lucide-react";
+import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2, Shield, Zap, Clock, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GLOBAL_USER_ID } from "@/lib/constants";
 import { extractPdfText } from "@/lib/pdf-extract";
@@ -222,7 +222,14 @@ function NewQuiz() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div>
+          <div className="min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/dashboard" })}
+              className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-[#9CA3AF] transition-colors hover:text-[#F68B1F]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Voltar ao Painel
+            </button>
             <h1 className="text-2xl font-bold">Novo Quiz</h1>
             <p className="text-sm text-muted-foreground">Siga as 3 etapas para criar seu quiz</p>
           </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, AArrowDown, AArrowUp } from "lucide-react";
+import { Loader2, AArrowDown, AArrowUp, LogOut } from "lucide-react";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -548,6 +548,19 @@ function Join() {
               <AArrowUp className="h-5 w-5" />
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Tem certeza que deseja sair desta palestra?")) {
+                window.location.href = "/join";
+              }
+            }}
+            aria-label="Sair desta palestra"
+            title="Sair desta palestra"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#262D3D] text-[#9CA3AF] transition hover:bg-[#1E2235] hover:text-[#F68B1F] active:scale-95"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
 

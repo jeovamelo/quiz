@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, BarChart3, FileText, Link2, Loader2, Pencil, Play, Plus, Sparkles, Trash2, Trophy } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, BarChart3, FileText, Link2, Loader2, Pencil, Play, Plus, Sparkles, Trash2, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -227,7 +227,13 @@ function EventManage() {
       <header className="border-b border-border bg-card/50">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Evento</p>
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/dashboard" })}
+              className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-[#9CA3AF] transition-colors hover:text-[#F68B1F]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Voltar ao Painel
+            </button>
             <h1 className="truncate text-2xl font-bold">{event?.title ?? "Carregando..."}</h1>
           </div>
           <div className="flex items-center gap-2">
