@@ -612,3 +612,47 @@ function Join() {
     </div>
   );
 }
+
+function WinnerCelebration({ place }: { place: 1 | 2 | 3 }) {
+  useEffect(() => {
+    const end = Date.now() + 6000;
+    const colors =
+      place === 1
+        ? ["#FFCB05", "#F68B1F", "#FFFFFF", "#FFE6CB"]
+        : place === 2
+        ? ["#C0C0C0", "#FFFFFF", "#9CA3AF"]
+        : ["#FFE6CB", "#F68B1F", "#A6193C"];
+    (function frame() {
+      confetti({ particleCount: 6, angle: 60, spread: 80, origin: { x: 0, y: 0.7 }, colors });
+      confetti({ particleCount: 6, angle: 120, spread: 80, origin: { x: 1, y: 0.7 }, colors });
+      confetti({ particleCount: 4, startVelocity: 50, spread: 360, origin: { x: 0.5, y: 0.4 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+  }, [place]);
+
+  const title =
+    place === 1
+      ? "Incrível! Você é o Campeão do HUBINE!"
+      : place === 2
+      ? "Espetacular! Você é o Vice-Campeão!"
+      : "Parabéns! Você ficou em 3º lugar!";
+  const medal = place === 1 ? "🏆" : place === 2 ? "🥈" : "🥉";
+  const bg =
+    place === 1
+      ? "from-[#FFCB05] via-[#F68B1F] to-[#A6193C]"
+      : place === 2
+      ? "from-[#E5E7EB] via-[#9CA3AF] to-[#4B5563]"
+      : "from-[#FFE6CB] via-[#F68B1F] to-[#A6193C]";
+
+  return (
+    <div
+      className={`flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-gradient-to-br p-8 text-center ${bg}`}
+    >
+      <div className="text-8xl drop-shadow">{medal}</div>
+      <h1 className="text-3xl font-extrabold text-white drop-shadow md:text-4xl">{title}</h1>
+      <p className="text-lg font-semibold text-white/95 drop-shadow">
+        {place}º lugar no Grande Pódio do Evento
+      </p>
+    </div>
+  );
+}
