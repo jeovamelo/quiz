@@ -53,6 +53,8 @@ function Join() {
   const [myAnswer, setMyAnswer] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [pName, setPName] = useState("");
+  const [pBirth, setPBirth] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [finalRank, setFinalRank] = useState<{ position: number; total: number; score: number } | null>(null);
 
@@ -145,14 +147,16 @@ function Join() {
     if (!participantId) return;
     supabase
       .from("participants")
-      .select("created_at")
+      .select("created_at, name, birth_date")
       .eq("id", participantId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setParticipantCreatedAt(data.created_at);
-        else {
+        if (data) {
+          setParticipantCreatedAt(data.created_at);
+          setPName(data.name);
+          setPBirth(data.birth_date);
+        } else {
           // participant no longer exists (sessão deletada)
-          localStorage.removeItem(`qp:participant:${sessionId!}`);
           setParticipantId(null);
         }
       });
@@ -307,8 +311,8 @@ function Join() {
             session_id: sessionId,
             participant_id: participantId,
             device_token: deviceToken,
-            participant_name: name || "",
-            birth_date: birth || null,
+            participant_name: pName || name || "",
+            birth_date: pBirth || birth || null,
             score: newScore,
             correct_count: newCorrect,
             answer_count: newAnswerCount,
@@ -345,6 +349,13 @@ function Join() {
   }
 
   if (!participantId) {
+    if (resolvingIdentity) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Conectando seu celular...
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-6">
