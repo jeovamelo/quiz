@@ -28,7 +28,8 @@ function Present() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
-  const [presentation, setPresentation] = useState<{ file_url: string; title: string } | null>(null);
+  const [presentation, setPresentation] = useState<{ file_url: string; title: string; event_id: string | null } | null>(null);
+  const [nextPresentationId, setNextPresentationId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [answers, setAnswers] = useState<Array<{ question_id: string; selected_option: string; participant_id: string }>>([]);
@@ -55,10 +56,22 @@ function Present() {
       if (s) {
         const { data: p } = await supabase
           .from("presentations")
-          .select("file_url, title")
+          .select("file_url, title, event_id, sort_order")
           .eq("id", s.presentation_id)
           .single();
-        setPresentation(p);
+        if (p) {
+          setPresentation({ file_url: p.file_url, title: p.title, event_id: (p as any).event_id ?? null });
+          // Buscar próxima apresentação do mesmo evento (sort_order > atual)
+          if ((p as any).event_id) {
+            const { data: nextList } = await (supabase.from("presentations") as any)
+              .select("id, sort_order")
+              .eq("event_id", (p as any).event_id)
+              .gt("sort_order", (p as any).sort_order ?? 0)
+              .order("sort_order", { ascending: true })
+              .limit(1);
+            setNextPresentationId(nextList && nextList.length > 0 ? nextList[0].id : null);
+          }
+        }
         const { data: qs } = await supabase
           .from("questions")
           .select("*")
@@ -314,6 +327,38 @@ function Present() {
         <Button variant="outline" onClick={() => navigate({ to: "/dashboard" })}>
           Voltar ao Painel
         </Button>
+        {presentation.event_id && (
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button
+              onClick={() => navigate({ to: "/event/$id/podium", params: { id: presentation.event_id! } })}
+            >
+              Ver Grande Pódio do Evento
+            </Button>
+            {nextPresentationId && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  const { data: newSession, error } = await supabase
+                    .from("sessions")
+                    .insert({
+                      presentation_id: nextPresentationId,
+                      status: "lobby",
+                      current_slide: 1,
+                    })
+                    .select("id")
+                    .single();
+                  if (error || !newSession) {
+                    toast.error("Não foi possível iniciar a próxima apresentação");
+                    return;
+                  }
+                  navigate({ to: "/lobby/$id", params: { id: newSession.id } });
+                }}
+              >
+                Próxima Apresentação →
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
