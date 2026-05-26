@@ -40,7 +40,10 @@ export const generateQuestions = createServerFn({ method: "POST" })
       "Vincule cada pergunta ao número do slide mais relevante via 'slide_number'. " +
       displayModeInstruction + " " +
       difficultyInstruction + " " +
-      "Sempre responda chamando a função generate_quiz.";
+      "Sempre responda chamando a função generate_quiz. " +
+      "FORMATO DA RESPOSTA: responda APENAS e EXCLUSIVAMENTE com o objeto JSON estruturado nos argumentos da função. " +
+      "Não adicione saudações, não use delimitadores de markdown (como ```json ou ```), não dê explicações complementares " +
+      "e não insira nenhum caractere, comentário ou quebra de linha após o fechamento da última chave '}' do objeto.";
 
     const truncated = data.pdfText.slice(0, 80000);
     const user =
@@ -137,8 +140,9 @@ export const generateQuestions = createServerFn({ method: "POST" })
       throw new Error("Resposta da IA foi truncada. Reduza a quantidade de perguntas ou o tamanho do PDF.");
     }
 
-    // Extração robusta: alguns modelos concatenam mais de um objeto JSON.
-    // Pegamos apenas o primeiro objeto JSON bem-formado equilibrando chaves.
+    // Extração robusta: alguns modelos concatenam mais de um objeto JSON
+    // ou adicionam texto/markdown fora do bloco. Pegamos apenas o primeiro
+    // objeto JSON bem-formado equilibrando chaves.
     function extractFirstJsonObject(s: string): string {
       const start = s.indexOf("{");
       if (start < 0) return s;
@@ -163,6 +167,46 @@ export const generateQuestions = createServerFn({ method: "POST" })
       return s.slice(start);
     }
 
+    // Parse defensivo com RegEx guard: limpa markdown e isola o bloco JSON.
+    function safeParseAIResponse(rawResponse: string): unknown {
+      const cleanedText = rawResponse
+        .trim()
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+
+      // 1ª tentativa: parse direto
+      try {
+        return JSON.parse(cleanedText);
+      } catch {
+        // continua para fallback
+      }
+
+      // 2ª tentativa: RegEx capturando entre a primeira '{' e a última '}'
+      const jsonRegex = /\{[\s\S]*\}/;
+      const match = cleanedText.match(jsonRegex);
+      if (match) {
+        try {
+          return JSON.parse(match[0]);
+        } catch {
+          // continua para fallback
+        }
+      }
+
+      // 3ª tentativa: extrai o primeiro objeto JSON bem-formado
+      try {
+        return JSON.parse(extractFirstJsonObject(cleanedText));
+      } catch (error) {
+        console.error(
+          "[ERRO AUDITORIA IA]: Falha crítica ao fazer o parse do JSON.",
+          error,
+        );
+        throw new Error(
+          "A resposta da IA veio em um formato inválido. Por favor, clique em gerar novamente.",
+        );
+      }
+    }
+
     let parsed: {
       questions: Array<{
         question_text: string;
@@ -173,12 +217,7 @@ export const generateQuestions = createServerFn({ method: "POST" })
         display_mode: "simultaneous" | "after_slide";
       }>;
     };
-    try {
-      parsed = JSON.parse(rawArgs);
-    } catch {
-      const cleaned = extractFirstJsonObject(rawArgs);
-      parsed = JSON.parse(cleaned);
-    }
+    parsed = safeParseAIResponse(rawArgs) as typeof parsed;
     const _typed = parsed as {
       questions: Array<{
         question_text: string;
