@@ -1,7 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowLeft, ArrowUp, BarChart3, FileText, Link2, Loader2, Pencil, Play, Plus, Sparkles, Trash2, Trophy } from "lucide-react";
+import {
+  ArrowLeft,
+  BarChart3,
+  Check,
+  FileText,
+  GripVertical,
+  Link2,
+  Loader2,
+  Pencil,
+  Play,
+  Plus,
+  Sparkles,
+  Trash2,
+  Trophy,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,20 +129,70 @@ function EventManage() {
     },
   });
 
-  async function move(index: number, dir: -1 | 1) {
+  // ===== Drag & drop reordenação =====
+  const [orderedIds, setOrderedIds] = useState<string[] | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+
+  // Sincroniza a lista local com o servidor (apenas quando não está arrastando)
+  useEffect(() => {
     if (!presentations) return;
-    const j = index + dir;
-    if (j < 0 || j >= presentations.length) return;
-    const a = presentations[index];
-    const b = presentations[j];
-    // swap sort_order
-    await (supabase.from("presentations") as any)
-      .update({ sort_order: b.sort_order })
-      .eq("id", a.id);
-    await (supabase.from("presentations") as any)
-      .update({ sort_order: a.sort_order })
-      .eq("id", b.id);
-    refetch();
+    if (draggingId) return;
+    if (saveState === "saving") return;
+    setOrderedIds(presentations.map((p) => p.id));
+  }, [presentations, draggingId, saveState]);
+
+  // Lista efetiva exibida (ordem local sobrepõe a do servidor)
+  const displayList: Pres[] = (() => {
+    if (!presentations) return [];
+    if (!orderedIds) return presentations;
+    const byId = new Map(presentations.map((p) => [p.id, p]));
+    const out: Pres[] = [];
+    for (const id of orderedIds) {
+      const p = byId.get(id);
+      if (p) out.push(p);
+    }
+    // garante que apresentações novas (ainda não no orderedIds) apareçam
+    for (const p of presentations) if (!orderedIds.includes(p.id)) out.push(p);
+    return out;
+  })();
+
+  async function persistOrder(ids: string[]) {
+    setSaveState("saving");
+    try {
+      await Promise.all(
+        ids.map((pid, idx) =>
+          (supabase.from("presentations") as any)
+            .update({ sort_order: idx })
+            .eq("id", pid),
+        ),
+      );
+      setSaveState("saved");
+      window.setTimeout(() => setSaveState("idle"), 1800);
+      refetch();
+    } catch {
+      setSaveState("idle");
+      toast.error("Não foi possível salvar a nova ordem");
+    }
+  }
+
+  function handleDrop(targetId: string) {
+    if (!draggingId || draggingId === targetId || !orderedIds) {
+      setDraggingId(null);
+      setDragOverId(null);
+      return;
+    }
+    const from = orderedIds.indexOf(draggingId);
+    const to = orderedIds.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...orderedIds];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrderedIds(next);
+    setDraggingId(null);
+    setDragOverId(null);
+    void persistOrder(next);
   }
 
   async function detach(presentationId: string) {
@@ -253,14 +317,35 @@ function EventManage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-8">
-        <p className="mb-4 text-sm text-muted-foreground">
-          Reordene as apresentações usando as setas. Elas serão executadas na ordem listada.
-        </p>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Arraste os cards pela alça à esquerda para reordenar a sequência. Elas serão executadas na ordem listada.
+          </p>
+          {saveState !== "idle" && (
+            <div
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                saveState === "saving"
+                  ? "border-[#262D3D] bg-[#161A23] text-[#9CA3AF]"
+                  : "border-[#07A684]/40 bg-[#07A684]/10 text-[#07A684]"
+              }`}
+            >
+              {saveState === "saving" ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando nova sequência...
+                </>
+              ) : (
+                <>
+                  <Check className="h-3.5 w-3.5" /> Sequência salva
+                </>
+              )}
+            </div>
+          )}
+        </div>
         {!presentations ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
           </div>
-        ) : presentations.length === 0 ? (
+        ) : displayList.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card/30 p-12 text-center">
             <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
             <h2 className="mt-4 text-lg font-semibold">Nenhuma apresentação ainda</h2>
@@ -276,29 +361,53 @@ function EventManage() {
           </div>
         ) : (
           <ol className="space-y-3">
-            {presentations.map((p, idx) => (
+            {displayList.map((p, idx) => {
+              const isDragging = draggingId === p.id;
+              const isOver = dragOverId === p.id && draggingId && draggingId !== p.id;
+              return (
               <li
                 key={p.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
+                draggable
+                onDragStart={(e) => {
+                  setDraggingId(p.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  try {
+                    e.dataTransfer.setData("text/plain", p.id);
+                  } catch {
+                    /* alguns navegadores exigem setData */
+                  }
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (dragOverId !== p.id) setDragOverId(p.id);
+                }}
+                onDragLeave={() => {
+                  if (dragOverId === p.id) setDragOverId(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  handleDrop(p.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverId(null);
+                }}
+                className={`flex items-center gap-3 rounded-xl border bg-card p-3 transition-all duration-200 ${
+                  isDragging
+                    ? "border-[#F68B1F] opacity-75 shadow-2xl shadow-[#F68B1F]/20"
+                    : isOver
+                    ? "border-[#F68B1F] ring-2 ring-[#F68B1F]/40"
+                    : "border-border"
+                }`}
               >
-                <div className="flex w-10 shrink-0 flex-col items-center gap-1">
-                  <button
-                    onClick={() => move(idx, -1)}
-                    disabled={idx === 0}
-                    className="rounded p-1 hover:bg-muted disabled:opacity-30"
-                    aria-label="Subir"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </button>
-                  <span className="text-xs font-bold">{idx + 1}</span>
-                  <button
-                    onClick={() => move(idx, 1)}
-                    disabled={idx === presentations.length - 1}
-                    className="rounded p-1 hover:bg-muted disabled:opacity-30"
-                    aria-label="Descer"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </button>
+                <div
+                  className="flex w-10 shrink-0 cursor-grab flex-col items-center gap-1 text-[#9CA3AF] active:cursor-grabbing"
+                  aria-label="Arrastar para reordenar"
+                  title="Arrastar para reordenar"
+                >
+                  <GripVertical className="h-5 w-5" />
+                  <span className="text-xs font-bold text-foreground">{idx + 1}</span>
                 </div>
                 <div className="hidden h-20 w-32 shrink-0 overflow-hidden rounded bg-black md:block">
                   <iframe
@@ -402,7 +511,8 @@ function EventManage() {
                   </Button>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ol>
         )}
       </main>
