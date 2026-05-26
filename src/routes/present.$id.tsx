@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Loader2, StopCircle } from "lucide-react";
+import { Copy, Loader2, StopCircle, Trophy } from "lucide-react";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ function Present() {
   const [now, setNow] = useState(Date.now());
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [joinUrl, setJoinUrl] = useState("");
+  const [showRanking, setShowRanking] = useState(false);
   const confettiFiredRef = useRef(false);
 
   useEffect(() => {
@@ -391,6 +392,77 @@ function Present() {
           <div className="absolute inset-0 z-10" aria-hidden="true" />
           <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-black/60 px-2 py-1 text-xs text-white/80">
             Slide {currentSlide}
+          </div>
+          {/* Botão flutuante de Classificação */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowRanking((v) => !v);
+            }}
+            title={showRanking ? "Ocultar Classificação" : "Mostrar Classificação"}
+            aria-label={showRanking ? "Ocultar Classificação" : "Mostrar Classificação"}
+            className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#262D3D] bg-[#161A23]/90 text-[#FFCB05] shadow-lg backdrop-blur transition hover:scale-105 hover:bg-[#161A23]"
+          >
+            <Trophy className="h-6 w-6" />
+          </button>
+        </div>
+
+        {/* Painel retrátil — Classificação em tempo real */}
+        <div
+          className={`overflow-hidden border-l border-[#262D3D] bg-[#161A23] transition-all duration-300 ease-in-out ${
+            showRanking ? "w-80" : "w-0"
+          }`}
+          aria-hidden={!showRanking}
+        >
+          <div className="flex h-full w-80 flex-col">
+            <div className="border-b border-[#262D3D] px-4 py-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                Classificação em tempo real
+              </h3>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                {ranking.length} {ranking.length === 1 ? "participante" : "participantes"}
+              </p>
+            </div>
+            <ol className="flex-1 space-y-2 overflow-y-auto p-3">
+              {ranking.map((p, idx) => {
+                const pos = idx + 1;
+                const firstName = (p.name || "").trim().split(/\s+/)[0] || "—";
+                const badgeCls =
+                  pos === 1
+                    ? "bg-[#F68B1F] text-white"
+                    : pos === 2
+                    ? "bg-[#9CA3AF] text-white"
+                    : pos === 3
+                    ? "bg-[#FFE6CB] text-[#A6193C]"
+                    : "bg-[#0E1015] text-muted-foreground border border-[#262D3D]";
+                return (
+                  <li
+                    key={p.id}
+                    style={{ order: pos }}
+                    className="flex items-center gap-3 rounded-lg border border-[#262D3D] bg-[#0E1015]/60 px-3 py-2 transition-all duration-500 ease-in-out animate-fade-in"
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${badgeCls}`}
+                    >
+                      {pos}º
+                    </span>
+                    <span className="flex-1 truncate text-sm font-medium text-white">
+                      {firstName}
+                    </span>
+                    <span className="text-sm font-bold text-[#FFCB05]">
+                      {p.score}
+                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">pts</span>
+                    </span>
+                  </li>
+                );
+              })}
+              {ranking.length === 0 && (
+                <li className="rounded border border-dashed border-[#262D3D] px-3 py-6 text-center text-xs text-muted-foreground">
+                  Aguardando participantes...
+                </li>
+              )}
+            </ol>
           </div>
         </div>
 
