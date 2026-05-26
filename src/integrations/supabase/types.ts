@@ -14,7 +14,233 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      answers: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          participant_id: string
+          question_id: string
+          response_ms: number
+          selected_option: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          participant_id: string
+          question_id: string
+          response_ms?: number
+          selected_option: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          participant_id?: string
+          question_id?: string
+          response_ms?: number
+          selected_option?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "answers_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "answers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participants: {
+        Row: {
+          answer_count: number
+          birth_date: string
+          correct_count: number
+          created_at: string
+          id: string
+          name: string
+          score: number
+          session_id: string
+          total_response_ms: number
+        }
+        Insert: {
+          answer_count?: number
+          birth_date: string
+          correct_count?: number
+          created_at?: string
+          id?: string
+          name: string
+          score?: number
+          session_id: string
+          total_response_ms?: number
+        }
+        Update: {
+          answer_count?: number
+          birth_date?: string
+          correct_count?: number
+          created_at?: string
+          id?: string
+          name?: string
+          score?: number
+          session_id?: string
+          total_response_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      presentations: {
+        Row: {
+          ai_context: string | null
+          created_at: string
+          file_url: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          ai_context?: string | null
+          created_at?: string
+          file_url: string
+          id?: string
+          title: string
+          user_id?: string
+        }
+        Update: {
+          ai_context?: string | null
+          created_at?: string
+          file_url?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          correct_option: string
+          created_at: string
+          display_mode: string
+          id: string
+          options: Json
+          position: number
+          presentation_id: string
+          question_text: string
+          question_type: string
+          slide_number: number
+          time_limit: number
+        }
+        Insert: {
+          correct_option: string
+          created_at?: string
+          display_mode?: string
+          id?: string
+          options: Json
+          position?: number
+          presentation_id: string
+          question_text: string
+          question_type?: string
+          slide_number: number
+          time_limit?: number
+        }
+        Update: {
+          correct_option?: string
+          created_at?: string
+          display_mode?: string
+          id?: string
+          options?: Json
+          position?: number
+          presentation_id?: string
+          question_text?: string
+          question_type?: string
+          slide_number?: number
+          time_limit?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_presentation_id_fkey"
+            columns: ["presentation_id"]
+            isOneToOne: false
+            referencedRelation: "presentations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          active_question_id: string | null
+          created_at: string
+          current_slide: number
+          id: string
+          presentation_id: string
+          question_revealed: boolean
+          question_started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          active_question_id?: string | null
+          created_at?: string
+          current_slide?: number
+          id?: string
+          presentation_id: string
+          question_revealed?: boolean
+          question_started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          active_question_id?: string | null
+          created_at?: string
+          current_slide?: number
+          id?: string
+          presentation_id?: string
+          question_revealed?: boolean
+          question_started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_active_question_id_fkey"
+            columns: ["active_question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_presentation_id_fkey"
+            columns: ["presentation_id"]
+            isOneToOne: false
+            referencedRelation: "presentations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
