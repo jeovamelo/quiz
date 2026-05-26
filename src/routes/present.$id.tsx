@@ -330,9 +330,12 @@ function Present() {
           <iframe
             key={currentSlide}
             title={presentation.title}
-            src={`${presentation.file_url}#page=${currentSlide}&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-            className="pointer-events-none h-full w-full"
+            src={`${presentation.file_url}#page=${currentSlide}&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=Fit&zoom=page-fit`}
+            className="pointer-events-none h-full w-full border-none bg-black"
+            style={{ objectFit: "contain" }}
           />
+          {/* Camada protetora: bloqueia scroll/arrasto dentro do iframe do PDF */}
+          <div className="absolute inset-0 z-10" aria-hidden="true" />
           <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-black/60 px-2 py-1 text-xs text-white/80">
             Slide {currentSlide}
           </div>
