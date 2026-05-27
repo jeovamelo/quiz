@@ -330,6 +330,19 @@ function RemoteControl() {
     toast.success(next ? "Pergunta Prêmio ATIVADA!" : "Pergunta Prêmio desativada.");
   }
 
+  async function toggleFullscreen() {
+    haptic(30);
+    const next = !session?.is_fullscreen;
+    const { error } = await (supabase.from("sessions") as any)
+      .update({ is_fullscreen: next })
+      .eq("id", id);
+    if (error) {
+      toast.error("Falha ao alternar tela cheia.");
+    } else {
+      toast.success(next ? "Tela cheia ativada no projetor." : "Saindo da tela cheia.");
+    }
+  }
+
   async function exitToHub() {
     await withBusy(async () => {
       // 1. Marca sessão como encerrada
