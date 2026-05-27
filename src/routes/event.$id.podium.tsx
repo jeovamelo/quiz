@@ -420,22 +420,33 @@ function DramaticReveal({
               <Zap className="mr-2 h-5 w-5" /> {nextLabel}
             </Button>
           ) : (
-            <div className="flex items-center gap-2 rounded-full bg-[#FFCB05]/15 px-6 py-2 text-[#FFCB05]">
-              <Trophy className="h-5 w-5" /> Campeão consagrado!
-            </div>
+            <Button
+              onClick={() => {
+                audio.stopHeartbeat();
+                audio.stopDrumLoop();
+                audio.stopFanfareLoop();
+                onExit();
+              }}
+              size="lg"
+              className="border-0 bg-gradient-to-r from-[#FFCB05] to-[#F68B1F] px-8 text-base font-bold text-[#0E1015] shadow-2xl shadow-[#FFCB05]/40 hover:opacity-95"
+            >
+              <Trophy className="mr-2 h-5 w-5" /> Finalizar Cerimônia
+            </Button>
           )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              audio.stopHeartbeat();
-              audio.stopDrumLoop();
-              audio.stopFanfareLoop();
-              onExit();
-            }}
-            className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
-          >
-            Sair da Revelação
-          </Button>
+          {step < 3 && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                audio.stopHeartbeat();
+                audio.stopDrumLoop();
+                audio.stopFanfareLoop();
+                onExit();
+              }}
+              className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+            >
+              Sair da Revelação
+            </Button>
+          )}
         </div>
       </div>
     </div>
