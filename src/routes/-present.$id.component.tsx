@@ -851,7 +851,16 @@ export function Present() {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setOverlayFlag("show_join_qr", false)} />
-      <GiantQrOverlay open={pairQrOpen} joinUrl={pairUrl} onClose={() => setOverlayFlag("show_pair_qr", false)} />
+      <GiantQrOverlay
+        open={pairQrOpen}
+        joinUrl={pairUrl}
+        onClose={() => {
+          // Fechamento manual (X / Esc) — libera a transição para o
+          // QR dos Participantes mesmo sem pareamento.
+          setPairFlowDone(true);
+          setOverlayFlag("show_pair_qr", false);
+        }}
+      />
       <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setOverlayFlag("show_ranking", false)} />
       {/* === ATALHOS FLUTUANTES (canto superior direito) ===
           Discretos no modo cinema (opacity-20) — brilham no hover. */}
