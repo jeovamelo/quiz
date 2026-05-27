@@ -9,6 +9,9 @@ export type RemoteAction =
   | "SHOW_PODIUM"
   | "SHOW_GIANT_QR"
   | "HIDE_GIANT_QR"
+  | "SHOW_PAIRING"
+  | "HIDE_PAIRING"
+  | "TOGGLE_PAIRING"
   | "LASER"
   | "LASER_OFF";
 
