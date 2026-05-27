@@ -346,7 +346,6 @@ function Dashboard() {
             <p className="text-sm text-muted-foreground">{user?.user_metadata?.full_name || user?.email || "Palestrante"}</p>
           </div>
           <div className="flex items-center gap-2">
-            <PairingStatusBadge userId={userId} variant="desktop" />
             <Button
               asChild
               variant="ghost"
