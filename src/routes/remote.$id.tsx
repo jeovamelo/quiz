@@ -294,12 +294,9 @@ function RemoteControl() {
           setAnswersCount(count ?? 0);
         },
       )
-      .subscribe((status) => {
-        setSynced(status === "SUBSCRIBED");
-      });
+      .subscribe();
     return () => {
       cancelled = true;
-      setSynced(false);
       supabase.removeChannel(ch);
     };
   }, [id]);
