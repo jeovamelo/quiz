@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
+import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, Copy, Loader2, LogOut, Maximize, Tv, Trophy } from "lucide-react";
 import {
@@ -41,7 +42,7 @@ type Question = {
 };
 
 function Present() {
-  useRequireSpeaker();
+  const { user } = useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
