@@ -7,11 +7,13 @@ export type RemoteAction =
   | "PREV"
   | "TOGGLE_FULLSCREEN"
   | "SHOW_PODIUM"
+  | "TOGGLE_GIANT_QR"
   | "SHOW_GIANT_QR"
   | "HIDE_GIANT_QR"
-  | "SHOW_PAIRING"
-  | "HIDE_PAIRING"
-  | "TOGGLE_PAIRING"
+  | "TOGGLE_RANKING"
+  | "SHOW_RANKING"
+  | "HIDE_RANKING"
+  | "END_EARLY"
   | "LASER"
   | "LASER_OFF";
 

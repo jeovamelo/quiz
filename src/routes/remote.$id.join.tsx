@@ -63,12 +63,12 @@ function RemoteJoin() {
       }
       saveStoredRemote(id, {
         remoteId: claimed.id,
-        slot: claimed.slot as 1 | 2,
+        slot: 1,
         name: claimed.operator_name,
         deviceToken,
       });
       haptic(60);
-      toast.success(`Você é o Controle ${claimed.slot}!`);
+      toast.success(`Controle ativado — Olá, ${claimed.operator_name}!`);
       navigate({ to: "/remote/$id", params: { id } });
     } catch (err: any) {
       toast.error(err?.message || "Falha ao ativar controle remoto.");
