@@ -220,7 +220,7 @@ function Landing() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { icon: Presentation, title: "Modo Cinema", desc: "Apresente em tela cheia no projetor com QR Code visível para o público." },
-              { icon: Users, title: "Sem Barreiras", desc: "Participantes entram apenas com nome e data de nascimento — zero atrito." },
+              { icon: Users, title: "Sem Barreiras", desc: "Participantes entram apenas com o nome — zero atrito." },
               { icon: Trophy, title: "Pódio Sensacional", desc: "Revele os campeões com efeitos visuais e sonoros memoráveis." },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="p-6 rounded-2xl bg-[#161A23] border border-[#262D3D]">
