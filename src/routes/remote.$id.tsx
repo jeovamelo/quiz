@@ -227,11 +227,16 @@ function RemoteControl() {
   async function nextSlide() {
     haptic(45);
     await withBusy(async () => {
-      // Envia comando imediato via Broadcast (sem delay de banco).
-      bridge.send("NEXT");
+      // Comando primário via Broadcast — projetor é a fonte de verdade
+      // (conhece o total de páginas do PDF e dispara o pódio automático
+      // ao avançar além da última página). Fallback de banco abaixo só
+      // roda se a ponte estiver desconectada.
+      const sent = bridge.status === "connected" && bridge.partnerOnline
+        ? await bridge.send("NEXT")
+        : false;
+      if (sent) return;
 
-      // Re-busca o estado mais recente da sessão para evitar pular slides
-      // ao tocar rápido (state guard contra estado React desatualizado).
+      // FALLBACK (sem sinal do projetor): aplica a mesma lógica via DB.
       const { data: fresh } = await supabase
         .from("sessions")
         .select("current_slide, active_question_id, question_revealed")
@@ -243,26 +248,35 @@ function RemoteControl() {
       const liveActive = questions.find((q) => q.id === liveActiveQid) || null;
       const liveSlideQ = questions.find((q) => q.slide_number === liveSlide) || null;
 
-      // Se há pergunta ativa e ainda não foi revelada, "AVANÇAR" encerra o timer (revela)
       if (liveActive && !liveRevealed) {
-        const { error } = await supabase
-          .from("sessions")
-          .update({ question_revealed: true })
-          .eq("id", id);
-        if (error) toast.error("Erro ao encerrar a pergunta.");
+        await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
         return;
       }
-      // Se o slide atual tem pergunta e ela ainda não foi lançada, lança em vez de avançar
       if (liveSlideQ && !liveActive) {
-        const { error } = await supabase
+        await supabase.from("sessions").update({
+          active_question_id: liveSlideQ.id,
+          question_started_at: new Date().toISOString(),
+          question_revealed: false,
+        }).eq("id", id);
+        return;
+      }
+      // Pódio automático: se já estamos no último slide conhecido, encerra
+      // a sessão (gatilho de revelação dramática no projetor).
+      if (liveSlide >= totalSlides) {
+        await supabase
           .from("sessions")
           .update({
-            active_question_id: liveSlideQ.id,
-            question_started_at: new Date().toISOString(),
+            status: "ended",
+            active_question_id: null,
+            question_started_at: null,
             question_revealed: false,
           })
           .eq("id", id);
-        if (error) toast.error("Erro ao lançar a pergunta.");
+        if (session?.presentation_id) {
+          await (supabase.from("presentations") as any)
+            .update({ execution_status: "completed_full" })
+            .eq("id", session.presentation_id);
+        }
         return;
       }
       const next = liveSlide + 1;
@@ -277,15 +291,17 @@ function RemoteControl() {
         patch.active_question_id = q.id;
         patch.question_started_at = new Date().toISOString();
       }
-      const { error } = await supabase.from("sessions").update(patch).eq("id", id);
-      if (error) toast.error("Erro ao sincronizar comando com o projetor.");
+      await supabase.from("sessions").update(patch).eq("id", id);
     });
   }
 
   async function prevSlide() {
     haptic(25);
     await withBusy(async () => {
-      bridge.send("PREV");
+      const sent = bridge.status === "connected" && bridge.partnerOnline
+        ? await bridge.send("PREV")
+        : false;
+      if (sent) return;
       const { data: fresh } = await supabase
         .from("sessions")
         .select("current_slide")
@@ -293,7 +309,7 @@ function RemoteControl() {
         .single();
       const liveSlide: number = fresh?.current_slide ?? currentSlide;
       const prev = Math.max(1, liveSlide - 1);
-      const { error } = await supabase
+      await supabase
         .from("sessions")
         .update({
           current_slide: prev,
@@ -302,56 +318,7 @@ function RemoteControl() {
           question_started_at: null,
         })
         .eq("id", id);
-      if (error) toast.error("Erro ao sincronizar comando com o projetor.");
     });
-  }
-
-  async function showPodium() {
-    haptic(50);
-    try {
-      // Comando instantâneo via ponte.
-      bridge.send("SHOW_PODIUM");
-      const ch = supabase.channel(`present-remote-${id}`);
-      await new Promise<void>((resolve) => {
-        ch.subscribe((status) => {
-          if (status === "SUBSCRIBED") resolve();
-        });
-        window.setTimeout(() => resolve(), 500);
-      });
-      await ch.send({
-        type: "broadcast",
-        event: "toggle_ranking",
-        payload: { show: true },
-      });
-      window.setTimeout(() => supabase.removeChannel(ch), 300);
-      if (activeQuestion && !session?.question_revealed) {
-        await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
-      }
-      toast.success("Pódio exibido no projetor!");
-    } catch {
-      toast.error("Falha ao exibir o pódio.");
-    }
-  }
-
-  async function togglePrize(next: boolean) {
-    if (!slideQuestion) return;
-    haptic(35);
-    const multiplier = next ? (slideQuestion.prize_multiplier ?? 5) : 5;
-    const { error } = await (supabase.from("questions") as any)
-      .update({ is_prize_question: next, prize_multiplier: multiplier })
-      .eq("id", slideQuestion.id);
-    if (error) {
-      toast.error("Falha ao atualizar pergunta prêmio.");
-      return;
-    }
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === slideQuestion.id
-          ? { ...q, is_prize_question: next, prize_multiplier: multiplier }
-          : q,
-      ),
-    );
-    toast.success(next ? "Pergunta Prêmio ATIVADA!" : "Pergunta Prêmio desativada.");
   }
 
   async function toggleFullscreen() {
