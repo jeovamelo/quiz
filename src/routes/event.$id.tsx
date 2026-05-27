@@ -303,7 +303,7 @@ function EventManage() {
           <div className="flex items-center gap-2">
             <Button asChild variant="outline">
               <Link to="/event/$id/podium" params={{ id }}>
-                <Trophy className="mr-2 h-4 w-4" /> Grande Pódio
+                <Trophy className="mr-2 h-4 w-4" /> Classificação
               </Link>
             </Button>
             <Button
