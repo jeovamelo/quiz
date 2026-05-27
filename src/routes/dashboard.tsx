@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, MonitorPlay } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -373,17 +373,6 @@ function Dashboard() {
                       </Button>
                     </div>
                   </div>
-                  {/* Atalho: Ativar Modo Receptor — Projetor */}
-                  <Link
-                    to="/event/$id/lobby"
-                    params={{ id: ev.id }}
-                    onClick={() => rememberDashboardOrigin()}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-sm font-bold text-white shadow-lg shadow-[#A6193C]/30 transition-all duration-100 hover:opacity-95 active:scale-[0.98]"
-                    title="Abrir tela de espera para projetar este evento"
-                  >
-                    <MonitorPlay className="h-4 w-4" />
-                    Ativar Modo Receptor — Projetor 📺
-                  </Link>
                 </div>
               ))}
             </div>
