@@ -13,6 +13,7 @@ import {
   Pencil,
   Play,
   Plus,
+  PowerOff,
   RotateCcw,
   Sparkles,
   Trash2,
@@ -72,6 +73,8 @@ function EventManage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [resetTarget, setResetTarget] = useState<Pres | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
+  const [ending, setEnding] = useState(false);
 
   const { data: event } = useQuery({
     queryKey: ["event", id],
@@ -277,6 +280,33 @@ function EventManage() {
     }
   }
 
+  const pendingPresentations = (presentations ?? []).filter(
+    (p) => (p.execution_status ?? "pending") === "pending" || p.execution_status === "active",
+  );
+
+  async function confirmEndEvent() {
+    setEnding(true);
+    try {
+      // Marca como completed_partial todas as apresentações ainda pendentes/ativas
+      const idsToClose = pendingPresentations.map((p) => p.id);
+      if (idsToClose.length > 0) {
+        await (supabase.from("presentations") as any)
+          .update({ execution_status: "completed_partial" })
+          .in("id", idsToClose);
+      }
+      setEndOpen(false);
+      navigate({
+        to: "/event/$id/podium",
+        params: { id },
+        search: { finale: 1 },
+      });
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao encerrar o evento");
+    } finally {
+      setEnding(false);
+    }
+  }
+
   function openAddModal() {
     setMode("choose");
     setSelectedIds(new Set());
@@ -376,9 +406,16 @@ function EventManage() {
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline">
-              <Link to="/event/$id/podium" params={{ id }}>
+              <Link to="/event/$id/classificacao-geral" params={{ id }}>
                 <Trophy className="mr-2 h-4 w-4" /> Classificação
               </Link>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setEndOpen(true)}
+              className="border-[#A6193C]/50 text-[#A6193C] hover:bg-[#A6193C]/10 hover:text-[#A6193C]"
+            >
+              <PowerOff className="mr-2 h-4 w-4" /> Encerrar Evento
             </Button>
             <Button
               onClick={openAddModal}
