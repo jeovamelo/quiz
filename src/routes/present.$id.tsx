@@ -64,6 +64,29 @@ function Present() {
   // === APONTADOR LASER recebido do celular ===
   const [laserCoords, setLaserCoords] = useState<{ x: number; y: number } | null>(null);
   const laserTimerRef = useRef<number | null>(null);
+  const laserTargetRef = useRef<{ x: number; y: number } | null>(null);
+  const laserRafRef = useRef<number | null>(null);
+
+  // Loop de suavização (Lerp 15%) para amortecer tremores naturais da mão.
+  useEffect(() => {
+    function tick() {
+      const target = laserTargetRef.current;
+      if (target) {
+        setLaserCoords((prev) => {
+          if (!prev) return target;
+          const dx = target.x - prev.x;
+          const dy = target.y - prev.y;
+          if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05) return prev;
+          return { x: prev.x + dx * 0.15, y: prev.y + dy * 0.15 };
+        });
+      }
+      laserRafRef.current = window.requestAnimationFrame(tick);
+    }
+    laserRafRef.current = window.requestAnimationFrame(tick);
+    return () => {
+      if (laserRafRef.current) window.cancelAnimationFrame(laserRafRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     setJoinUrl(`${window.location.origin}/join?session=${id}`);
@@ -79,10 +102,11 @@ function Present() {
         const x = Number(payload?.x);
         const y = Number(payload?.y);
         if (Number.isFinite(x) && Number.isFinite(y)) {
-          setLaserCoords({ x, y });
+          laserTargetRef.current = { x, y };
           if (laserTimerRef.current) window.clearTimeout(laserTimerRef.current);
           // Fadeout suave: some após 1.5s sem novas coordenadas.
           laserTimerRef.current = window.setTimeout(() => {
+            laserTargetRef.current = null;
             setLaserCoords(null);
           }, 1500);
         }
@@ -90,6 +114,7 @@ function Present() {
       }
       if (action === "LASER_OFF") {
         if (laserTimerRef.current) window.clearTimeout(laserTimerRef.current);
+        laserTargetRef.current = null;
         setLaserCoords(null);
         return;
       }

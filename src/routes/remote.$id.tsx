@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -117,6 +117,17 @@ function RemoteControl() {
 
   // === APONTADOR LASER VIRTUAL (giroscópio + acelerômetro) ===
   const [laserOn, setLaserOn] = useState(false);
+  // Calibração Relativa Dinâmica (Zero Central)
+  const baseBetaRef = useRef<number | null>(null);
+  const baseGammaRef = useRef<number | null>(null);
+  const SENSITIVIDADE = 2.5;
+
+  const recalibrarMira = useCallback(() => {
+    baseBetaRef.current = null;
+    baseGammaRef.current = null;
+    console.log("[laser] Mira recentralizada — capturando nova referência.");
+  }, []);
+
   useEffect(() => {
     if (!laserOn) {
       // Avisa o projetor para apagar o ponto, se a ponte estiver conectada.
@@ -125,6 +136,8 @@ function RemoteControl() {
           /* ignora */
         });
       }
+      baseBetaRef.current = null;
+      baseGammaRef.current = null;
       return;
     }
     let lastSent = 0;
@@ -133,19 +146,22 @@ function RemoteControl() {
       if (now - lastSent < 40) return; // ~25 FPS
       const { beta, gamma } = event;
       if (beta === null || gamma === null) return;
-      // Limites confortáveis de uso com uma mão.
-      const minBeta = 45;
-      const maxBeta = 85;
-      const minGamma = -30;
-      const maxGamma = 30;
-      const yPercent = Math.max(
-        0,
-        Math.min(100, ((beta - minBeta) / (maxBeta - minBeta)) * 100),
-      );
-      const xPercent = Math.max(
-        0,
-        Math.min(100, ((gamma - minGamma) / (maxGamma - minGamma)) * 100),
-      );
+      // Primeira leitura (ou após recalibrar): define o centro (50%, 50%).
+      if (baseBetaRef.current === null || baseGammaRef.current === null) {
+        baseBetaRef.current = beta;
+        baseGammaRef.current = gamma;
+        return;
+      }
+      let deltaX = gamma - baseGammaRef.current;
+      let deltaY = beta - baseBetaRef.current;
+      // Normaliza giros extremos
+      if (deltaX > 180) deltaX -= 360;
+      if (deltaX < -180) deltaX += 360;
+      if (deltaY > 180) deltaY -= 360;
+      if (deltaY < -180) deltaY += 360;
+      const xPercent = Math.max(0, Math.min(100, 50 + deltaX * SENSITIVIDADE));
+      // Inclinar para frente (beta aumenta) → laser sobe
+      const yPercent = Math.max(0, Math.min(100, 50 - deltaY * SENSITIVIDADE));
       bridge.send("LASER", { x: xPercent, y: yPercent }).catch(() => {
         /* ignora */
       });
@@ -657,6 +673,23 @@ function RemoteControl() {
             <Crosshair className={`h-5 w-5 ${laserOn ? "text-white" : "text-red-400"}`} />
             {laserOn ? "🔴 Laser Ativo — Mova o celular" : "Apontador Laser 🔴"}
           </button>
+
+          {/* CENTRALIZAR MIRA — só aparece com o laser ativo */}
+          {laserOn && (
+            <button
+              type="button"
+              onClick={() => {
+                haptic(20);
+                recalibrarMira();
+                toast.success("Mira centralizada! 🎯");
+              }}
+              aria-label="Centralizar Mira"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-400/40 bg-red-500/10 text-xs font-bold text-red-300 transition-all duration-100 active:scale-95"
+            >
+              <Crosshair className="h-4 w-4" />
+              Centralizar Mira 🎯
+            </button>
+          )}
 
           {/* BOTÃO HERÓI AVANÇAR — no último slide aciona o pódio automático */}
           <button
