@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, createFileRoute, useChildMatches, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
+import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import {
   ArrowLeft,
   AlertTriangle,
