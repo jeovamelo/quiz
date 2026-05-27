@@ -778,11 +778,7 @@ export function Present() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       <NetworkFallbackBanner transport={aggregateTransport} />
       <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setGiantQrOpen(false)} />
-      <PairingFrameOverlay
-        open={pairingFrameOpen}
-        sessionId={id}
-        onClose={() => setPairingFrameOpen(false)}
-      />
+      <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setRankingOpen(false)} />
       {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
       {laserCoords && (
         <div
@@ -838,327 +834,30 @@ export function Present() {
           </div>
         </div>
       )}
-      <div className="flex flex-1 overflow-hidden max-h-screen">
-        {/* Coluna esquerda — PDF (exibe estritamente um único slide por vez) */}
-        <div
-          className="relative flex h-full max-h-full flex-[2] cursor-pointer items-center justify-center overflow-hidden bg-black"
-          onClick={() => handleMasterAdvanceRef.current()}
-          title="Clique para avançar / use as setas do teclado"
-        >
-          <iframe
-            key={currentSlide}
-            title={presentation.title}
-            src={`${presentation.file_url}#page=${currentSlide}&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=Fit&zoom=page-fit&pagemode=none`}
-            className="pointer-events-none block h-full w-full border-none bg-black"
-            style={{ objectFit: "contain", maxHeight: "100%", maxWidth: "100%" }}
-            scrolling="no"
-          />
-          {/* Camada protetora: bloqueia scroll/arrasto dentro do iframe do PDF */}
-          <div className="absolute inset-0 z-10" aria-hidden="true" />
-          <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-black/60 px-2 py-1 text-xs text-white/80">
-            Slide {currentSlide}
-          </div>
-          {/* Botão voltar para Evento */}
-          {presentation.event_id && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate({ to: "/event/$id", params: { id: presentation.event_id! } });
-              }}
-              title="Voltar para o Evento"
-              aria-label="Voltar para o Evento"
-              className="absolute left-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#262D3D] bg-[#161A23]/90 text-[#9CA3AF] shadow-lg backdrop-blur transition hover:scale-105 hover:text-[#F68B1F] hover:bg-[#161A23]"
-            >
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-          )}
-          {/* Botão flutuante de Classificação — espelha session.show_ranking */}
-          <button
-            type="button"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await (supabase.from("sessions") as any)
-                .update({ show_ranking: !session?.show_ranking })
-                .eq("id", id);
-            }}
-            title={session?.show_ranking ? "Ocultar Classificação" : "Mostrar Classificação"}
-            aria-label={session?.show_ranking ? "Ocultar Classificação" : "Mostrar Classificação"}
-            className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#262D3D] bg-[#161A23]/90 text-[#FFCB05] shadow-lg backdrop-blur transition hover:scale-105 hover:bg-[#161A23]"
-          >
-            <Trophy className="h-6 w-6" />
-          </button>
-          {/* Selo persistente de pareamento com o celular */}
-          <div className="absolute right-20 top-4 z-20">
-            <PairingStatusBadge userId={user?.id} variant="desktop" compact />
-          </div>
-          {/* Selo de transporte (P2P / Nuvem) */}
-          <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2">
-            <NetworkStatusBadge transport={aggregateTransport} compact />
-          </div>
-          {/* Chevron flutuante — recolhe/expande a barra lateral direita localmente */}
-          {session?.show_sidebar !== false && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSidebarCollapsedLocal((v) => !v);
-              }}
-              title={sidebarCollapsedLocal ? "Mostrar barra lateral" : "Ocultar barra lateral"}
-              aria-label={sidebarCollapsedLocal ? "Mostrar barra lateral" : "Ocultar barra lateral"}
-              className="absolute right-2 top-1/2 z-30 flex h-12 w-8 -translate-y-1/2 items-center justify-center rounded-l-lg border border-[#262D3D] bg-[#161A23]/90 text-[#9CA3AF] shadow-lg backdrop-blur transition hover:text-[#F68B1F]"
-            >
-              {sidebarCollapsedLocal ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-            </button>
-          )}
+      {/* === CINEMA LIMPO: slide ocupa 100% da tela com fundo preto. ===
+          Nenhuma barra lateral ou coluna fixa. QR e Ranking aparecem
+          apenas como frames flutuantes acionados pelo celular. */}
+      <div
+        className="relative flex flex-1 cursor-pointer items-center justify-center overflow-hidden bg-black"
+        onClick={() => handleMasterAdvanceRef.current()}
+        title="Clique para avançar / use as setas do teclado"
+      >
+        <iframe
+          key={currentSlide}
+          title={presentation.title}
+          src={`${presentation.file_url}#page=${currentSlide}&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=Fit&zoom=page-fit&pagemode=none`}
+          className="pointer-events-none block h-full w-full border-none bg-black"
+          style={{ objectFit: "contain" }}
+          scrolling="no"
+        />
+        <div className="absolute inset-0 z-10" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-black/60 px-2 py-1 text-xs text-white/70">
+          Slide {currentSlide}{totalPages ? ` / ${totalPages}` : ""}
         </div>
-
-        {/* Painel retrátil — Classificação em tempo real */}
-        <div
-          className={`overflow-hidden border-l border-[#262D3D] bg-[#161A23] transition-all duration-300 ease-in-out ${
-            session?.show_ranking ? "w-80" : "w-0"
-          }`}
-          aria-hidden={!session?.show_ranking}
-        >
-          <div className="flex h-full w-80 flex-col">
-            <div className="border-b border-[#262D3D] px-4 py-3">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                Classificação em tempo real
-              </h3>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                {ranking.length} {ranking.length === 1 ? "participante" : "participantes"}
-              </p>
-            </div>
-            <ol className="flex-1 space-y-2 overflow-y-auto p-3">
-              {ranking.map((p, idx) => {
-                const pos = idx + 1;
-                const firstName = (p.name || "").trim().split(/\s+/)[0] || "—";
-                const badgeCls =
-                  pos === 1
-                    ? "bg-[#F68B1F] text-white"
-                    : pos === 2
-                    ? "bg-[#9CA3AF] text-white"
-                    : pos === 3
-                    ? "bg-[#FFE6CB] text-[#A6193C]"
-                    : "bg-[#0E1015] text-muted-foreground border border-[#262D3D]";
-                return (
-                  <li
-                    key={p.id}
-                    style={{ order: pos }}
-                    className="flex items-center gap-3 rounded-lg border border-[#262D3D] bg-[#0E1015]/60 px-3 py-2 transition-all duration-500 ease-in-out animate-fade-in"
-                  >
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${badgeCls}`}
-                    >
-                      {pos}º
-                    </span>
-                    <span className="flex-1 truncate text-sm font-medium text-white">
-                      {firstName}
-                    </span>
-                    <span className="text-sm font-bold text-[#FFCB05]">
-                      {p.score}
-                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">pts</span>
-                    </span>
-                  </li>
-                );
-              })}
-              {ranking.length === 0 && (
-                <li className="rounded border border-dashed border-[#262D3D] px-3 py-6 text-center text-xs text-muted-foreground">
-                  Aguardando participantes...
-                </li>
-              )}
-            </ol>
+        {activeQuestion && !session?.question_revealed && (
+          <div className="pointer-events-none absolute bottom-3 right-3 rounded bg-[#A6193C]/90 px-3 py-1 text-xs font-bold text-white shadow">
+            ⏱ {remaining}s — {questionAnswers.length}/{participants.length}
           </div>
-        </div>
-
-        {/* Coluna direita — painel admin (oculta se show_sidebar = false ou recolhido localmente) */}
-        {session?.show_sidebar !== false && !sidebarCollapsedLocal && (
-        <aside className="flex w-[400px] flex-col gap-3 overflow-y-auto border-l border-border bg-card p-4">
-          {/* Convite — controlado pelo toggle de QR no celular */}
-          {session?.show_join_qr !== false && (
-          <div className="rounded-lg border border-border bg-background/40 p-3 text-center">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Entre na sala a qualquer momento
-            </p>
-            <div className="mx-auto inline-block rounded-md bg-white p-2">
-              {joinUrl && <QRCodeSVG value={joinUrl} size={130} />}
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <code className="flex-1 truncate rounded bg-background/60 px-2 py-1 text-[10px] text-muted-foreground">
-                {joinUrl}
-              </code>
-              <Button size="sm" variant="outline" onClick={copyLink}>
-                <Copy className="mr-1 h-3 w-3" /> Copiar
-              </Button>
-            </div>
-          </div>
-          )}
-
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">{presentation.title}</p>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <Button size="sm" variant="outline" onClick={() => setSlide(currentSlide - 1, { direction: "prev" })}>
-                ◀ Anterior
-              </Button>
-              <span className="text-sm font-semibold">
-                Slide {currentSlide}
-                {totalPages ? ` / ${totalPages}` : ""}
-              </span>
-              <Button size="sm" variant="outline" onClick={() => setSlide(currentSlide + 1, { direction: "next" })}>
-                Próximo ▶
-              </Button>
-            </div>
-          </div>
-
-          {!slideQuestion && (
-            <div className="rounded-lg border border-dashed border-border bg-background/40 p-4 text-center text-sm text-muted-foreground">
-              Conteúdo livre para explicação
-            </div>
-          )}
-
-          {slideQuestion && !activeQuestion && (
-            <div className="space-y-2 rounded-lg border border-border bg-background/40 p-3">
-              <p className="text-xs text-muted-foreground">
-                Pergunta vinculada ({slideQuestion.display_mode === "after_slide" ? "Pós-Slide" : "Simultâneo"})
-              </p>
-              <p className="text-sm font-medium">{slideQuestion.question_text}</p>
-              {slideQuestion.display_mode === "after_slide" && (
-                <Button size="sm" className="w-full" onClick={triggerQuestion}>
-                  Liberar pergunta agora
-                </Button>
-              )}
-            </div>
-          )}
-
-          {activeQuestion && (
-            <div
-              className={`space-y-3 rounded-lg border p-3 ${
-                activeQuestion.is_prize_question
-                  ? "border-[#FFCB05] bg-[#FFCB05]/10 shadow-[0_0_24px_-4px_#FFCB05]"
-                  : "border-primary/40 bg-primary/5"
-              }`}
-            >
-              {activeQuestion.is_prize_question && (
-                <div className="rounded-md border border-[#FFCB05] bg-gradient-to-r from-[#FFCB05] to-[#F68B1F] px-3 py-2 text-center text-xs font-extrabold uppercase tracking-wider text-black animate-pulse">
-                  ⚡ ATENÇÃO: PERGUNTA PRÊMIO VALENDO {activeQuestion.prize_multiplier ?? 5}X MAIS PONTOS!
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className={`text-xs font-semibold uppercase ${activeQuestion.is_prize_question ? "text-[#FFCB05]" : "text-primary"}`}>
-                  {activeQuestion.is_prize_question ? "⚡ Pergunta Prêmio" : "Pergunta ativa"}
-                </span>
-                {!session?.question_revealed ? (
-                  <span
-                    className={`rounded px-2 py-1 text-xs font-bold ${
-                      activeQuestion.is_prize_question
-                        ? "bg-[#FFCB05] text-black animate-pulse"
-                        : "bg-primary text-primary-foreground"
-                    }`}
-                  >
-                    {remaining}s
-                  </span>
-                ) : (
-                  <span className="rounded bg-[oklch(0.66_0.14_165)] px-2 py-1 text-xs font-bold text-background">
-                    Revelado
-                  </span>
-                )}
-              </div>
-              <p className="text-sm">{activeQuestion.question_text}</p>
-              <p className="text-xs text-muted-foreground">
-                {questionAnswers.length}/{participants.length} responderam
-              </p>
-
-              {session?.question_revealed && (
-                <div className="space-y-1">
-                  {optionKeys.map((k, index) => {
-                    const count = questionAnswers.filter((a) => a.selected_option === k).length;
-                    const pct = participants.length ? (count / participants.length) * 100 : 0;
-                    const isCorrect = k === activeQuestion.correct_option;
-                    const letterLabel = activeQuestion.question_type === "true_false"
-                      ? k
-                      : String.fromCharCode(65 + index);
-                    return (
-                      <div key={k} className="text-xs">
-                        <div className="flex justify-between">
-                          <span className={isCorrect ? "font-semibold text-[oklch(0.66_0.14_165)]" : ""}>
-                            {letterLabel}. {activeQuestion.options[k]}
-                          </span>
-                          <span>{count}</span>
-                        </div>
-                        <div className="mt-1 h-2 overflow-hidden rounded bg-muted">
-                          <div
-                            className={isCorrect ? "h-full bg-[oklch(0.66_0.14_165)]" : "h-full bg-primary"}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {!session?.question_revealed && (
-                <Button size="sm" variant="outline" className="w-full" onClick={revealResults}>
-                  Revelar agora
-                </Button>
-              )}
-            </div>
-          )}
-
-          <div className="mt-2">
-            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Ranking ao vivo</h3>
-            <ol className="space-y-1">
-              {ranking.slice(0, 10).map((p, idx) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between rounded border border-border bg-background/40 px-2 py-1 text-sm"
-                >
-                  <span>
-                    <span className="mr-2 inline-block w-5 text-right text-muted-foreground">{idx + 1}.</span>
-                    {p.name}
-                  </span>
-                  <span className="text-xs font-semibold text-primary">{p.score} pts</span>
-                </li>
-              ))}
-              {ranking.length === 0 && (
-                <li className="text-xs text-muted-foreground">Nenhum participante ainda</li>
-              )}
-            </ol>
-          </div>
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="mt-auto border-[#A6193C]/60 text-[#9CA3AF] hover:bg-[#A6193C]/10 hover:text-white"
-              >
-                <LogOut className="mr-2 h-4 w-4" /> Sair da Apresentação
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="border-[#262D3D] bg-[#0E1015] text-white">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-white">Deseja realmente sair?</AlertDialogTitle>
-                <AlertDialogDescription className="text-[#9CA3AF]">
-                  Isso encerrará a conexão realtime com os celulares de todos os participantes ativos nesta palestra.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-white">
-                  Cancelar
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={async () => {
-                    await endSession();
-                    smartReturn();
-                  }}
-                  className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-95"
-                >
-                  Sim, encerrar e sair
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </aside>
         )}
       </div>
     </div>
