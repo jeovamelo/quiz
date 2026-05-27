@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 import { toast } from "sonner";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
-import { useWebRTCTunnel, type TunnelTransport } from "@/hooks/use-webrtc-tunnel";
+import { useWebRTCTunnel } from "@/hooks/use-webrtc-tunnel";
 import { GiantQrOverlay } from "@/components/giant-qr-overlay";
 import { RankingOverlay } from "@/components/ranking-overlay";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
@@ -261,8 +261,7 @@ export function Present() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const tunnel1 = useWebRTCTunnel({ sessionId: id, slot: 1, role: "host", onMessage: handleTunnelMessage });
-  const aggregateTransport: TunnelTransport = tunnel1.transport;
+  useWebRTCTunnel({ sessionId: id, slot: 1, role: "host", onMessage: handleTunnelMessage });
 
   // Sincroniza o pedido remoto de tela cheia (vindo do celular do palestrante)
   useEffect(() => {
