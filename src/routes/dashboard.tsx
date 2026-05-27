@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, SmartphoneCharging, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useEffect } from "react";
+import { usePairingPresence } from "@/hooks/use-pairing-presence";
+import { useEffect, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -29,6 +32,23 @@ function Dashboard() {
   const { user } = useRequireSpeaker();
   const userId = user?.id;
   const isMobile = useIsMobile();
+  const { partnerOnline: phonePaired } = usePairingPresence(userId, "desktop");
+  const [pairOpen, setPairOpen] = useState(false);
+  const [pairUrl, setPairUrl] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPairUrl(`${window.location.origin}/remote`);
+    }
+  }, []);
+
+  // Fecha o modal automaticamente quando o celular parear.
+  useEffect(() => {
+    if (phonePaired && pairOpen) {
+      const t = window.setTimeout(() => setPairOpen(false), 1200);
+      return () => window.clearTimeout(t);
+    }
+  }, [phonePaired, pairOpen]);
 
   // Em celular, palestrante logado vai direto ao controle remoto
   useEffect(() => {
