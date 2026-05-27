@@ -442,6 +442,11 @@ function RemoteControl() {
 
   async function exitToHub() {
     await withBusy(async () => {
+      try {
+        localStorage.removeItem("quizpulse:last-session");
+      } catch {
+        /* ignora */
+      }
       // 1. Marca sessão como encerrada
       await supabase
         .from("sessions")
