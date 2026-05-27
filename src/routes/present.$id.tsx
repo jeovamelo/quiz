@@ -552,7 +552,7 @@ function Present() {
           </div>
         )}
 
-        <Button variant="outline" onClick={() => navigate({ to: "/dashboard" })}>
+        <Button variant="outline" onClick={smartReturn}>
           Voltar ao Painel
         </Button>
         {presentation.event_id && (
@@ -934,7 +934,7 @@ function Present() {
                 <AlertDialogAction
                   onClick={async () => {
                     await endSession();
-                    navigate({ to: "/dashboard" });
+                    smartReturn();
                   }}
                   className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-95"
                 >
