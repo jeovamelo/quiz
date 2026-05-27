@@ -881,22 +881,22 @@ export function Present() {
         <button
           type="button"
           onClick={() => setOverlayFlag("show_pair_qr", !pairQrOpen)}
-          title="Conectar Controle Remoto"
-          aria-label="Conectar Controle Remoto"
-          className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-20 shadow-xl backdrop-blur transition-opacity duration-300 hover:opacity-100 focus:opacity-100"
+          title="Parear Controle Remoto (apresentador)"
+          aria-label="Parear Controle Remoto"
+          className="flex items-center gap-2 rounded-full border border-[#BA2172]/60 bg-[#BA2172]/80 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-20 shadow-xl backdrop-blur transition-opacity duration-300 hover:opacity-100 focus:opacity-100"
         >
           <Smartphone className="h-5 w-5" />
-          <span className="hidden whitespace-nowrap group-hover/floating:inline">Controle Remoto</span>
+          <span className="hidden whitespace-nowrap group-hover/floating:inline">📱 Controle do Palco</span>
         </button>
         <button
           type="button"
           onClick={() => setOverlayFlag("show_join_qr", !giantQrOpen)}
-          title="Conectar Participantes"
-          aria-label="Conectar Participantes"
-          className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-20 shadow-xl backdrop-blur transition-opacity duration-300 hover:opacity-100 focus:opacity-100"
+          title="QR Code para a plateia entrar no jogo"
+          aria-label="QR Code para Participantes"
+          className="flex items-center gap-2 rounded-full border border-[#07A684]/60 bg-[#07A684]/80 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-20 shadow-xl backdrop-blur transition-opacity duration-300 hover:opacity-100 focus:opacity-100"
         >
           <QrCode className="h-5 w-5" />
-          <span className="hidden whitespace-nowrap group-hover/floating:inline">Participantes</span>
+          <span className="hidden whitespace-nowrap group-hover/floating:inline">👥 Entrar no Jogo</span>
         </button>
       </div>
       {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
