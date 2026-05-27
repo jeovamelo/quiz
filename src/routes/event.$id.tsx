@@ -43,8 +43,14 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/event/$id")({
   head: () => ({ meta: [{ title: "Evento — QuizPulse" }] }),
-  component: EventManage,
+  component: EventRouteComponent,
 });
+
+function EventRouteComponent() {
+  const childMatches = useChildMatches();
+  if (childMatches.length > 0) return <Outlet />;
+  return <EventManage />;
+}
 
 type Pres = {
   id: string;
@@ -68,10 +74,6 @@ function EventManage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const childMatches = useChildMatches();
-  if (childMatches.length > 0) {
-    return <Outlet />;
-  }
   const [addOpen, setAddOpen] = useState(false);
   const [mode, setMode] = useState<"choose" | "link">("choose");
   const [linking, setLinking] = useState(false);
