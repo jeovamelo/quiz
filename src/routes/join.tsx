@@ -439,6 +439,25 @@ function Join() {
     );
   }
 
+  // Bloqueio de clímax: o palestrante iniciou a cerimônia de revelação no projetor
+  if (finaleLocked && !winnerPlace) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black p-6 text-center text-white">
+        <div className="text-6xl animate-pulse">👀</div>
+        <h1 className="text-2xl font-extrabold text-[#FFCB05]">
+          Fique atento à tela principal!
+        </h1>
+        <p className="max-w-xs text-sm text-white/80">
+          A revelação do pódio está acontecendo agora. Olhe para a tela do projetor
+          para descobrir os campeões.
+        </p>
+        <div className="mt-2 h-1 w-32 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-1/2 animate-[pulse_1.2s_ease-in-out_infinite] bg-[#A6193C]" />
+        </div>
+      </div>
+    );
+  }
+
   if (!participantId) {
     if (winnerPlace) return <WinnerCelebration place={winnerPlace} />;
     if (resolvingIdentity) {
