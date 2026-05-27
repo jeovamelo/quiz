@@ -27,6 +27,7 @@ import {
   Power,
   Settings,
   ScanLine,
+  Smartphone,
 } from "lucide-react";
 import { haptic } from "@/hooks/use-haptic";
 
@@ -34,11 +35,13 @@ type Props = {
   showJoinQr: boolean;
   showRanking: boolean;
   showSidebar: boolean;
+  showPairQr: boolean;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onToggleJoinQr: () => void;
   onToggleRanking: () => void;
   onToggleSidebar: () => void;
+  onTogglePairQr: () => void;
   onShowGiantQr: () => void;
   onEndSession: () => void;
 };
@@ -47,11 +50,13 @@ export function RemoteDrawer({
   showJoinQr,
   showRanking,
   showSidebar,
+  showPairQr,
   isFullscreen,
   onToggleFullscreen,
   onToggleJoinQr,
   onToggleRanking,
   onToggleSidebar,
+  onTogglePairQr,
   onShowGiantQr,
   onEndSession,
 }: Props) {
@@ -94,6 +99,13 @@ export function RemoteDrawer({
               hint="Mostra/oculta o QR de participantes no projetor"
               active={showJoinQr}
               onToggle={onToggleJoinQr}
+            />
+            <ToggleRow
+              icon={<Smartphone className="h-5 w-5" />}
+              label="QR do Controle Remoto"
+              hint="Mostra/oculta o QR de pareamento sobre o slide"
+              active={showPairQr}
+              onToggle={onTogglePairQr}
             />
             <ToggleRow
               icon={<Trophy className="h-5 w-5" />}

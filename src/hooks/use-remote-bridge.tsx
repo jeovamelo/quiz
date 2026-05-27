@@ -13,6 +13,9 @@ export type RemoteAction =
   | "TOGGLE_RANKING"
   | "SHOW_RANKING"
   | "HIDE_RANKING"
+  | "TOGGLE_PAIR_QR"
+  | "SHOW_PAIR_QR"
+  | "HIDE_PAIR_QR"
   | "END_EARLY"
   | "LASER"
   | "LASER_OFF";

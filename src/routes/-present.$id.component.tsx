@@ -53,11 +53,29 @@ export function Present() {
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
-  // Frames flutuantes centralizados (acionados pelo celular do palestrante)
-  const [giantQrOpen, setGiantQrOpen] = useState(false);
-  const [rankingOpen, setRankingOpen] = useState(false);
+  // Frames flutuantes — agora sincronizados pelas colunas booleanas da
+  // sessão (show_join_qr, show_ranking, show_pair_qr). Isso garante
+  // sincronia bidirecional automática entre celular, projetor e Console
+  // do Operador no desktop.
+  const giantQrOpen = !!session?.show_join_qr;
+  const rankingOpen = !!session?.show_ranking;
+  const pairQrOpen = !!(session as any)?.show_pair_qr;
+  const pairUrl = typeof window !== "undefined" ? `${window.location.origin}/remote-setup/${id}` : "";
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
+
+  // Helper: persiste o estado de um overlay no banco. Como o projetor e
+  // todos os controles (celular + Console do Operador) escutam o canal
+  // `postgres_changes` desta sessão, a sincronia bidirecional acontece
+  // automaticamente sem precisar de novos broadcasts.
+  async function setOverlayFlag(
+    field: "show_join_qr" | "show_ranking" | "show_pair_qr",
+    value: boolean,
+  ) {
+    await (supabase.from("sessions") as any)
+      .update({ [field]: value })
+      .eq("id", id);
+  }
 
   // Ref para a função mestre de avanço — garante uso de estado fresco em
   // qualquer gatilho (clique no slide, teclado, broadcast do celular).
@@ -121,31 +139,18 @@ export function Present() {
         return;
       }
 
-      // Sobreposição QR Gigante — instantânea, sem ir ao banco.
-      if (action === "SHOW_GIANT_QR") {
-        setGiantQrOpen(true);
-        return;
-      }
-      if (action === "HIDE_GIANT_QR") {
-        setGiantQrOpen(false);
-        return;
-      }
-      if (action === "TOGGLE_GIANT_QR") {
-        setGiantQrOpen((v) => !v);
-        return;
-      }
-      if (action === "SHOW_RANKING") {
-        setRankingOpen(true);
-        return;
-      }
-      if (action === "HIDE_RANKING") {
-        setRankingOpen(false);
-        return;
-      }
-      if (action === "TOGGLE_RANKING") {
-        setRankingOpen((v) => !v);
-        return;
-      }
+      // Overlays — agora persistidos como colunas booleanas em `sessions`
+      // para sincronia bidirecional natural entre celular, projetor e
+      // Console do Operador. O projetor reage via postgres_changes.
+      if (action === "SHOW_GIANT_QR")  { await setOverlayFlag("show_join_qr", true);   return; }
+      if (action === "HIDE_GIANT_QR")  { await setOverlayFlag("show_join_qr", false);  return; }
+      if (action === "TOGGLE_GIANT_QR"){ await setOverlayFlag("show_join_qr", !giantQrOpen); return; }
+      if (action === "SHOW_RANKING")   { await setOverlayFlag("show_ranking", true);   return; }
+      if (action === "HIDE_RANKING")   { await setOverlayFlag("show_ranking", false);  return; }
+      if (action === "TOGGLE_RANKING") { await setOverlayFlag("show_ranking", !rankingOpen); return; }
+      if (action === "SHOW_PAIR_QR")   { await setOverlayFlag("show_pair_qr", true);   return; }
+      if (action === "HIDE_PAIR_QR")   { await setOverlayFlag("show_pair_qr", false);  return; }
+      if (action === "TOGGLE_PAIR_QR") { await setOverlayFlag("show_pair_qr", !pairQrOpen); return; }
       if (action === "END_EARLY") {
         await endSession(false);
         return;
@@ -172,7 +177,7 @@ export function Present() {
           .update({ is_fullscreen: nextVal })
           .eq("id", id);
       } else if (action === "SHOW_PODIUM") {
-        setRankingOpen(true);
+        await setOverlayFlag("show_ranking", true);
         const liveActive = questionsRef.current.find((q) => q.id === fresh?.active_question_id) || null;
         const liveRevealed: boolean = !!fresh?.question_revealed;
         if (liveActive && !liveRevealed) {
@@ -209,12 +214,15 @@ export function Present() {
       const action = detail.action as string;
       const payload = detail.payload ?? {};
       // Reaplica a mesma lógica do bridge.onAction.
-      if (action === "SHOW_GIANT_QR") return setGiantQrOpen(true);
-      if (action === "HIDE_GIANT_QR") return setGiantQrOpen(false);
-      if (action === "TOGGLE_GIANT_QR") return setGiantQrOpen((v) => !v);
-      if (action === "SHOW_RANKING") return setRankingOpen(true);
-      if (action === "HIDE_RANKING") return setRankingOpen(false);
-      if (action === "TOGGLE_RANKING") return setRankingOpen((v) => !v);
+      if (action === "SHOW_GIANT_QR")  { setOverlayFlag("show_join_qr", true);   return; }
+      if (action === "HIDE_GIANT_QR")  { setOverlayFlag("show_join_qr", false);  return; }
+      if (action === "TOGGLE_GIANT_QR"){ setOverlayFlag("show_join_qr", !giantQrOpen); return; }
+      if (action === "SHOW_RANKING")   { setOverlayFlag("show_ranking", true);   return; }
+      if (action === "HIDE_RANKING")   { setOverlayFlag("show_ranking", false);  return; }
+      if (action === "TOGGLE_RANKING") { setOverlayFlag("show_ranking", !rankingOpen); return; }
+      if (action === "SHOW_PAIR_QR")   { setOverlayFlag("show_pair_qr", true);   return; }
+      if (action === "HIDE_PAIR_QR")   { setOverlayFlag("show_pair_qr", false);  return; }
+      if (action === "TOGGLE_PAIR_QR") { setOverlayFlag("show_pair_qr", !pairQrOpen); return; }
       if (action === "END_EARLY") {
         (async () => { await endSession(false); })();
         return;
@@ -777,8 +785,9 @@ export function Present() {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <NetworkFallbackBanner transport={aggregateTransport} />
-      <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setGiantQrOpen(false)} />
-      <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setRankingOpen(false)} />
+      <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setOverlayFlag("show_join_qr", false)} />
+      <GiantQrOverlay open={pairQrOpen} joinUrl={pairUrl} onClose={() => setOverlayFlag("show_pair_qr", false)} />
+      <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setOverlayFlag("show_ranking", false)} />
       {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
       {laserCoords && (
         <div

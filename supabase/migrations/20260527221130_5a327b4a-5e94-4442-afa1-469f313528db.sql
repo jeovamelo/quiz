@@ -1,0 +1,1 @@
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS show_pair_qr boolean NOT NULL DEFAULT false;
