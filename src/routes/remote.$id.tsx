@@ -640,13 +640,29 @@ function RemoteControl() {
 
         {/* RODAPÉ DE CONTROLE — Avançar (herói) + Voltar */}
         <div className="shrink-0 space-y-2.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+          {/* APONTADOR LASER — toggle */}
+          <button
+            type="button"
+            onClick={toggleLaser}
+            aria-pressed={laserOn}
+            aria-label="Apontador Laser"
+            className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-all duration-100 active:scale-95 ${
+              laserOn
+                ? "border-red-400 bg-gradient-to-r from-red-600 to-red-500 text-white shadow-[0_0_20px_-2px_rgba(239,68,68,0.7)] animate-pulse"
+                : "border-[#3A4255] bg-[#1E2235] text-[#9CA3AF] hover:text-white"
+            }`}
+          >
+            <Crosshair className={`h-5 w-5 ${laserOn ? "text-white" : "text-red-400"}`} />
+            {laserOn ? "🔴 Laser Ativo — Mova o celular" : "Apontador Laser 🔴"}
+          </button>
+
           {/* BOTÃO HERÓI AVANÇAR — no último slide aciona o pódio automático */}
           <button
             type="button"
             onClick={nextSlide}
             disabled={busy}
             aria-label="Avançar"
-            className="relative flex h-[55vh] min-h-[280px] w-full items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
+            className="relative flex h-[48vh] min-h-[240px] w-full items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
           >
             <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true" />
             <div className="relative z-10 flex flex-col items-center justify-center gap-2">
