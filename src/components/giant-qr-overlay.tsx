@@ -9,8 +9,8 @@ type Props = {
 };
 
 /**
- * Sobreposição em tela cheia do projetor com o QR Code de entrada da
- * plateia em tamanho gigante. Acionado pelo controle remoto.
+ * Frame flutuante centralizado de QR Code para que atrasados entrem
+ * na sala. Acionado pelo controle remoto (celular do palestrante).
  */
 export function GiantQrOverlay({ open, joinUrl, onClose }: Props) {
   useEffect(() => {
@@ -25,33 +25,33 @@ export function GiantQrOverlay({ open, joinUrl, onClose }: Props) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-black/85 backdrop-blur-md"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
-      aria-label="QR Code gigante de entrada"
+      aria-label="QR Code para entrar na sala"
     >
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute right-6 top-6 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
-        aria-label="Fechar QR gigante"
-      >
-        <X className="h-6 w-6" />
-      </button>
-      <div className="text-center">
-        <p className="text-sm font-bold uppercase tracking-[0.4em] text-[#F68B1F]">
-          Aponte o celular
+      <div className="relative w-[min(92vw,520px)] rounded-3xl border border-[#262D3D] bg-[#161A23] p-8 text-center shadow-2xl shadow-black/60">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
+          aria-label="Fechar QR Code"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#F68B1F]">
+          Entre a qualquer momento!
         </p>
-        <h2 className="mt-2 bg-gradient-to-r from-white via-[#FFCB05] to-[#F68B1F] bg-clip-text text-5xl font-black text-transparent md:text-7xl">
-          Entrar na sala agora
+        <h2 className="mt-1 text-3xl font-black leading-tight text-white">
+          Faça a leitura do código acima
         </h2>
+        <div className="mx-auto mt-6 inline-block rounded-2xl bg-white p-5 shadow-xl">
+          {joinUrl && <QRCodeSVG value={joinUrl} size={320} level="M" />}
+        </div>
+        <code className="mx-auto mt-5 block max-w-full truncate rounded-lg bg-[#0E1015] px-3 py-2 text-xs font-mono text-[#9CA3AF]">
+          {joinUrl}
+        </code>
       </div>
-      <div className="mt-10 rounded-3xl bg-white p-8 shadow-2xl shadow-[#A6193C]/40">
-        {joinUrl && <QRCodeSVG value={joinUrl} size={520} level="M" />}
-      </div>
-      <code className="mt-6 max-w-[80vw] truncate rounded-lg bg-white/10 px-4 py-2 text-base font-mono text-white">
-        {joinUrl}
-      </code>
     </div>
   );
 }
