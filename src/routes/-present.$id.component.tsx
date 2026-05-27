@@ -64,6 +64,19 @@ export function Present() {
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
+  // Helper: persiste o estado de um overlay no banco. Como o projetor e
+  // todos os controles (celular + Console do Operador) escutam o canal
+  // `postgres_changes` desta sessão, a sincronia bidirecional acontece
+  // automaticamente sem precisar de novos broadcasts.
+  async function setOverlayFlag(
+    field: "show_join_qr" | "show_ranking" | "show_pair_qr",
+    value: boolean,
+  ) {
+    await (supabase.from("sessions") as any)
+      .update({ [field]: value })
+      .eq("id", id);
+  }
+
   // Ref para a função mestre de avanço — garante uso de estado fresco em
   // qualquer gatilho (clique no slide, teclado, broadcast do celular).
   const handleMasterAdvanceRef = useRef<() => Promise<void>>(async () => {});
