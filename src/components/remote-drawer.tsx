@@ -20,38 +20,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  QrCode,
   Trophy,
-  PanelRightClose,
   Power,
   Settings,
   ScanLine,
-  Smartphone,
 } from "lucide-react";
 import { haptic } from "@/hooks/use-haptic";
 
 type Props = {
-  showJoinQr: boolean;
   showRanking: boolean;
-  showSidebar: boolean;
-  showPairQr: boolean;
-  onToggleJoinQr: () => void;
   onToggleRanking: () => void;
-  onToggleSidebar: () => void;
-  onTogglePairQr: () => void;
   onShowGiantQr: () => void;
   onEndSession: () => void;
 };
 
 export function RemoteDrawer({
-  showJoinQr,
   showRanking,
-  showSidebar,
-  showPairQr,
-  onToggleJoinQr,
   onToggleRanking,
-  onToggleSidebar,
-  onTogglePairQr,
   onShowGiantQr,
   onEndSession,
 }: Props) {
@@ -82,32 +67,11 @@ export function RemoteDrawer({
 
           <div className="space-y-2 px-4 pb-2">
             <ToggleRow
-              icon={<QrCode className="h-5 w-5" />}
-              label="Exibir QR Code"
-              hint="Mostra/oculta o QR de participantes no projetor"
-              active={showJoinQr}
-              onToggle={onToggleJoinQr}
-            />
-            <ToggleRow
-              icon={<Smartphone className="h-5 w-5" />}
-              label="QR do Controle Remoto"
-              hint="Mostra/oculta o QR de pareamento sobre o slide"
-              active={showPairQr}
-              onToggle={onTogglePairQr}
-            />
-            <ToggleRow
               icon={<Trophy className="h-5 w-5" />}
               label="Exibir Classificação"
               hint="Mostra/oculta o ranking parcial"
               active={showRanking}
               onToggle={onToggleRanking}
-            />
-            <ToggleRow
-              icon={<PanelRightClose className="h-5 w-5" />}
-              label="Exibir Barra Lateral"
-              hint="Expande o slide ocultando o painel direito"
-              active={showSidebar}
-              onToggle={onToggleSidebar}
             />
             <button
               type="button"
