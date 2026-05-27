@@ -5,6 +5,7 @@ import { Calendar, Loader2, LogOut, Smartphone, Tv } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { usePairingPresence } from "@/hooks/use-pairing-presence";
+import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import { haptic } from "@/hooks/use-haptic";
 import { toast } from "sonner";
 
@@ -130,7 +131,9 @@ function RemoteHub() {
               {user?.user_metadata?.full_name || user?.email || "Palestrante"}
             </h1>
           </div>
-          <button
+          <div className="flex items-center gap-2">
+            <PairingStatusBadge userId={userId} variant="mobile" />
+            <button
             type="button"
             onClick={async () => {
               await supabase.auth.signOut();
@@ -140,7 +143,8 @@ function RemoteHub() {
             aria-label="Sair"
           >
             <LogOut className="h-5 w-5" />
-          </button>
+            </button>
+          </div>
         </div>
       </header>
 

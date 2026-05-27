@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, createFileRoute, useChildMatches, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
+import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -72,7 +73,7 @@ type AvailablePres = {
 };
 
 function EventManage() {
-  useRequireSpeaker();
+  const { user } = useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -469,6 +470,7 @@ function EventManage() {
             <h1 className="truncate text-2xl font-bold">{event?.title ?? "Carregando..."}</h1>
           </div>
           <div className="flex items-center gap-2">
+            <PairingStatusBadge userId={user?.id} variant="desktop" />
             <Button asChild variant="outline">
               <Link to="/event/$id/classificacao-geral" params={{ id }}>
                 <Trophy className="mr-2 h-4 w-4" /> Classificação
