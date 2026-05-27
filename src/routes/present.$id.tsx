@@ -72,32 +72,15 @@ function Present() {
       // Re-busca o estado mais recente para evitar usar React state desatualizado.
       const { data: fresh } = await supabase
         .from("sessions")
-        .select("current_slide, active_question_id, question_revealed, is_fullscreen")
+        .select("current_slide, active_question_id, question_revealed, is_fullscreen, fired_question_ids")
         .eq("id", id)
         .single();
       const liveSlide: number = fresh?.current_slide ?? 1;
-      const liveActiveQid: string | null = fresh?.active_question_id ?? null;
-      const liveRevealed: boolean = !!fresh?.question_revealed;
-      const qs = questionsRef.current;
-      const liveActive = qs.find((q) => q.id === liveActiveQid) || null;
-      const liveSlideQ = qs.find((q) => q.slide_number === liveSlide) || null;
 
       if (action === "NEXT") {
-        if (liveActive && !liveRevealed) {
-          await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
-          return;
-        }
-        if (liveSlideQ && !liveActive) {
-          await supabase.from("sessions").update({
-            active_question_id: liveSlideQ.id,
-            question_started_at: new Date().toISOString(),
-            question_revealed: false,
-          }).eq("id", id);
-          return;
-        }
-        await setSlide(liveSlide + 1);
+        await setSlide(liveSlide + 1, { direction: "next", fired: (fresh as any)?.fired_question_ids ?? [] });
       } else if (action === "PREV") {
-        await setSlide(Math.max(1, liveSlide - 1));
+        await setSlide(Math.max(1, liveSlide - 1), { direction: "prev" });
       } else if (action === "TOGGLE_FULLSCREEN") {
         const nextVal = !fresh?.is_fullscreen;
         await (supabase.from("sessions") as any)
@@ -105,6 +88,8 @@ function Present() {
           .eq("id", id);
       } else if (action === "SHOW_PODIUM") {
         setShowRanking(true);
+        const liveActive = questionsRef.current.find((q) => q.id === fresh?.active_question_id) || null;
+        const liveRevealed: boolean = !!fresh?.question_revealed;
         if (liveActive && !liveRevealed) {
           await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
         }
@@ -310,23 +295,46 @@ function Present() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, activeQuestion?.id, session?.question_revealed]);
 
-  async function setSlide(n: number) {
-    const next = Math.max(1, n);
-    // Encerramento automático ao avançar além da última página
-    if (totalPages && n > totalPages) {
+  /**
+   * Navegação síncrona com clique único:
+   * - direction "next": avança o slide e, se houver pergunta inédita vinculada,
+   *   lança o quiz no mesmo instante (1 clique = mudar slide + abrir quiz).
+   * - direction "prev": apenas exibe o slide anterior, NUNCA reabre quizzes
+   *   já jogados (retrocesso seguro: status fixo de "exibindo slide").
+   */
+  async function setSlide(
+    n: number,
+    opts: { direction?: "next" | "prev"; fired?: string[] } = {},
+  ) {
+    const direction = opts.direction ?? "next";
+    // Encerramento automático ao avançar além da última página → pódio
+    if (direction === "next" && totalPages && n > totalPages) {
       await endSession(true);
       return;
     }
-    const q = questions.find((qq) => qq.slide_number === next) || null;
+    const next = Math.max(1, n);
     const patch: any = {
       current_slide: next,
       question_revealed: false,
       active_question_id: null,
       question_started_at: null,
     };
-    if (q && q.display_mode === "simultaneous") {
-      patch.active_question_id = q.id;
-      patch.question_started_at = new Date().toISOString();
+    if (direction === "next") {
+      const q = questions.find((qq) => qq.slide_number === next) || null;
+      let fired = opts.fired;
+      if (!fired) {
+        const { data: s } = await (supabase.from("sessions") as any)
+          .select("fired_question_ids")
+          .eq("id", id)
+          .single();
+        fired = (s?.fired_question_ids as string[]) ?? [];
+      }
+      const alreadyFired = q ? fired.includes(q.id) : false;
+      if (q && !alreadyFired && q.display_mode === "simultaneous") {
+        patch.active_question_id = q.id;
+        patch.question_started_at = new Date().toISOString();
+        patch.fired_question_ids = [...fired, q.id];
+      }
     }
     await supabase.from("sessions").update(patch).eq("id", id);
   }
@@ -390,8 +398,8 @@ function Present() {
   // keyboard nav
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight") setSlide(currentSlide + 1);
-      else if (e.key === "ArrowLeft") setSlide(currentSlide - 1);
+      if (e.key === "ArrowRight") setSlide(currentSlide + 1, { direction: "next" });
+      else if (e.key === "ArrowLeft") setSlide(currentSlide - 1, { direction: "prev" });
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
