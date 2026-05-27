@@ -8,6 +8,7 @@ import { usePairingPresence } from "@/hooks/use-pairing-presence";
 import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import { haptic } from "@/hooks/use-haptic";
 import { toast } from "sonner";
+import { rememberDashboardOrigin } from "@/lib/dashboard-origin";
 
 export const Route = createFileRoute("/remote/")({
   head: () => ({ meta: [{ title: "Controle Remoto — QuizPulse" }] }),
@@ -71,6 +72,7 @@ function RemoteHub() {
       return;
     }
     haptic(60);
+    rememberDashboardOrigin("/dashboard");
     const t = toast.loading("Disparando no projetor...");
     try {
       // 1. Cria a sessão

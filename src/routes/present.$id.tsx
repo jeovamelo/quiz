@@ -22,6 +22,7 @@ import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 import { toast } from "sonner";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
 import { Smartphone } from "lucide-react";
+import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
 
 export const Route = createFileRoute("/present/$id")({
   head: () => ({ meta: [{ title: "Apresentação ao vivo — QuizPulse" }] }),
@@ -424,6 +425,26 @@ function Present() {
     }
   }
 
+  /**
+   * Retorna o palestrante para a tela de onde ele veio (Dashboard, página do
+   * evento, etc.), limpando canais ativos antes da navegação.
+   */
+  function smartReturn() {
+    try {
+      // Limpa os canais realtime desta apresentação para evitar concorrência.
+      supabase.removeAllChannels();
+    } catch {
+      /* ignora */
+    }
+    const target = consumeDashboardOrigin();
+    // Navegação absoluta — preserva search e subrotas memorizadas.
+    if (typeof window !== "undefined") {
+      window.location.assign(target);
+    } else {
+      navigate({ to: "/dashboard" });
+    }
+  }
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(joinUrl);
@@ -531,7 +552,7 @@ function Present() {
           </div>
         )}
 
-        <Button variant="outline" onClick={() => navigate({ to: "/dashboard" })}>
+        <Button variant="outline" onClick={smartReturn}>
           Voltar ao Painel
         </Button>
         {presentation.event_id && (
@@ -913,7 +934,7 @@ function Present() {
                 <AlertDialogAction
                   onClick={async () => {
                     await endSession();
-                    navigate({ to: "/dashboard" });
+                    smartReturn();
                   }}
                   className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-95"
                 >

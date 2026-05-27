@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, createFileRoute, useChildMatches, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { PairingStatusBadge } from "@/components/pairing-status-badge";
+import { rememberDashboardOrigin } from "@/lib/dashboard-origin";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -426,6 +427,7 @@ function EventManage() {
   }
 
   async function startSession(presentationId: string) {
+    rememberDashboardOrigin();
     // Calcula chronological_index: quantas apresentações deste evento já têm presented_at
     const { count: presentedCount } = await (supabase.from("presentations") as any)
       .select("id", { count: "exact", head: true })
