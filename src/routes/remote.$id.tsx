@@ -647,6 +647,7 @@ function RemoteControl() {
             onToggleJoinQr={() => toggleSessionFlag("show_join_qr")}
             onToggleRanking={() => toggleSessionFlag("show_ranking")}
             onToggleSidebar={() => toggleSessionFlag("show_sidebar")}
+            onShowGiantQr={showGiantQr}
             onEndSession={exitToHub}
           />
 
