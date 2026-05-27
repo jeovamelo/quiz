@@ -652,6 +652,11 @@ function RemoteControl() {
             onToggleRanking={() => toggleSessionFlag("show_ranking")}
             onToggleSidebar={() => toggleSessionFlag("show_sidebar")}
             onShowGiantQr={showGiantQr}
+            onTogglePairing={() => {
+              haptic(30);
+              sendCommand("TOGGLE_PAIRING");
+              bridge.send("TOGGLE_PAIRING" as any).catch(() => {});
+            }}
             onEndSession={exitToHub}
           />
 
