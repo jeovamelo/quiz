@@ -628,14 +628,8 @@ function RemoteControl() {
         <div className="shrink-0 space-y-2.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
           {/* DRAWER de outras funcionalidades (F11, QR, ranking, sidebar, encerrar) */}
           <RemoteDrawer
-            showJoinQr={!!session?.show_join_qr}
             showRanking={!!session?.show_ranking}
-            showSidebar={!!session?.show_sidebar}
-            showPairQr={!!session?.show_pair_qr}
-            onToggleJoinQr={() => toggleSessionFlag("show_join_qr")}
             onToggleRanking={() => toggleSessionFlag("show_ranking")}
-            onToggleSidebar={() => toggleSessionFlag("show_sidebar")}
-            onTogglePairQr={() => toggleSessionFlag("show_pair_qr")}
             onShowGiantQr={showGiantQr}
             onEndSession={exitToHub}
           />

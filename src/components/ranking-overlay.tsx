@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { X, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { sortRanking, type ParticipantRow } from "@/lib/ranking";
+import { DraggableFrame } from "@/components/draggable-frame";
 
 type Props = {
   open: boolean;
@@ -46,34 +47,19 @@ export function RankingOverlay({ open, sessionId, onClose }: Props) {
     };
   }, [open, sessionId]);
 
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
   const ranking = sortRanking(participants).slice(0, 12);
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Classificação em tempo real"
+    <DraggableFrame
+      open={open}
+      onClose={onClose}
+      storageKey="ranking-overlay-pos"
+      ariaLabel="Classificação em tempo real"
+      headerBg="#F68B1F"
+      borderColor="#F68B1F99"
+      header={<span>🏆 CLASSIFICAÇÃO — RANKING EM TEMPO REAL</span>}
     >
-      <div className="relative w-[min(92vw,520px)] rounded-3xl border border-[#262D3D] bg-[#161A23] p-7 shadow-2xl shadow-black/60">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-          aria-label="Fechar classificação"
-        >
-          <X className="h-4 w-4" />
-        </button>
+      <div className="p-7">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FFCB05] to-[#F68B1F] text-[#0E1015] shadow-lg">
             <Trophy className="h-6 w-6" />
@@ -127,6 +113,6 @@ export function RankingOverlay({ open, sessionId, onClose }: Props) {
           })}
         </ol>
       </div>
-    </div>
+    </DraggableFrame>
   );
 }
