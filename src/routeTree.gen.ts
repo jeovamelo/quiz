@@ -16,7 +16,7 @@ import { Route as QuizNewRouteImport } from './routes/quiz.new'
 import { Route as PresentIdRouteImport } from './routes/present.$id'
 import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
 import { Route as EventNewRouteImport } from './routes/event.new'
-import { Route as EventIdRouteImport } from './routes/event.$id'
+import { Route as EventIdIndexRouteImport } from './routes/event.$id.index'
 import { Route as QuizIdEditRouteImport } from './routes/quiz.$id.edit'
 import { Route as PresentIdReviewRouteImport } from './routes/present.$id.review'
 import { Route as EventIdPodiumRouteImport } from './routes/event.$id.podium'
@@ -57,9 +57,9 @@ const EventNewRoute = EventNewRouteImport.update({
   path: '/event/new',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EventIdRoute = EventIdRouteImport.update({
-  id: '/event/$id',
-  path: '/event/$id',
+const EventIdIndexRoute = EventIdIndexRouteImport.update({
+  id: '/event/$id/',
+  path: '/event/$id/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuizIdEditRoute = QuizIdEditRouteImport.update({
@@ -73,9 +73,9 @@ const PresentIdReviewRoute = PresentIdReviewRouteImport.update({
   getParentRoute: () => PresentIdRoute,
 } as any)
 const EventIdPodiumRoute = EventIdPodiumRouteImport.update({
-  id: '/podium',
-  path: '/podium',
-  getParentRoute: () => EventIdRoute,
+  id: '/event/$id/podium',
+  path: '/event/$id/podium',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EventIdClassificacaoGeralRoute =
   EventIdClassificacaoGeralRouteImport.update({
@@ -88,7 +88,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
-  '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
@@ -97,12 +96,12 @@ export interface FileRoutesByFullPath {
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/review': typeof PresentIdReviewRoute
   '/quiz/$id/edit': typeof QuizIdEditRoute
+  '/event/$id/': typeof EventIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
-  '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
@@ -111,13 +110,13 @@ export interface FileRoutesByTo {
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/review': typeof PresentIdReviewRoute
   '/quiz/$id/edit': typeof QuizIdEditRoute
+  '/event/$id': typeof EventIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
-  '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
@@ -126,6 +125,7 @@ export interface FileRoutesById {
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/review': typeof PresentIdReviewRoute
   '/quiz/$id/edit': typeof QuizIdEditRoute
+  '/event/$id/': typeof EventIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -133,7 +133,6 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
-    | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
     | '/present/$id'
@@ -142,12 +141,12 @@ export interface FileRouteTypes {
     | '/event/$id/podium'
     | '/present/$id/review'
     | '/quiz/$id/edit'
+    | '/event/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
     | '/join'
-    | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
     | '/present/$id'
@@ -156,12 +155,12 @@ export interface FileRouteTypes {
     | '/event/$id/podium'
     | '/present/$id/review'
     | '/quiz/$id/edit'
+    | '/event/$id'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/join'
-    | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
     | '/present/$id'
@@ -170,18 +169,20 @@ export interface FileRouteTypes {
     | '/event/$id/podium'
     | '/present/$id/review'
     | '/quiz/$id/edit'
+    | '/event/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   JoinRoute: typeof JoinRoute
-  EventIdRoute: typeof EventIdRouteWithChildren
   EventNewRoute: typeof EventNewRoute
   LobbyIdRoute: typeof LobbyIdRoute
   PresentIdRoute: typeof PresentIdRouteWithChildren
   QuizNewRoute: typeof QuizNewRoute
+  EventIdPodiumRoute: typeof EventIdPodiumRoute
   QuizIdEditRoute: typeof QuizIdEditRoute
+  EventIdIndexRoute: typeof EventIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -235,11 +236,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventNewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/event/$id': {
-      id: '/event/$id'
+    '/event/$id/': {
+      id: '/event/$id/'
       path: '/event/$id'
-      fullPath: '/event/$id'
-      preLoaderRoute: typeof EventIdRouteImport
+      fullPath: '/event/$id/'
+      preLoaderRoute: typeof EventIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/quiz/$id/edit': {
@@ -258,10 +259,10 @@ declare module '@tanstack/react-router' {
     }
     '/event/$id/podium': {
       id: '/event/$id/podium'
-      path: '/podium'
+      path: '/event/$id/podium'
       fullPath: '/event/$id/podium'
       preLoaderRoute: typeof EventIdPodiumRouteImport
-      parentRoute: typeof EventIdRoute
+      parentRoute: typeof rootRouteImport
     }
     '/event/$id/classificacao-geral': {
       id: '/event/$id/classificacao-geral'
@@ -272,19 +273,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-
-interface EventIdRouteChildren {
-  EventIdClassificacaoGeralRoute: typeof EventIdClassificacaoGeralRoute
-  EventIdPodiumRoute: typeof EventIdPodiumRoute
-}
-
-const EventIdRouteChildren: EventIdRouteChildren = {
-  EventIdClassificacaoGeralRoute: EventIdClassificacaoGeralRoute,
-  EventIdPodiumRoute: EventIdPodiumRoute,
-}
-
-const EventIdRouteWithChildren =
-  EventIdRoute._addFileChildren(EventIdRouteChildren)
 
 interface PresentIdRouteChildren {
   PresentIdReviewRoute: typeof PresentIdReviewRoute
@@ -302,13 +290,24 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   JoinRoute: JoinRoute,
-  EventIdRoute: EventIdRouteWithChildren,
   EventNewRoute: EventNewRoute,
   LobbyIdRoute: LobbyIdRoute,
   PresentIdRoute: PresentIdRouteWithChildren,
   QuizNewRoute: QuizNewRoute,
+  EventIdPodiumRoute: EventIdPodiumRoute,
   QuizIdEditRoute: QuizIdEditRoute,
+  EventIdIndexRoute: EventIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
