@@ -620,7 +620,7 @@ function Join() {
       </h2>
 
       <div className="flex flex-col gap-3 pb-2">
-        {optionKeys.map((k) => {
+        {optionKeys.map((k, index) => {
           const selected = myAnswer === k;
           const isCorrect = question.correct_option === k;
 
@@ -644,6 +644,7 @@ function Join() {
           }
 
           const label = isTF ? (k === "A" ? "Verdadeiro" : "Falso") : question.options[k];
+          const letterLabel = isTF ? k : String.fromCharCode(65 + index);
 
           return (
             <button
@@ -652,7 +653,7 @@ function Join() {
               onClick={() => answer(k)}
               className={`flex min-h-[64px] w-full items-center rounded-2xl border-2 px-5 py-4 text-left font-bold shadow-sm transition active:scale-95 disabled:cursor-not-allowed ${base} ${stateCls} ${scale.option}`}
             >
-              {!isTF && <span className="mr-3 opacity-90">{k}.</span>}
+              {!isTF && <span className="mr-3 opacity-90">{letterLabel}.</span>}
               <span className="flex-1">{label}</span>
             </button>
           );
@@ -669,7 +670,13 @@ function Join() {
         >
           <p className="text-lg font-bold">{userCorrect ? "Você acertou! 🎉" : myAnswer ? "Errou." : "Sem resposta"}</p>
           <p className="mt-1 text-sm">
-            Resposta correta: <span className="font-semibold">{question.correct_option}</span>
+            Resposta correta:{" "}
+            <span className="font-semibold">
+              {(() => {
+                const idx = optionKeys.indexOf(question.correct_option);
+                return idx >= 0 ? String.fromCharCode(65 + idx) : question.correct_option;
+              })()}
+            </span>
           </p>
         </div>
       )}
