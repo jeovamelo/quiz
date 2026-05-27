@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
-import { PairingStatusBadge } from "@/components/pairing-status-badge";
-import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, Copy, Loader2, LogOut, Maximize, Tv, Trophy, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Maximize, Tv } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +11,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,10 +19,9 @@ import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 import { toast } from "sonner";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
 import { useWebRTCTunnel, type TunnelTransport } from "@/hooks/use-webrtc-tunnel";
-import { NetworkStatusBadge, NetworkFallbackBanner } from "@/components/network-status-badge";
+import { NetworkFallbackBanner } from "@/components/network-status-badge";
 import { GiantQrOverlay } from "@/components/giant-qr-overlay";
-import { PairingFrameOverlay } from "@/components/pairing-frame-overlay";
-import { Smartphone } from "lucide-react";
+import { RankingOverlay } from "@/components/ranking-overlay";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
 
 type Question = {
@@ -42,7 +38,7 @@ type Question = {
 };
 
 export function Present() {
-  const { user } = useRequireSpeaker();
+  useRequireSpeaker();
   const { id } = useParams({ from: "/present/$id" });
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
@@ -54,20 +50,12 @@ export function Present() {
   const [now, setNow] = useState(Date.now());
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [joinUrl, setJoinUrl] = useState("");
-  // showRanking agora é controlado pela sessão (session.show_ranking),
-  // permitindo que ambos os controles remotos alternem em sincronia.
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
-  // Controle local da Barra Lateral direita no próprio projetor (chevron flutuante)
-  const [sidebarCollapsedLocal, setSidebarCollapsedLocal] = useState(false);
-  // Sobreposição do QR Code gigante (acionada pelo controle remoto)
+  // Frames flutuantes centralizados (acionados pelo celular do palestrante)
   const [giantQrOpen, setGiantQrOpen] = useState(false);
-  // Frame flutuante de cadastro de controles remotos. Abre automaticamente
-  // quando nenhum controle está pareado e pode ser alternado pelos remotos.
-  const [pairingFrameOpen, setPairingFrameOpen] = useState(true);
-  const [remotesCount, setRemotesCount] = useState<number | null>(null);
-  const pairingAutoHiddenRef = useRef(false);
+  const [rankingOpen, setRankingOpen] = useState(false);
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
@@ -106,40 +94,6 @@ export function Present() {
     setJoinUrl(`${window.location.origin}/join?session=${id}`);
   }, [id]);
 
-  // Acompanha em tempo real o número de controles pareados para auto-mostrar
-  // o frame flutuante quando estiver vazio e auto-ocultar ao primeiro pareamento.
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchCount() {
-      const { data } = await supabase
-        .from("session_remotes")
-        .select("id")
-        .eq("session_id", id);
-      if (cancelled) return;
-      const count = (data ?? []).length;
-      setRemotesCount(count);
-      if (count === 0) {
-        setPairingFrameOpen(true);
-      } else if (!pairingAutoHiddenRef.current) {
-        pairingAutoHiddenRef.current = true;
-        setPairingFrameOpen(false);
-      }
-    }
-    fetchCount();
-    const ch = supabase
-      .channel(`present-remotes-${id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "session_remotes", filter: `session_id=eq.${id}` },
-        () => fetchCount(),
-      )
-      .subscribe();
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(ch);
-    };
-  }, [id]);
-
   // === Ponte de tempo real com o celular (Broadcast com heartbeat) ===
   const bridge = useRemoteBridge({
     sessionId: id,
@@ -176,18 +130,24 @@ export function Present() {
         setGiantQrOpen(false);
         return;
       }
-
-      // Frame flutuante de cadastro de controles — instantâneo.
-      if (action === "SHOW_PAIRING") {
-        setPairingFrameOpen(true);
+      if (action === "TOGGLE_GIANT_QR") {
+        setGiantQrOpen((v) => !v);
         return;
       }
-      if (action === "HIDE_PAIRING") {
-        setPairingFrameOpen(false);
+      if (action === "SHOW_RANKING") {
+        setRankingOpen(true);
         return;
       }
-      if (action === "TOGGLE_PAIRING") {
-        setPairingFrameOpen((v) => !v);
+      if (action === "HIDE_RANKING") {
+        setRankingOpen(false);
+        return;
+      }
+      if (action === "TOGGLE_RANKING") {
+        setRankingOpen((v) => !v);
+        return;
+      }
+      if (action === "END_EARLY") {
+        await endSession(false);
         return;
       }
 
@@ -212,9 +172,7 @@ export function Present() {
           .update({ is_fullscreen: nextVal })
           .eq("id", id);
       } else if (action === "SHOW_PODIUM") {
-        await (supabase.from("sessions") as any)
-          .update({ show_ranking: true })
-          .eq("id", id);
+        setRankingOpen(true);
         const liveActive = questionsRef.current.find((q) => q.id === fresh?.active_question_id) || null;
         const liveRevealed: boolean = !!fresh?.question_revealed;
         if (liveActive && !liveRevealed) {
@@ -253,9 +211,14 @@ export function Present() {
       // Reaplica a mesma lógica do bridge.onAction.
       if (action === "SHOW_GIANT_QR") return setGiantQrOpen(true);
       if (action === "HIDE_GIANT_QR") return setGiantQrOpen(false);
-      if (action === "SHOW_PAIRING") return setPairingFrameOpen(true);
-      if (action === "HIDE_PAIRING") return setPairingFrameOpen(false);
-      if (action === "TOGGLE_PAIRING") return setPairingFrameOpen((v) => !v);
+      if (action === "TOGGLE_GIANT_QR") return setGiantQrOpen((v) => !v);
+      if (action === "SHOW_RANKING") return setRankingOpen(true);
+      if (action === "HIDE_RANKING") return setRankingOpen(false);
+      if (action === "TOGGLE_RANKING") return setRankingOpen((v) => !v);
+      if (action === "END_EARLY") {
+        (async () => { await endSession(false); })();
+        return;
+      }
       if (action === "NEXT") {
         handleMasterAdvanceRef.current();
         return;
@@ -292,13 +255,7 @@ export function Present() {
   }, [id]);
 
   const tunnel1 = useWebRTCTunnel({ sessionId: id, slot: 1, role: "host", onMessage: handleTunnelMessage });
-  const tunnel2 = useWebRTCTunnel({ sessionId: id, slot: 2, role: "host", onMessage: handleTunnelMessage });
-  const aggregateTransport: TunnelTransport =
-    tunnel1.transport === "p2p" || tunnel2.transport === "p2p"
-      ? "p2p"
-      : tunnel1.transport === "fallback" && tunnel2.transport === "fallback"
-      ? "fallback"
-      : "connecting";
+  const aggregateTransport: TunnelTransport = tunnel1.transport;
 
   // Sincroniza o pedido remoto de tela cheia (vindo do celular do palestrante)
   useEffect(() => {
