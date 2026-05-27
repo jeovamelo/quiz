@@ -19,7 +19,6 @@ import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 import { toast } from "sonner";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
 import { useWebRTCTunnel, type TunnelTransport } from "@/hooks/use-webrtc-tunnel";
-import { NetworkFallbackBanner } from "@/components/network-status-badge";
 import { GiantQrOverlay } from "@/components/giant-qr-overlay";
 import { RankingOverlay } from "@/components/ranking-overlay";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
@@ -784,7 +783,6 @@ export function Present() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <NetworkFallbackBanner transport={aggregateTransport} />
       <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setOverlayFlag("show_join_qr", false)} />
       <GiantQrOverlay open={pairQrOpen} joinUrl={pairUrl} onClose={() => setOverlayFlag("show_pair_qr", false)} />
       <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setOverlayFlag("show_ranking", false)} />
