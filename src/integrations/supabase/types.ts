@@ -305,6 +305,7 @@ export type Database = {
           active_question_id: string | null
           created_at: string
           current_slide: number
+          fired_question_ids: string[]
           id: string
           is_fullscreen: boolean
           presentation_id: string
@@ -317,6 +318,7 @@ export type Database = {
           active_question_id?: string | null
           created_at?: string
           current_slide?: number
+          fired_question_ids?: string[]
           id?: string
           is_fullscreen?: boolean
           presentation_id: string
@@ -329,6 +331,7 @@ export type Database = {
           active_question_id?: string | null
           created_at?: string
           current_slide?: number
+          fired_question_ids?: string[]
           id?: string
           is_fullscreen?: boolean
           presentation_id?: string
