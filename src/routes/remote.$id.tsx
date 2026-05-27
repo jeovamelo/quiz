@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
-  ArrowLeft,
-  ArrowRight,
-  Eye,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
   LogOut,
-  RefreshCw,
   Smartphone,
+  Sparkles,
   Trophy,
   Users,
   Zap,
@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -54,7 +54,6 @@ function RemoteControl() {
   } | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participantsCount, setParticipantsCount] = useState(0);
-  const [showRankingRemote, setShowRankingRemote] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // Carrega sessão, apresentação, perguntas e contagem de participantes
@@ -106,6 +105,21 @@ function RemoteControl() {
             .select("id", { count: "exact", head: true })
             .eq("session_id", id);
           setParticipantsCount(count ?? 0);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "questions", filter: `presentation_id=eq.${session?.presentation_id ?? "00000000-0000-0000-0000-000000000000"}` },
+        async () => {
+          // refetch perguntas para refletir toggle de prêmio
+          const presId = (await supabase.from("sessions").select("presentation_id").eq("id", id).single()).data?.presentation_id;
+          if (!presId) return;
+          const { data: qs } = await supabase
+            .from("questions")
+            .select("id, question_text, slide_number, display_mode, is_prize_question, prize_multiplier")
+            .eq("presentation_id", presId)
+            .order("position");
+          setQuestions((qs as any) || []);
         },
       )
       .subscribe();
@@ -197,53 +211,55 @@ function RemoteControl() {
     });
   }
 
-  async function toggleRanking() {
-    const next = !showRankingRemote;
-    setShowRankingRemote(next);
+  async function showResults() {
+    // Dispara broadcast para projetor abrir o painel de classificação
     try {
       const ch = supabase.channel(`present-remote-${id}`);
       await new Promise<void>((resolve) => {
         ch.subscribe((status) => {
           if (status === "SUBSCRIBED") resolve();
         });
-        window.setTimeout(() => resolve(), 600);
+        window.setTimeout(() => resolve(), 500);
       });
       await ch.send({
         type: "broadcast",
         event: "toggle_ranking",
-        payload: { show: next },
+        payload: { show: true },
       });
-      window.setTimeout(() => supabase.removeChannel(ch), 400);
-      toast.success(next ? "Classificação exibida no projetor." : "Classificação ocultada.");
+      window.setTimeout(() => supabase.removeChannel(ch), 300);
+      if (activeQuestion && !session?.question_revealed) {
+        await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
+      }
+      toast.success("Resultados exibidos no projetor.");
     } catch {
-      toast.error("Falha ao sincronizar painel de classificação.");
+      toast.error("Falha ao exibir resultados.");
     }
   }
 
-  async function restartSession() {
-    await withBusy(async () => {
-      // Apaga respostas desta sessão e zera participantes
-      await supabase.from("answers").delete().eq("session_id", id);
-      await (supabase.from("participants") as any)
-        .update({ score: 0, correct_count: 0, answer_count: 0, total_response_ms: 0 })
-        .eq("session_id", id);
-      await supabase
-        .from("sessions")
-        .update({
-          current_slide: 1,
-          active_question_id: null,
-          question_started_at: null,
-          question_revealed: false,
-          status: "presenting",
-        })
-        .eq("id", id);
-      toast.success("Apresentação reiniciada.");
-    });
+  async function togglePrize(next: boolean) {
+    if (!slideQuestion) return;
+    const multiplier = next ? (slideQuestion.prize_multiplier ?? 5) : 5;
+    const { error } = await (supabase.from("questions") as any)
+      .update({ is_prize_question: next, prize_multiplier: multiplier })
+      .eq("id", slideQuestion.id);
+    if (error) {
+      toast.error("Falha ao atualizar pergunta prêmio.");
+      return;
+    }
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === slideQuestion.id
+          ? { ...q, is_prize_question: next, prize_multiplier: multiplier }
+          : q,
+      ),
+    );
+    toast.success(next ? "Pergunta Prêmio ATIVADA!" : "Pergunta Prêmio desativada.");
   }
 
-  async function endSession() {
+  async function exitToHub() {
     await withBusy(async () => {
-      const { error } = await supabase
+      // 1. Marca sessão como encerrada
+      await supabase
         .from("sessions")
         .update({
           status: "ended",
@@ -252,21 +268,35 @@ function RemoteControl() {
           question_revealed: false,
         })
         .eq("id", id);
-      if (error) {
-        toast.error("Falha ao encerrar apresentação.");
-        return;
-      }
       if (session?.presentation_id) {
         await (supabase.from("presentations") as any)
           .update({ execution_status: "completed_partial" })
           .eq("id", session.presentation_id);
       }
-      toast.success("Apresentação encerrada.");
+
+      // 2. Avisa o projetor para voltar ao lobby
       if (presentation?.event_id) {
-        navigate({ to: "/event/$id/podium", params: { id: presentation.event_id }, search: { finale: 1 } });
-      } else {
-        navigate({ to: "/dashboard" });
+        try {
+          const ch = supabase.channel(`event-lobby-${presentation.event_id}`);
+          await new Promise<void>((resolve) => {
+            ch.subscribe((status) => {
+              if (status === "SUBSCRIBED") resolve();
+            });
+            window.setTimeout(() => resolve(), 600);
+          });
+          await ch.send({
+            type: "broadcast",
+            event: "return_to_lobby",
+            payload: { event_id: presentation.event_id },
+          });
+          window.setTimeout(() => supabase.removeChannel(ch), 300);
+        } catch {
+          /* ignora */
+        }
       }
+
+      toast.success("Apresentação fechada. Escolha a próxima!");
+      navigate({ to: "/remote" });
     });
   }
 
@@ -283,10 +313,13 @@ function RemoteControl() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0E1015] p-6 text-center text-white">
         <Trophy className="h-12 w-12 text-[#FFCB05]" />
         <h1 className="text-2xl font-bold">Apresentação encerrada</h1>
-        <p className="text-sm text-[#9CA3AF]">Não há mais nada a controlar nesta sessão.</p>
-        <Button asChild className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white">
-          <Link to="/dashboard">Voltar ao Painel</Link>
-        </Button>
+        <p className="text-sm text-[#9CA3AF]">Escolha a próxima apresentação para continuar.</p>
+        <Link
+          to="/remote"
+          className="rounded-xl bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-6 py-3 text-sm font-bold text-white shadow-lg"
+        >
+          Voltar à seleção
+        </Link>
       </div>
     );
   }
@@ -294,61 +327,67 @@ function RemoteControl() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-[#0E1015] text-white">
       {/* Cabeçalho de status */}
-      <header className="sticky top-0 z-10 border-b border-[#262D3D] bg-[#131722]/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-[#262D3D] bg-[#131722]/95 px-4 py-2.5 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#F68B1F]">
-              <Smartphone className="h-3 w-3" /> Controle Remoto Ativo
+              <Smartphone className="h-3 w-3" /> Clicker Ativo
             </p>
-            <h1 className="mt-0.5 truncate text-base font-bold">{presentation.title}</h1>
+            <h1 className="mt-0.5 truncate text-sm font-bold">{presentation.title}</h1>
           </div>
-          <Button asChild size="icon" variant="ghost" className="text-[#9CA3AF] hover:bg-[#1E2235] hover:text-white">
-            <Link to="/dashboard">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1 rounded-lg border border-[#A6193C]/40 bg-[#A6193C]/10 px-2.5 py-1.5 text-[11px] font-bold text-[#F68B1F] hover:bg-[#A6193C]/20"
+              >
+                <LogOut className="h-3.5 w-3.5" /> Mudar
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="border-[#262D3D] bg-[#0E1015] text-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">
+                  Fechar esta apresentação?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-[#9CA3AF]">
+                  Deseja fechar esta apresentação no projetor e escolher outra?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-white">
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={exitToHub}
+                  className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-95"
+                >
+                  Sim, fechar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-[#9CA3AF]">
+        <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#9CA3AF]">
           <span className="rounded bg-[#0E1015] px-2 py-0.5 font-mono">
             Slide {currentSlide}
           </span>
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5 text-[#07A684]" />
-            <span className="font-semibold text-white">{participantsCount}</span> Usuários Online
+            <span className="font-semibold text-white">{participantsCount}</span> usuários
           </span>
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-3 p-4">
-        {/* Painel de Controle de Slides */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={prevSlide}
-            disabled={busy || currentSlide <= 1}
-            className="flex min-h-[88px] items-center justify-center gap-2 rounded-2xl border border-[#262D3D] bg-[#161A23] text-base font-bold text-white shadow-lg transition active:scale-[0.98] disabled:opacity-40"
-          >
-            <ArrowLeft className="h-6 w-6" /> Voltar
-          </button>
-          <button
-            type="button"
-            onClick={nextSlide}
-            disabled={busy}
-            className="flex min-h-[88px] items-center justify-center gap-2 rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-base font-extrabold text-white shadow-2xl shadow-[#A6193C]/40 transition active:scale-[0.98] disabled:opacity-50"
-          >
-            Avançar <ArrowRight className="h-6 w-6" />
-          </button>
-        </div>
-
-        {/* Painel de Quiz (somente quando o slide atual tem pergunta) */}
+      <main className="flex flex-1 flex-col p-3">
+        {/* Console de Quiz — só aparece quando o slide tem pergunta vinculada */}
         {slideQuestion && (
           <section
-            className="space-y-3 rounded-2xl border p-4 shadow-lg"
-            style={{ borderColor: "#BA2172", background: "rgba(186, 33, 114, 0.10)" }}
+            className="mb-3 space-y-2.5 rounded-2xl border p-3 shadow-lg"
+            style={{ borderColor: "#BA2172", background: "rgba(186, 33, 114, 0.12)" }}
           >
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#E879B5]">
-                <Zap className="h-3.5 w-3.5" /> Pergunta vinculada
+                <Zap className="h-3.5 w-3.5" /> Pergunta neste slide
               </p>
               {slideQuestion.is_prize_question && (
                 <span className="rounded-full bg-[#FFCB05] px-2 py-0.5 text-[10px] font-extrabold uppercase text-black">
@@ -356,105 +395,68 @@ function RemoteControl() {
                 </span>
               )}
             </div>
-            <p className="text-sm font-medium text-white">{slideQuestion.question_text}</p>
 
-            {!activeQuestion ? (
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={launchQuestion}
-                disabled={busy}
-                className="flex min-h-[72px] w-full items-center justify-center gap-2 rounded-2xl bg-[#BA2172] text-base font-extrabold text-white shadow-lg shadow-[#BA2172]/40 transition active:scale-[0.98] disabled:opacity-50"
+                disabled={busy || !!activeQuestion}
+                className="flex min-h-[56px] items-center justify-center gap-1.5 rounded-xl bg-[#BA2172] text-sm font-extrabold text-white shadow-md shadow-[#BA2172]/40 transition active:scale-[0.98] disabled:opacity-40"
               >
-                <Zap className="h-5 w-5" /> Lançar Pergunta Agora
+                <Zap className="h-4 w-4" /> Lançar Quiz
               </button>
-            ) : (
               <button
                 type="button"
-                onClick={revealAnswer}
-                disabled={busy || session?.question_revealed}
-                className="flex min-h-[72px] w-full items-center justify-center gap-2 rounded-2xl bg-[#FFCB05] text-base font-extrabold text-black shadow-lg transition active:scale-[0.98] disabled:opacity-50"
+                onClick={showResults}
+                disabled={busy || !activeQuestion}
+                className="flex min-h-[56px] items-center justify-center gap-1.5 rounded-xl bg-[#FFCB05] text-sm font-extrabold text-black shadow-md transition active:scale-[0.98] disabled:opacity-40"
               >
-                <Eye className="h-5 w-5" />
-                {session?.question_revealed ? "Resposta já revelada" : "Parar e Revelar Resposta"}
+                <BarChart3 className="h-4 w-4" /> Mostrar Resultados
               </button>
-            )}
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-[#FFCB05]/30 bg-[#0E1015]/60 px-3 py-2">
+              <span className="flex items-center gap-2 text-xs font-bold text-[#FFCB05]">
+                <Sparkles className="h-4 w-4" /> Pergunta Prêmio
+              </span>
+              <Switch
+                checked={!!slideQuestion.is_prize_question}
+                onCheckedChange={togglePrize}
+              />
+            </div>
           </section>
         )}
 
-        {/* Alternar painel de Classificação no projetor */}
+        {/* Espaço flexível */}
+        <div className="flex-1" />
+
+        {/* === BOTÃO HERÓI AVANÇAR === */}
         <button
           type="button"
-          onClick={toggleRanking}
-          className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl border border-[#FFCB05]/40 bg-[#FFCB05]/10 text-sm font-bold text-[#FFCB05] transition active:scale-[0.98]"
+          onClick={nextSlide}
+          disabled={busy}
+          className="relative flex h-[55vh] min-h-[320px] w-full items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition active:scale-[0.985] disabled:opacity-60"
         >
-          <Trophy className="h-5 w-5" />
-          {showRankingRemote ? "Ocultar Classificação no Projetor" : "Mostrar Classificação no Projetor"}
+          <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true" />
+          <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+            <span className="text-[44px] font-black uppercase leading-none tracking-tight drop-shadow-lg sm:text-[56px]">
+              AVANÇAR
+            </span>
+            <ChevronRight className="h-20 w-20 drop-shadow-lg" strokeWidth={3} />
+          </div>
         </button>
 
-        <div className="mt-2 grid grid-cols-2 gap-3">
-          {/* Reiniciar apresentação */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl border border-[#262D3D] bg-[#161A23] text-sm font-bold text-[#9CA3AF] transition active:scale-[0.98]"
-              >
-                <RefreshCw className="h-4 w-4" /> Reiniciar
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="border-[#262D3D] bg-[#0E1015] text-white">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-white">Deseja mesmo reiniciar?</AlertDialogTitle>
-                <AlertDialogDescription className="text-[#9CA3AF]">
-                  Todos os pontos atuais e respostas deste quiz serão apagados. Os participantes voltarão ao Slide 1.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-white">
-                  Cancelar
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={restartSession}
-                  className="bg-[#A6193C] text-white hover:bg-[#A6193C]/90"
-                >
-                  Sim, reiniciar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          {/* Encerrar apresentação */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl border border-[#A6193C]/60 bg-[#A6193C]/15 text-sm font-bold text-white transition active:scale-[0.98]"
-              >
-                <LogOut className="h-4 w-4" /> Encerrar
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="border-[#262D3D] bg-[#0E1015] text-white">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-white">Encerrar apresentação?</AlertDialogTitle>
-                <AlertDialogDescription className="text-[#9CA3AF]">
-                  {presentation.event_id
-                    ? "Ainda existem apresentações não exibidas neste evento. Deseja mesmo encerrar e ir para a grande final?"
-                    : "Esta ação encerra a sessão e desconecta os celulares dos participantes."}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-white">
-                  Cancelar
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={endSession}
-                  className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-95"
-                >
-                  Sim, encerrar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        {/* Botão Voltar — pequeno, isolado */}
+        <div className="mt-3 flex justify-start">
+          <button
+            type="button"
+            onClick={prevSlide}
+            disabled={busy || currentSlide <= 1}
+            className="flex items-center gap-1.5 rounded-xl border border-[#262D3D] bg-[#1E2235] px-4 py-2.5 text-xs font-semibold text-[#9CA3AF] transition active:scale-[0.97] disabled:opacity-30"
+            aria-label="Voltar slide"
+          >
+            <ChevronLeft className="h-4 w-4" /> Voltar
+          </button>
         </div>
       </main>
     </div>
