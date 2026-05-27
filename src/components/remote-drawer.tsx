@@ -27,6 +27,7 @@ import {
   Power,
   Settings,
   ScanLine,
+  Smartphone,
 } from "lucide-react";
 import { haptic } from "@/hooks/use-haptic";
 
@@ -40,6 +41,7 @@ type Props = {
   onToggleRanking: () => void;
   onToggleSidebar: () => void;
   onShowGiantQr: () => void;
+  onTogglePairing: () => void;
   onEndSession: () => void;
 };
 
@@ -53,6 +55,7 @@ export function RemoteDrawer({
   onToggleRanking,
   onToggleSidebar,
   onShowGiantQr,
+  onTogglePairing,
   onEndSession,
 }: Props) {
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -126,6 +129,26 @@ export function RemoteDrawer({
                 </span>
                 <span className="block text-[11px] text-[#9CA3AF]">
                   Mostra um QR enorme no projetor sobre o slide atual
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                haptic(30);
+                onTogglePairing();
+              }}
+              className="flex w-full items-center gap-3 rounded-xl border border-[#FFCB05]/50 bg-gradient-to-br from-[#FFCB05]/10 to-[#F68B1F]/10 px-4 py-3 text-left transition active:scale-[0.98]"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FFCB05] to-[#F68B1F] text-[#0E1015]">
+                <Smartphone className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-white">
+                  Cadastrar Controle Remoto 📱
+                </span>
+                <span className="block text-[11px] text-[#9CA3AF]">
+                  Mostra/oculta o frame flutuante com QR de pareamento
                 </span>
               </span>
             </button>
