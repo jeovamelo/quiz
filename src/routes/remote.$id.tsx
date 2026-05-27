@@ -674,6 +674,23 @@ function RemoteControl() {
             {laserOn ? "🔴 Laser Ativo — Mova o celular" : "Apontador Laser 🔴"}
           </button>
 
+          {/* CENTRALIZAR MIRA — só aparece com o laser ativo */}
+          {laserOn && (
+            <button
+              type="button"
+              onClick={() => {
+                haptic(20);
+                recalibrarMira();
+                toast.success("Mira centralizada! 🎯");
+              }}
+              aria-label="Centralizar Mira"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-400/40 bg-red-500/10 text-xs font-bold text-red-300 transition-all duration-100 active:scale-95"
+            >
+              <Crosshair className="h-4 w-4" />
+              Centralizar Mira 🎯
+            </button>
+          )}
+
           {/* BOTÃO HERÓI AVANÇAR — no último slide aciona o pódio automático */}
           <button
             type="button"
