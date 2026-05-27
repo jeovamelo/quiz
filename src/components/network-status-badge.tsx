@@ -56,9 +56,9 @@ export function NetworkStatusBadge({ transport, compact = false, className = "" 
 export function NetworkFallbackBanner({ transport }: { transport: TunnelTransport }) {
   if (transport !== "fallback") return null;
   return (
-    <div className="z-50 w-full bg-[#FFCB05] px-3 py-2 text-center text-[11px] font-extrabold uppercase tracking-wide text-black animate-pulse shadow-lg">
-      ⚠️ Redes Diferentes Detectadas! O controle remoto pode apresentar lentidão.
-      Para latência zero, conecte o celular e o computador no mesmo Wi-Fi.
+    <div className="z-50 w-full bg-[#FFCB05] px-3 py-2 text-center text-[11px] font-bold leading-snug text-black shadow-lg">
+      ⚠️ Conexão em nuvem ativa. Para latência zero no laser e transição instantânea,
+      conecte este celular no mesmo Wi-Fi do computador do projetor.
     </div>
   );
 }
