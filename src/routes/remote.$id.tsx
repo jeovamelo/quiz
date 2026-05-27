@@ -644,11 +644,13 @@ function RemoteControl() {
             showJoinQr={!!session?.show_join_qr}
             showRanking={!!session?.show_ranking}
             showSidebar={!!session?.show_sidebar}
+            showPairQr={!!session?.show_pair_qr}
             isFullscreen={!!session?.is_fullscreen}
             onToggleFullscreen={toggleFullscreen}
             onToggleJoinQr={() => toggleSessionFlag("show_join_qr")}
             onToggleRanking={() => toggleSessionFlag("show_ranking")}
             onToggleSidebar={() => toggleSessionFlag("show_sidebar")}
+            onTogglePairQr={() => toggleSessionFlag("show_pair_qr")}
             onShowGiantQr={showGiantQr}
             onEndSession={exitToHub}
           />
