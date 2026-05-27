@@ -649,17 +649,10 @@ function Present() {
           >
             <Trophy className="h-6 w-6" />
           </button>
-          {/* Indicador discreto de celular conectado */}
-          {bridge.partnerOnline && (
-            <div
-              title="Controle remoto do celular conectado"
-              aria-label="Controle remoto do celular conectado"
-              className="absolute right-20 top-4 z-20 flex h-12 items-center gap-1.5 rounded-full border border-[#07A684]/40 bg-[#07A684]/15 px-3 text-[#07A684] shadow-lg backdrop-blur"
-            >
-              <Smartphone className="h-4 w-4" />
-              <span className="h-2 w-2 rounded-full bg-[#07A684] animate-pulse" />
-            </div>
-          )}
+          {/* Selo persistente de pareamento com o celular */}
+          <div className="absolute right-20 top-4 z-20">
+            <PairingStatusBadge userId={user?.id} variant="desktop" compact />
+          </div>
         </div>
 
         {/* Painel retrátil — Classificação em tempo real */}
