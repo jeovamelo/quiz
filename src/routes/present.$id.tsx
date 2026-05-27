@@ -22,6 +22,7 @@ import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 import { toast } from "sonner";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
 import { Smartphone } from "lucide-react";
+import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
 
 export const Route = createFileRoute("/present/$id")({
   head: () => ({ meta: [{ title: "Apresentação ao vivo — QuizPulse" }] }),
@@ -421,6 +422,26 @@ function Present() {
       await (supabase.from("presentations") as any)
         .update({ execution_status: full ? "completed_full" : "completed_partial" })
         .eq("id", session.presentation_id);
+    }
+  }
+
+  /**
+   * Retorna o palestrante para a tela de onde ele veio (Dashboard, página do
+   * evento, etc.), limpando canais ativos antes da navegação.
+   */
+  function smartReturn() {
+    try {
+      // Limpa os canais realtime desta apresentação para evitar concorrência.
+      supabase.removeAllChannels();
+    } catch {
+      /* ignora */
+    }
+    const target = consumeDashboardOrigin();
+    // Navegação absoluta — preserva search e subrotas memorizadas.
+    if (typeof window !== "undefined") {
+      window.location.assign(target);
+    } else {
+      navigate({ to: "/dashboard" });
     }
   }
 
