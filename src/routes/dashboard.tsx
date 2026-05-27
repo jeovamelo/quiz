@@ -117,9 +117,6 @@ function Dashboard() {
 
   // === LAYOUT MÓVEL: foco absoluto no Controle Remoto ===
   if (isMobile) {
-    const remoteTarget = activeSession
-      ? { to: "/remote/$id" as const, params: { id: activeSession.id } }
-      : { to: "/remote" as const, params: undefined };
     const heroTitle = activeSession ? "Apresentação Pronta" : "Gerenciamento Ativo";
     const heroSubtitle = activeSession
       ? activePresentationTitle || "Sessão em andamento — assuma o controle agora."
@@ -170,15 +167,28 @@ function Dashboard() {
               {heroSubtitle}
             </p>
 
-            <Link
-              {...remoteTarget}
-              onClick={() => haptic(40)}
-              className="mt-4 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-4 text-base font-black uppercase tracking-wide text-white shadow-xl shadow-[#A6193C]/40 transition-all duration-100 active:scale-[0.97] active:from-[#8E1432] active:to-[#D87412]"
-            >
-              <Zap className="h-6 w-6 drop-shadow" strokeWidth={2.5} />
-              <span className="leading-tight">Iniciar Controle Remoto</span>
-              <Smartphone className="h-5 w-5 opacity-90" />
-            </Link>
+            {activeSession ? (
+              <Link
+                to="/remote/$id"
+                params={{ id: activeSession.id }}
+                onClick={() => haptic(40)}
+                className="mt-4 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-4 text-base font-black uppercase tracking-wide text-white shadow-xl shadow-[#A6193C]/40 transition-all duration-100 active:scale-[0.97] active:from-[#8E1432] active:to-[#D87412]"
+              >
+                <Zap className="h-6 w-6 drop-shadow" strokeWidth={2.5} />
+                <span className="leading-tight">Iniciar Controle Remoto</span>
+                <Smartphone className="h-5 w-5 opacity-90" />
+              </Link>
+            ) : (
+              <Link
+                to="/remote"
+                onClick={() => haptic(40)}
+                className="mt-4 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-4 text-base font-black uppercase tracking-wide text-white shadow-xl shadow-[#A6193C]/40 transition-all duration-100 active:scale-[0.97] active:from-[#8E1432] active:to-[#D87412]"
+              >
+                <Zap className="h-6 w-6 drop-shadow" strokeWidth={2.5} />
+                <span className="leading-tight">Iniciar Controle Remoto</span>
+                <Smartphone className="h-5 w-5 opacity-90" />
+              </Link>
+            )}
 
             {activeSession && (
               <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-wider text-[#07A684]">
