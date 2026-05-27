@@ -21,6 +21,43 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
+/**
+ * Abre a apresentação ao vivo em uma janela popup independente — sem barra
+ * de navegação, sem abas — para que o palestrante posicione no segundo
+ * monitor (projetor) e mantenha o Dashboard aberto na tela principal.
+ */
+function openPresentationPopup(sessionId: string) {
+  if (typeof window === "undefined") return;
+  const url = `/present/${sessionId}/pair`;
+  const scr: any = window.screen || {};
+  const width = scr.width || 1280;
+  const height = scr.height || 800;
+  // Heurística multimonitor: se o navegador expõe availLeft positivo
+  // (ou se a área disponível for maior que a tela principal), tentamos
+  // posicionar a popup no monitor lateral.
+  const availLeft = typeof scr.availLeft === "number" ? scr.availLeft : 0;
+  const left = availLeft > 0 ? availLeft : width;
+  const top = 0;
+  const features = [
+    `width=${width}`,
+    `height=${height}`,
+    `left=${left}`,
+    `top=${top}`,
+    "popup=yes",
+    "menubar=no",
+    "toolbar=no",
+    "location=no",
+    "status=no",
+    "resizable=yes",
+  ].join(",");
+  const win = window.open(url, `ApresentacaoLive-${sessionId}`, features);
+  if (!win) {
+    toast.error("Permita pop-ups deste site para abrir a apresentação em nova janela.");
+    return;
+  }
+  win.focus();
+}
+
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Meus Quizzes — QuizPulse" }] }),
   component: Dashboard,
