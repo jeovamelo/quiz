@@ -22,7 +22,7 @@ import {
 import {
   Trophy,
   Power,
-  Settings,
+  Sliders,
   ScanLine,
 } from "lucide-react";
 import { haptic } from "@/hooks/use-haptic";
@@ -50,9 +50,19 @@ export function RemoteDrawer({
             type="button"
             onClick={() => haptic(25)}
             aria-label="Outras Funcionalidades"
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#3A4255] bg-[#1E2235] text-sm font-bold text-[#9CA3AF] transition-all duration-100 active:scale-95 active:bg-[#262D3D] hover:text-white"
+            className="flex h-16 w-full items-center gap-3 rounded-2xl border border-[#262D3D] bg-[#161A23] px-4 text-left text-sm font-bold text-white shadow-md transition-all duration-100 active:scale-[0.98] active:bg-[#1E2235]"
           >
-            <Settings className="h-4 w-4" /> Outras Funcionalidades ⚙️
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#262D3D] bg-[#0E1015] text-[#9CA3AF]">
+              <Sliders className="h-5 w-5" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-base font-extrabold text-white">
+                Outras Funcionalidades ⚙️
+              </span>
+              <span className="block text-[11px] font-medium text-[#9CA3AF]">
+                Classificação, QR gigante e encerramento
+              </span>
+            </span>
           </button>
         </DrawerTrigger>
         <DrawerContent className="border-t border-[#262D3D] bg-[#0E1015] text-white">
