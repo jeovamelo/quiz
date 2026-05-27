@@ -7,6 +7,7 @@ import {
   Trophy,
   Users,
   Crosshair,
+  LayoutDashboard,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
