@@ -437,32 +437,37 @@ export function Present() {
     if (remotesCount > 0 && !pairFlowDone) setPairFlowDone(true);
   }, [remotesCount, pairFlowDone]);
 
-  // Driver dos overlays de abertura. Só atua enquanto a sessão está em
-  // 'lobby'. Em 'live' garante que QRs sumam para foco total no slide.
+  // Driver dos overlays de abertura. Funciona como gatilho ÚNICO por
+  // etapa: abre o QR apropriado apenas uma vez (na chegada à etapa) e
+  // nunca mais força-o de volta caso o usuário o feche manualmente.
+  // Em 'live', garante que ambos os QRs sumam para foco total no slide.
+  const pairAutoOpenedRef = useRef(false);
+  const joinAutoOpenedRef = useRef(false);
   useEffect(() => {
     if (!session) return;
     const status = session.status;
-    const showPair = !!(session as any).show_pair_qr;
-    const showJoin = !!session.show_join_qr;
-    const showRanking = !!session.show_ranking;
     if (status === "lobby") {
       if (!pairFlowDone) {
-        // ETAPA 1 — somente QR do Controle Remoto.
-        if (!showPair) setOverlayFlag("show_pair_qr", true);
-        if (showJoin) setOverlayFlag("show_join_qr", false);
-        if (showRanking) setOverlayFlag("show_ranking", false);
+        // ETAPA 1 — abre o QR do Controle Remoto uma única vez.
+        if (!pairAutoOpenedRef.current) {
+          pairAutoOpenedRef.current = true;
+          if (!session.show_pair_qr) setOverlayFlag("show_pair_qr", true);
+        }
       } else {
-        // ETAPA 2 — somente QR dos Participantes (Lobby).
-        if (showPair) setOverlayFlag("show_pair_qr", false);
-        if (!showJoin) setOverlayFlag("show_join_qr", true);
-        if (showRanking) setOverlayFlag("show_ranking", false);
+        // ETAPA 2 — abre o QR dos Participantes uma única vez.
+        if (!joinAutoOpenedRef.current) {
+          joinAutoOpenedRef.current = true;
+          if (!session.show_join_qr) setOverlayFlag("show_join_qr", true);
+          // Ao chegar na etapa 2, fecha o QR de pareamento se ainda estiver aberto.
+          if (session.show_pair_qr) setOverlayFlag("show_pair_qr", false);
+        }
       }
     } else if (status === "live") {
-      if (showPair) setOverlayFlag("show_pair_qr", false);
-      if (showJoin) setOverlayFlag("show_join_qr", false);
+      if (session.show_pair_qr) setOverlayFlag("show_pair_qr", false);
+      if (session.show_join_qr) setOverlayFlag("show_join_qr", false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.status, session?.show_pair_qr, session?.show_join_qr, session?.show_ranking, pairFlowDone]);
+  }, [session?.status, pairFlowDone]);
 
   // Carrega total de páginas do PDF via pdfjs
   useEffect(() => {
