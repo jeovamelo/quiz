@@ -532,7 +532,30 @@ function EventManage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-8">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <Tabs defaultValue="apresentacoes" className="w-full">
+          <TabsList className="mb-6 grid w-full grid-cols-3 gap-1 bg-[#161A23] p-1">
+            <TabsTrigger
+              value="apresentacoes"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Presentation className="mr-2 h-4 w-4" /> Apresentações
+            </TabsTrigger>
+            <TabsTrigger
+              value="central"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Gamepad2 className="mr-2 h-4 w-4" /> Central de Controle
+            </TabsTrigger>
+            <TabsTrigger
+              value="classificacao"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Trophy className="mr-2 h-4 w-4" /> Classificação
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="apresentacoes" className="mt-0">
+            <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             Arraste os cards pela alça à esquerda para reordenar a sequência. Elas serão executadas na ordem listada.
           </p>
