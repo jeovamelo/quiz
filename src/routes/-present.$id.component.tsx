@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, Copy, Loader2, LogOut, Maximize, Tv, Trophy } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, LogOut, Maximize, Tv, Trophy, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,9 @@ import { Button } from "@/components/ui/button";
 import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 import { toast } from "sonner";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
+import { useWebRTCTunnel, type TunnelTransport } from "@/hooks/use-webrtc-tunnel";
+import { NetworkStatusBadge, NetworkFallbackBanner } from "@/components/network-status-badge";
+import { GiantQrOverlay } from "@/components/giant-qr-overlay";
 import { Smartphone } from "lucide-react";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
 
@@ -55,6 +58,10 @@ export function Present() {
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
+  // Controle local da Barra Lateral direita no próprio projetor (chevron flutuante)
+  const [sidebarCollapsedLocal, setSidebarCollapsedLocal] = useState(false);
+  // Sobreposição do QR Code gigante (acionada pelo controle remoto)
+  const [giantQrOpen, setGiantQrOpen] = useState(false);
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
@@ -120,6 +127,16 @@ export function Present() {
         return;
       }
 
+      // Sobreposição QR Gigante — instantânea, sem ir ao banco.
+      if (action === "SHOW_GIANT_QR") {
+        setGiantQrOpen(true);
+        return;
+      }
+      if (action === "HIDE_GIANT_QR") {
+        setGiantQrOpen(false);
+        return;
+      }
+
       // Re-busca o estado mais recente para evitar usar React state desatualizado.
       const { data: fresh } = await supabase
         .from("sessions")
@@ -152,6 +169,79 @@ export function Present() {
       }
     },
   });
+
+  // === Túneis WebRTC P2P (1 por slot) — host. ===
+  // Quando algum DataChannel está aberto, exibimos badge verde.
+  function handleTunnelMessage(msg: any) {
+    if (!msg || typeof msg !== "object") return;
+    const action = msg.action as string | undefined;
+    if (!action) return;
+    // Reaproveita o handler do bridge (single source of truth).
+    bridgeOnActionRef.current?.(action as any, msg);
+  }
+  const bridgeOnActionRef = useRef<typeof bridge.send extends never ? never : ((a: any, p: any) => void) | null>(null);
+  // Captura uma referência ao mesmo onAction passado ao bridge para reuso.
+  useEffect(() => {
+    bridgeOnActionRef.current = async (action: any, payload: any) => {
+      // Re-emite via mesma ponte handler (chamada direta seria mais limpa,
+      // mas mantemos um pequeno proxy para reutilizar a lógica completa).
+      const evt = new CustomEvent("present:remote-action", { detail: { action, payload } });
+      window.dispatchEvent(evt);
+    };
+  }, []);
+  // Escuta o evento sintético e roteia para o mesmo onAction.
+  useEffect(() => {
+    function onEvt(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.action) return;
+      const action = detail.action as string;
+      const payload = detail.payload ?? {};
+      // Reaplica a mesma lógica do bridge.onAction.
+      if (action === "SHOW_GIANT_QR") return setGiantQrOpen(true);
+      if (action === "HIDE_GIANT_QR") return setGiantQrOpen(false);
+      if (action === "NEXT") {
+        handleMasterAdvanceRef.current();
+        return;
+      }
+      if (action === "PREV") {
+        (async () => {
+          const { data: fresh } = await supabase
+            .from("sessions")
+            .select("current_slide")
+            .eq("id", id)
+            .single();
+          const ls = (fresh as any)?.current_slide ?? 1;
+          await setSlide(Math.max(1, ls - 1), { direction: "prev" });
+        })();
+        return;
+      }
+      if (action === "TOGGLE_FULLSCREEN") {
+        (async () => {
+          const { data: fresh } = await supabase
+            .from("sessions")
+            .select("is_fullscreen")
+            .eq("id", id)
+            .single();
+          await (supabase.from("sessions") as any)
+            .update({ is_fullscreen: !(fresh as any)?.is_fullscreen })
+            .eq("id", id);
+        })();
+        return;
+      }
+    }
+    window.addEventListener("present:remote-action", onEvt as any);
+    return () => window.removeEventListener("present:remote-action", onEvt as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const tunnel1 = useWebRTCTunnel({ sessionId: id, slot: 1, role: "host", onMessage: handleTunnelMessage });
+  const tunnel2 = useWebRTCTunnel({ sessionId: id, slot: 2, role: "host", onMessage: handleTunnelMessage });
+  const aggregateTransport: TunnelTransport =
+    tunnel1.transport === "p2p" || tunnel2.transport === "p2p"
+      ? "p2p"
+      : tunnel1.transport === "fallback" && tunnel2.transport === "fallback"
+      ? "fallback"
+      : "connecting";
 
   // Sincroniza o pedido remoto de tela cheia (vindo do celular do palestrante)
   useEffect(() => {
