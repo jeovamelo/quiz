@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, SmartphoneCharging, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useEffect } from "react";
+import { usePairingPresence } from "@/hooks/use-pairing-presence";
+import { useEffect, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -29,6 +32,23 @@ function Dashboard() {
   const { user } = useRequireSpeaker();
   const userId = user?.id;
   const isMobile = useIsMobile();
+  const { partnerOnline: phonePaired } = usePairingPresence(userId, "desktop");
+  const [pairOpen, setPairOpen] = useState(false);
+  const [pairUrl, setPairUrl] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPairUrl(`${window.location.origin}/remote`);
+    }
+  }, []);
+
+  // Fecha o modal automaticamente quando o celular parear.
+  useEffect(() => {
+    if (phonePaired && pairOpen) {
+      const t = window.setTimeout(() => setPairOpen(false), 1200);
+      return () => window.clearTimeout(t);
+    }
+  }, [phonePaired, pairOpen]);
 
   // Em celular, palestrante logado vai direto ao controle remoto
   useEffect(() => {
@@ -132,6 +152,34 @@ function Dashboard() {
             <p className="text-sm text-muted-foreground">{user?.user_metadata?.full_name || user?.email || "Palestrante"}</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Selo de pareamento do celular */}
+            <button
+              type="button"
+              onClick={() => setPairOpen(true)}
+              title={phonePaired ? "Celular pareado" : "Conectar ao celular"}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                phonePaired
+                  ? "border-[#07A684]/50 bg-[#07A684]/10 text-[#07A684]"
+                  : "border-[#3A4255] bg-[#1E2235] text-[#9CA3AF] hover:border-[#F68B1F]/60 hover:text-[#F68B1F]"
+              }`}
+            >
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${
+                  phonePaired ? "bg-[#07A684] animate-pulse" : "bg-[#6B7280]"
+                }`}
+              />
+              {phonePaired ? "🟢 Celular Pareado e Pronto!" : "📱 Celular Desconectado"}
+            </button>
+            {!phonePaired && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPairOpen(true)}
+                className="border-[#F68B1F]/50 text-[#F68B1F] hover:bg-[#F68B1F]/10 hover:text-[#F68B1F]"
+              >
+                <SmartphoneCharging className="mr-1.5 h-4 w-4" /> Conectar ao Celular
+              </Button>
+            )}
             <Button
               asChild
               variant="ghost"
@@ -309,6 +357,46 @@ function Dashboard() {
           </span>
         </Link>
       )}
+
+      <Dialog open={pairOpen} onOpenChange={setPairOpen}>
+        <DialogContent className="border-[#262D3D] bg-[#0E1015] text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <SmartphoneCharging className="h-5 w-5 text-[#F68B1F]" /> Parear Controle Remoto
+            </DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">
+              Aponte a câmera do seu celular para o QR Code abaixo. Faça login (se necessário) e o controle remoto abrirá automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            {phonePaired ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center animate-fade-in">
+                <CheckCircle2 className="h-16 w-16 text-[#07A684] drop-shadow-[0_0_18px_rgba(7,166,132,0.6)]" />
+                <p className="text-lg font-bold text-[#07A684]">Celular pareado!</p>
+                <p className="text-sm text-[#9CA3AF]">Você já pode usar seu celular como controle remoto.</p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl bg-white p-3">
+                  {pairUrl && <QRCodeSVG value={pairUrl} size={200} />}
+                </div>
+                <div className="w-full">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                    Ou abra este link no celular:
+                  </p>
+                  <code className="block w-full truncate rounded bg-[#1E2235] px-3 py-2 text-xs text-[#F68B1F]">
+                    {pairUrl}
+                  </code>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[#9CA3AF]">
+                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#FFCB05]" />
+                  Aguardando o celular se conectar...
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

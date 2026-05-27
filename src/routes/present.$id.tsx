@@ -60,6 +60,10 @@ function Present() {
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
+  // === APONTADOR LASER recebido do celular ===
+  const [laserCoords, setLaserCoords] = useState<{ x: number; y: number } | null>(null);
+  const laserTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
     setJoinUrl(`${window.location.origin}/join?session=${id}`);
   }, [id]);
@@ -68,7 +72,27 @@ function Present() {
   const bridge = useRemoteBridge({
     sessionId: id,
     role: "projector",
-    onAction: async (action) => {
+    onAction: async (action, payload) => {
+      // === LASER: mais frequente — trate antes do fetch ao banco. ===
+      if (action === "LASER") {
+        const x = Number(payload?.x);
+        const y = Number(payload?.y);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          setLaserCoords({ x, y });
+          if (laserTimerRef.current) window.clearTimeout(laserTimerRef.current);
+          // Fadeout suave: some após 1.5s sem novas coordenadas.
+          laserTimerRef.current = window.setTimeout(() => {
+            setLaserCoords(null);
+          }, 1500);
+        }
+        return;
+      }
+      if (action === "LASER_OFF") {
+        if (laserTimerRef.current) window.clearTimeout(laserTimerRef.current);
+        setLaserCoords(null);
+        return;
+      }
+
       // Re-busca o estado mais recente para evitar usar React state desatualizado.
       const { data: fresh } = await supabase
         .from("sessions")
@@ -522,6 +546,26 @@ function Present() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
+      {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
+      {laserCoords && (
+        <div
+          className="pointer-events-none fixed inset-0 z-[60]"
+          aria-hidden="true"
+        >
+          <div
+            className="absolute h-4 w-4 rounded-full bg-red-500 transition-all duration-75 ease-out"
+            style={{
+              left: `${laserCoords.x}%`,
+              top: `${laserCoords.y}%`,
+              transform: "translate(-50%, -50%)",
+              boxShadow: "0 0 15px 4px rgba(239, 68, 68, 0.85)",
+              border: "1px solid rgba(255,255,255,0.95)",
+            }}
+          >
+            <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
+          </div>
+        </div>
+      )}
       {!projectorActivated && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm p-6">
           <div className="max-w-md rounded-2xl border border-[#262D3D] bg-[#131722] p-6 text-center shadow-2xl">

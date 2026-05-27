@@ -6,7 +6,9 @@ export type RemoteAction =
   | "NEXT"
   | "PREV"
   | "TOGGLE_FULLSCREEN"
-  | "SHOW_PODIUM";
+  | "SHOW_PODIUM"
+  | "LASER"
+  | "LASER_OFF";
 
 export type BridgeStatus = "connecting" | "connected" | "disconnected";
 

@@ -4,6 +4,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Calendar, Loader2, LogOut, Smartphone, Tv } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
+import { usePairingPresence } from "@/hooks/use-pairing-presence";
 import { haptic } from "@/hooks/use-haptic";
 import { toast } from "sonner";
 
@@ -24,6 +25,8 @@ function RemoteHub() {
   const { user, loading } = useRequireSpeaker();
   const navigate = useNavigate();
   const userId = user?.id;
+  // Anuncia o celular como pareado ao computador deste palestrante.
+  usePairingPresence(userId, "mobile");
 
   const { data: events } = useQuery({
     queryKey: ["remote-events", userId],

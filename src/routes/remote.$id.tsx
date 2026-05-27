@@ -9,6 +9,7 @@ import {
   Minimize,
   Trophy,
   Users,
+  Crosshair,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -25,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { haptic } from "@/hooks/use-haptic";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
+import { usePairingPresence } from "@/hooks/use-pairing-presence";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/remote/$id")({
@@ -42,7 +44,7 @@ type Question = {
 };
 
 function RemoteControl() {
-  useRequireSpeaker();
+  const { user } = useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
@@ -61,6 +63,123 @@ function RemoteControl() {
 
   // Ponte de tempo real (Broadcast) entre celular e projetor.
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
+
+  // Anuncia presença ao Dashboard do palestrante (pareamento global).
+  usePairingPresence(user?.id, "mobile");
+
+  // === PERSISTÊNCIA: salva a última sessão ativa para auto-reconectar ===
+  useEffect(() => {
+    try {
+      localStorage.setItem("quizpulse:last-session", id);
+    } catch {
+      /* ignora */
+    }
+  }, [id]);
+
+  // === WAKE LOCK: evita que a tela do celular apague durante a palestra ===
+  useEffect(() => {
+    let wakeLock: any = null;
+    let cancelled = false;
+    async function request() {
+      try {
+        const wl = (navigator as any).wakeLock;
+        if (!wl?.request) return;
+        wakeLock = await wl.request("screen");
+        if (cancelled) {
+          try {
+            await wakeLock.release();
+          } catch {
+            /* ignora */
+          }
+        }
+      } catch (e) {
+        console.warn("[wake-lock] Não foi possível ativar:", e);
+      }
+    }
+    request();
+    function onVisibility() {
+      if (document.visibilityState === "visible" && !wakeLock) request();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (wakeLock) {
+        try {
+          wakeLock.release();
+        } catch {
+          /* ignora */
+        }
+      }
+    };
+  }, []);
+
+  // === APONTADOR LASER VIRTUAL (giroscópio + acelerômetro) ===
+  const [laserOn, setLaserOn] = useState(false);
+  useEffect(() => {
+    if (!laserOn) {
+      // Avisa o projetor para apagar o ponto, se a ponte estiver conectada.
+      if (bridge.status === "connected") {
+        bridge.send("LASER_OFF").catch(() => {
+          /* ignora */
+        });
+      }
+      return;
+    }
+    let lastSent = 0;
+    function handleOrientation(event: DeviceOrientationEvent) {
+      const now = Date.now();
+      if (now - lastSent < 40) return; // ~25 FPS
+      const { beta, gamma } = event;
+      if (beta === null || gamma === null) return;
+      // Limites confortáveis de uso com uma mão.
+      const minBeta = 45;
+      const maxBeta = 85;
+      const minGamma = -30;
+      const maxGamma = 30;
+      const yPercent = Math.max(
+        0,
+        Math.min(100, ((beta - minBeta) / (maxBeta - minBeta)) * 100),
+      );
+      const xPercent = Math.max(
+        0,
+        Math.min(100, ((gamma - minGamma) / (maxGamma - minGamma)) * 100),
+      );
+      bridge.send("LASER", { x: xPercent, y: yPercent }).catch(() => {
+        /* ignora */
+      });
+      lastSent = now;
+    }
+    window.addEventListener("deviceorientation", handleOrientation);
+    return () => {
+      window.removeEventListener("deviceorientation", handleOrientation);
+    };
+  }, [laserOn, bridge]);
+
+  async function toggleLaser() {
+    haptic(35);
+    if (laserOn) {
+      setLaserOn(false);
+      return;
+    }
+    // Permissão iOS 13+ para sensores
+    try {
+      const DOE: any = (window as any).DeviceOrientationEvent;
+      if (DOE && typeof DOE.requestPermission === "function") {
+        const res = await DOE.requestPermission();
+        if (res !== "granted") {
+          toast.error("Permissão de sensores negada no celular.");
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("[laser] Sensor não disponível:", e);
+      toast.error("Sensores de movimento indisponíveis neste celular.");
+      return;
+    }
+    setLaserOn(true);
+    toast.success("Apontador laser ativado!");
+  }
 
   // Carrega sessão, apresentação, perguntas e contagem de participantes
   useEffect(() => {
@@ -323,6 +442,11 @@ function RemoteControl() {
 
   async function exitToHub() {
     await withBusy(async () => {
+      try {
+        localStorage.removeItem("quizpulse:last-session");
+      } catch {
+        /* ignora */
+      }
       // 1. Marca sessão como encerrada
       await supabase
         .from("sessions")
@@ -516,13 +640,29 @@ function RemoteControl() {
 
         {/* RODAPÉ DE CONTROLE — Avançar (herói) + Voltar */}
         <div className="shrink-0 space-y-2.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+          {/* APONTADOR LASER — toggle */}
+          <button
+            type="button"
+            onClick={toggleLaser}
+            aria-pressed={laserOn}
+            aria-label="Apontador Laser"
+            className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-all duration-100 active:scale-95 ${
+              laserOn
+                ? "border-red-400 bg-gradient-to-r from-red-600 to-red-500 text-white shadow-[0_0_20px_-2px_rgba(239,68,68,0.7)] animate-pulse"
+                : "border-[#3A4255] bg-[#1E2235] text-[#9CA3AF] hover:text-white"
+            }`}
+          >
+            <Crosshair className={`h-5 w-5 ${laserOn ? "text-white" : "text-red-400"}`} />
+            {laserOn ? "🔴 Laser Ativo — Mova o celular" : "Apontador Laser 🔴"}
+          </button>
+
           {/* BOTÃO HERÓI AVANÇAR — no último slide aciona o pódio automático */}
           <button
             type="button"
             onClick={nextSlide}
             disabled={busy}
             aria-label="Avançar"
-            className="relative flex h-[55vh] min-h-[280px] w-full items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
+            className="relative flex h-[48vh] min-h-[240px] w-full items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
           >
             <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true" />
             <div className="relative z-10 flex flex-col items-center justify-center gap-2">
