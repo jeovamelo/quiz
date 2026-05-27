@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, Presentation, Gamepad2, ChevronLeft, ChevronRight, QrCode, BarChart3, PanelRight, PowerOff, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -8,6 +9,7 @@ import { usePresenceMonitor } from "@/hooks/use-presence-monitor";
 import { haptic } from "@/hooks/use-haptic";
 import { rememberDashboardOrigin } from "@/lib/dashboard-origin";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -388,127 +390,183 @@ function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        {events && events.length > 0 && (
-          <section className="mb-10">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Eventos
-            </h2>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {events.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Calendar className="h-5 w-5 shrink-0 text-primary" />
-                      <div className="min-w-0">
-                        <h3 className="truncate font-semibold">{ev.title}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(ev.created_at).toLocaleDateString("pt-BR")}
-                        </p>
+      <main className="mx-auto max-w-6xl px-6 py-6">
+        <Tabs defaultValue="apresentacoes" className="w-full">
+          <TabsList className="mb-6 grid w-full grid-cols-2 gap-1 bg-[#161A23] p-1 md:grid-cols-4">
+            <TabsTrigger
+              value="apresentacoes"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Presentation className="mr-2 h-4 w-4" /> Apresentações
+            </TabsTrigger>
+            <TabsTrigger
+              value="eventos"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Calendar className="mr-2 h-4 w-4" /> Eventos
+            </TabsTrigger>
+            <TabsTrigger
+              value="central"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Gamepad2 className="mr-2 h-4 w-4" /> Central de Controle
+            </TabsTrigger>
+            <TabsTrigger
+              value="classificacao"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Trophy className="mr-2 h-4 w-4" /> Classificação
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ABA 1 — APRESENTAÇÕES */}
+          <TabsContent value="apresentacoes" className="mt-0">
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+              </div>
+            ) : !data || data.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-card/30 p-12 text-center">
+                <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h2 className="mt-4 text-lg font-semibold">Nenhum quiz criado ainda</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Crie seu primeiro quiz para começar.
+                </p>
+                <Button asChild className="mt-6">
+                  <Link to="/quiz/new">
+                    <Plus className="mr-2 h-4 w-4" /> Criar primeiro quiz
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {data.map((p) => (
+                  <div
+                    key={p.id}
+                    className="overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/60"
+                  >
+                    <div className="aspect-video bg-black">
+                      <iframe
+                        title={p.title}
+                        src={`${p.file_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                        className="pointer-events-none h-full w-full"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="line-clamp-1 font-semibold">{p.title}</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                      </p>
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => startSession(p.id)}
+                        >
+                          <Play className="mr-1 h-4 w-4" /> Iniciar
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <Link to="/quiz/$id/edit" params={{ id: p.id }}>
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir quiz?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. O quiz "{p.title}", suas perguntas
+                                e sessões associadas serão removidos permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deletePresentation(p.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button asChild size="sm" variant="ghost" title="Grande Pódio">
-                        <Link to="/event/$id/podium" params={{ id: ev.id }}>
-                          <Trophy className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button asChild size="sm" variant="outline">
-                        <Link to="/event/$id" params={{ id: ev.id }}>
-                          Gerenciar
-                        </Link>
-                      </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ABA 2 — EVENTOS */}
+          <TabsContent value="eventos" className="mt-0">
+            {!events || events.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-card/30 p-12 text-center">
+                <Calendar className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h2 className="mt-4 text-lg font-semibold">Nenhum evento ainda</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Agrupe múltiplas apresentações em um evento.
+                </p>
+                <Button asChild className="mt-6">
+                  <Link to="/event/new">
+                    <CalendarPlus className="mr-2 h-4 w-4" /> Criar primeiro evento
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {events.map((ev) => (
+                  <div
+                    key={ev.id}
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Calendar className="h-5 w-5 shrink-0 text-primary" />
+                        <div className="min-w-0">
+                          <h3 className="truncate font-semibold">{ev.title}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(ev.created_at).toLocaleDateString("pt-BR")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button asChild size="sm" variant="ghost" title="Grande Pódio">
+                          <Link to="/event/$id/podium" params={{ id: ev.id }}>
+                            <Trophy className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <Link to="/event/$id" params={{ id: ev.id }}>
+                            Gerenciar
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
-          </div>
-        ) : !data || data.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-card/30 p-12 text-center">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h2 className="mt-4 text-lg font-semibold">Nenhum quiz criado ainda</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Crie seu primeiro quiz para começar.
-            </p>
-            <Button asChild className="mt-6">
-              <Link to="/quiz/new">
-                <Plus className="mr-2 h-4 w-4" /> Criar primeiro quiz
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {data.map((p) => (
-              <div
-                key={p.id}
-                className="overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/60"
-              >
-                <div className="aspect-video bg-black">
-                  <iframe
-                    title={p.title}
-                    src={`${p.file_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                    className="pointer-events-none h-full w-full"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="line-clamp-1 font-semibold">{p.title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
-                  </p>
-                  <div className="mt-4 flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => startSession(p.id)}
-                    >
-                      <Play className="mr-1 h-4 w-4" /> Iniciar
-                    </Button>
-                    <Button asChild size="sm" variant="outline">
-                      <Link to="/quiz/$id/edit" params={{ id: p.id }}>
-                        <Pencil className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir quiz?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. O quiz "{p.title}", suas perguntas
-                            e sessões associadas serão removidos permanentemente.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deletePresentation(p.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </TabsContent>
+
+          {/* ABA 3 — CENTRAL DE CONTROLE (PRO) */}
+          <TabsContent value="central" className="mt-0">
+            <CentralDeControle
+              activeSession={activeSession}
+              activePresentationTitle={activePresentationTitle ?? null}
+            />
+          </TabsContent>
+
+          {/* ABA 4 — CLASSIFICAÇÃO GLOBAL */}
+          <TabsContent value="classificacao" className="mt-0">
+            <ClassificacaoGlobal presentationIds={(data ?? []).map((p) => p.id)} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {activeSession && (
@@ -529,6 +587,352 @@ function Dashboard() {
           </span>
         </Link>
       )}
+    </div>
+  );
+}
+
+// =============================================================
+// CENTRAL DE CONTROLE — versão Pro (desktop) para co-apresentador
+// =============================================================
+type ActiveSession = { id: string; presentation_id: string; status: string } | null;
+
+function CentralDeControle({
+  activeSession,
+  activePresentationTitle,
+}: {
+  activeSession: ActiveSession;
+  activePresentationTitle: string | null;
+}) {
+  const [session, setSession] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!activeSession?.id) {
+      setSession(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("*")
+        .eq("id", activeSession.id)
+        .single();
+      if (!cancelled) setSession(data);
+    })();
+    const ch = supabase
+      .channel(`central-${activeSession.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sessions", filter: `id=eq.${activeSession.id}` },
+        (payload) => setSession(payload.new),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [activeSession?.id]);
+
+  if (!activeSession) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[#262D3D] bg-[#161A23] p-12 text-center">
+        <Gamepad2 className="mx-auto h-12 w-12 text-[#9CA3AF]" />
+        <h2 className="mt-4 text-lg font-semibold">Nenhuma apresentação ao vivo</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Inicie uma apresentação na aba <span className="font-semibold text-[#F68B1F]">Apresentações</span> para
+          assumir o controle de palco a partir desta tela.
+        </p>
+      </div>
+    );
+  }
+
+  async function patch(p: Record<string, any>) {
+    if (!activeSession) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase.from("sessions") as any).update(p).eq("id", activeSession.id);
+      if (error) toast.error("Falha ao atualizar a sessão.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function nextSlide() {
+    if (!session) return;
+    await patch({
+      current_slide: (session.current_slide ?? 1) + 1,
+      question_revealed: false,
+      active_question_id: null,
+      question_started_at: null,
+    });
+  }
+
+  async function prevSlide() {
+    if (!session) return;
+    await patch({
+      current_slide: Math.max(1, (session.current_slide ?? 1) - 1),
+      question_revealed: false,
+      active_question_id: null,
+      question_started_at: null,
+    });
+  }
+
+  async function endSession() {
+    await patch({
+      status: "ended",
+      active_question_id: null,
+      question_started_at: null,
+      question_revealed: false,
+    });
+    toast.success("Apresentação encerrada.");
+  }
+
+  const showRanking = !!session?.show_ranking;
+  const showJoinQr = !!session?.show_join_qr;
+  const showPairQr = !!session?.show_pair_qr;
+  const showSidebar = !!session?.show_sidebar;
+
+  return (
+    <div className="space-y-5">
+      {/* Cabeçalho de status */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#262D3D] bg-[#161A23] p-4">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#07A684]">
+            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-[#07A684]" /> Sessão ao vivo
+          </p>
+          <h2 className="mt-1 truncate text-lg font-bold text-white">
+            {activePresentationTitle || "Apresentação em andamento"}
+          </h2>
+          <p className="mt-0.5 text-xs text-[#9CA3AF]">
+            Slide atual: <span className="font-semibold text-white">{session?.current_slide ?? "—"}</span>
+            {" · "}Status: <span className="font-semibold text-[#FFCB05]">{session?.status ?? "—"}</span>
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/remote/$id" params={{ id: activeSession.id }}>
+            <Smartphone className="mr-2 h-4 w-4" /> Abrir no celular
+          </Link>
+        </Button>
+      </div>
+
+      {/* Navegação Avançar / Voltar */}
+      <div className="grid gap-3 md:grid-cols-2">
+        <Button
+          size="lg"
+          variant="outline"
+          disabled={busy || (session?.current_slide ?? 1) <= 1}
+          onClick={prevSlide}
+          className="h-20 rounded-2xl border-[#262D3D] bg-[#1E2235] text-base font-bold uppercase tracking-wide text-gray-200 hover:bg-[#262D3D]"
+        >
+          <ChevronLeft className="mr-2 h-6 w-6" /> Voltar
+        </Button>
+        <Button
+          size="lg"
+          disabled={busy}
+          onClick={nextSlide}
+          className="h-20 rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-base font-black uppercase tracking-wide text-white shadow-lg shadow-orange-500/20 hover:opacity-95"
+        >
+          Avançar <ChevronRight className="ml-2 h-6 w-6" />
+        </Button>
+      </div>
+
+      {/* Toggles de overlays */}
+      <div className="rounded-2xl border border-[#262D3D] bg-[#161A23] p-4">
+        <h3 className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+          Overlays na tela do projetor
+        </h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <ToggleBtn
+            active={showRanking}
+            onClick={() => patch({ show_ranking: !showRanking })}
+            icon={<BarChart3 className="h-5 w-5" />}
+            labelOn="Ocultar Classificação"
+            labelOff="Mostrar Classificação"
+            disabled={busy}
+          />
+          <ToggleBtn
+            active={showJoinQr}
+            onClick={() => patch({ show_join_qr: !showJoinQr })}
+            icon={<QrCode className="h-5 w-5" />}
+            labelOn="Ocultar QR de Participantes"
+            labelOff="Mostrar QR de Participantes"
+            disabled={busy}
+          />
+          <ToggleBtn
+            active={showPairQr}
+            onClick={() => patch({ show_pair_qr: !showPairQr })}
+            icon={<Smartphone className="h-5 w-5" />}
+            labelOn="Ocultar QR de Controle"
+            labelOff="Mostrar QR de Controle"
+            disabled={busy}
+          />
+          <ToggleBtn
+            active={showSidebar}
+            onClick={() => patch({ show_sidebar: !showSidebar })}
+            icon={<PanelRight className="h-5 w-5" />}
+            labelOn="Ocultar Barra Lateral"
+            labelOff="Mostrar Barra Lateral"
+            disabled={busy}
+          />
+        </div>
+      </div>
+
+      {/* Encerrar sessão */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={endSession}
+          disabled={busy}
+          className="border-[#A6193C]/40 text-[#F68B1F] hover:bg-[#A6193C]/10 hover:text-white"
+        >
+          <PowerOff className="mr-2 h-4 w-4" /> Encerrar apresentação
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ToggleBtn({
+  active,
+  onClick,
+  icon,
+  labelOn,
+  labelOff,
+  disabled,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  labelOn: string;
+  labelOff: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex h-14 w-full items-center justify-between gap-3 rounded-xl border px-4 text-left text-sm font-bold transition-all duration-100 active:scale-[0.98] disabled:opacity-50 ${
+        active
+          ? "border-[#A6193C] bg-[#A6193C]/15 text-white shadow-[0_0_18px_-6px_rgba(166,25,60,0.6)]"
+          : "border-[#262D3D] bg-[#1E2235] text-gray-200 hover:border-[#3A4255]"
+      }`}
+    >
+      <span className="flex items-center gap-3">
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+            active ? "bg-[#A6193C]/30 text-white" : "bg-[#0E1015] text-[#F68B1F]"
+          }`}
+        >
+          {icon}
+        </span>
+        <span>{active ? labelOn : labelOff}</span>
+      </span>
+      <span className="shrink-0">
+        {active ? (
+          <Eye className="h-4 w-4 text-[#07A684]" />
+        ) : (
+          <EyeOff className="h-4 w-4 text-[#9CA3AF]" />
+        )}
+      </span>
+    </button>
+  );
+}
+
+// =============================================================
+// CLASSIFICAÇÃO GLOBAL — pontuação acumulada de todos os usuários
+// =============================================================
+function ClassificacaoGlobal({ presentationIds }: { presentationIds: string[] }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["global-ranking", presentationIds.join(",")],
+    enabled: presentationIds.length > 0,
+    queryFn: async () => {
+      const { data: sess } = await supabase
+        .from("sessions")
+        .select("id")
+        .in("presentation_id", presentationIds);
+      const sessionIds = (sess ?? []).map((s: any) => s.id);
+      if (sessionIds.length === 0) return [];
+      const { data: parts } = await supabase
+        .from("participants")
+        .select("name, birth_date, score, correct_count, answer_count")
+        .in("session_id", sessionIds);
+      const map = new Map<string, { name: string; score: number; correct: number; answers: number }>();
+      for (const p of (parts ?? []) as any[]) {
+        const key = `${(p.name || "").trim().toLowerCase()}|${p.birth_date ?? ""}`;
+        const prev = map.get(key) ?? { name: p.name, score: 0, correct: 0, answers: 0 };
+        prev.score += p.score ?? 0;
+        prev.correct += p.correct_count ?? 0;
+        prev.answers += p.answer_count ?? 0;
+        map.set(key, prev);
+      }
+      return Array.from(map.values()).sort((a, b) => b.score - a.score);
+    },
+  });
+
+  if (presentationIds.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[#262D3D] bg-[#161A23] p-12 text-center">
+        <Trophy className="mx-auto h-12 w-12 text-[#9CA3AF]" />
+        <h2 className="mt-4 text-lg font-semibold">Sem dados de classificação</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Crie e execute uma apresentação para coletar pontuações dos usuários.
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Calculando ranking...
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[#262D3D] bg-[#161A23] p-12 text-center">
+        <Trophy className="mx-auto h-12 w-12 text-[#9CA3AF]" />
+        <h2 className="mt-4 text-lg font-semibold">Nenhum usuário pontuou ainda</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Assim que os participantes responderem perguntas em qualquer apresentação, eles aparecerão aqui.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#262D3D] bg-[#161A23]">
+      <div className="grid grid-cols-[60px_1fr_100px_100px_100px] gap-2 border-b border-[#262D3D] bg-[#0E1015] px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+        <span>Pos.</span>
+        <span>Usuário</span>
+        <span className="text-right">Pontos</span>
+        <span className="text-right">Acertos</span>
+        <span className="text-right">Respostas</span>
+      </div>
+      <ul className="divide-y divide-[#262D3D]">
+        {data.map((row, idx) => {
+          const pos = idx + 1;
+          const medal = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : null;
+          return (
+            <li
+              key={`${row.name}-${idx}`}
+              className="grid grid-cols-[60px_1fr_100px_100px_100px] items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-[#1E2235]"
+            >
+              <span className="font-bold text-[#F68B1F]">
+                {medal ?? pos + "º"}
+              </span>
+              <span className="truncate font-semibold text-white">{row.name}</span>
+              <span className="text-right font-black text-[#FFCB05]">{row.score}</span>
+              <span className="text-right text-[#07A684]">{row.correct}</span>
+              <span className="text-right text-[#9CA3AF]">{row.answers}</span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
