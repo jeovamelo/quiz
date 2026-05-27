@@ -62,6 +62,8 @@ function Stepper({ step }: { step: number }) {
 
 function NewQuiz() {
   const navigate = useNavigate();
+  const { user } = useRequireSpeaker();
+  const userId = user?.id;
   const { eventId } = Route.useSearch();
   const [step, setStep] = useState(1);
 
