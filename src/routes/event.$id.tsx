@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -67,6 +67,7 @@ type AvailablePres = {
 function EventManage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [mode, setMode] = useState<"choose" | "link">("choose");
   const [linking, setLinking] = useState(false);
@@ -102,7 +103,11 @@ function EventManage() {
 
   // Mapa: presentation_id → último sessionId encerrado (para o botão "Ver Resultados")
   const { data: endedSessions } = useQuery({
-    queryKey: ["event-ended-sessions", id, presentations?.length ?? 0],
+    queryKey: [
+      "event-ended-sessions",
+      id,
+      (presentations ?? []).map((p) => `${p.id}:${p.execution_status ?? "pending"}`).join("|"),
+    ],
     enabled: !!presentations && presentations.length > 0,
     queryFn: async () => {
       const ids = (presentations ?? []).map((p) => p.id);
