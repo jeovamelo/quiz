@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -7,6 +7,7 @@ import {
   Trophy,
   Users,
   Crosshair,
+  LayoutDashboard,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
@@ -146,12 +147,6 @@ function RemoteControl() {
   const baseBetaRef = useRef<number | null>(null);
   const baseGammaRef = useRef<number | null>(null);
   const SENSITIVIDADE = 2.5;
-
-  const recalibrarMira = useCallback(() => {
-    baseBetaRef.current = null;
-    baseGammaRef.current = null;
-    console.log("[laser] Mira recentralizada — capturando nova referência.");
-  }, []);
 
   useEffect(() => {
     if (!laserOn) {
@@ -587,13 +582,21 @@ function RemoteControl() {
       {/* Cabeçalho: identidade do slot + status de pareamento */}
       <header className="sticky top-0 z-10 shrink-0 border-b border-[#262D3D] bg-[#131722]/95 px-3 py-2 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-semibold uppercase tracking-widest text-[#F68B1F]">
-              Você é o Controle {stored?.slot ?? "?"}
-            </p>
-            <h1 className="truncate text-[13px] font-bold leading-tight text-white">
-              {stored?.name ?? "—"} · {presentation.title}
+          <Link
+            to="/dashboard"
+            aria-label="Painel de Controle"
+            className="flex shrink-0 items-center gap-1 rounded-md border border-[#3A4255] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF] transition-colors hover:border-[#9CA3AF] hover:text-white"
+          >
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Painel
+          </Link>
+          <div className="min-w-0 flex-1 px-2 text-center">
+            <h1 className="truncate text-[12px] font-bold leading-tight text-white">
+              {presentation.title}
             </h1>
+            <p className="truncate text-[10px] text-[#9CA3AF]">
+              Slide {currentSlide} de {totalSlides}
+            </p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <NetworkStatusBadge transport={tunnel.transport} compact />
@@ -617,21 +620,16 @@ function RemoteControl() {
               }`}
             />
             {bridge.partnerOnline
-              ? "Conectado"
+              ? "Sincronizado"
               : bridge.status === "connected"
               ? "Aguardando"
-              : "Sem sinal"}
+              : "Sem conexão"}
             </div>
           </div>
         </div>
-        <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#9CA3AF]">
-          <span className="rounded bg-[#0E1015] px-2 py-0.5 font-mono text-white">
-            Slide {currentSlide} de {totalSlides}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5 text-[#07A684]" />
-            <span className="font-semibold text-white">{participantsCount}</span> usuários
-          </span>
+        <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[11px] text-[#9CA3AF]">
+          <Users className="h-3.5 w-3.5 text-[#07A684]" />
+          <span className="font-semibold text-white">{participantsCount}</span> usuários online
         </div>
       </header>
 
@@ -671,50 +669,28 @@ function RemoteControl() {
             {laserOn ? "🔴 Laser Ativo — Mova o celular" : "Apontador Laser 🔴"}
           </button>
 
-          {/* CENTRALIZAR MIRA — só aparece com o laser ativo */}
-          {laserOn && (
+          {/* PAR SIMÉTRICO — VOLTAR + AVANÇAR (ergonomia para uma mão) */}
+          <div className="flex w-full items-stretch gap-2.5">
             <button
               type="button"
-              onClick={() => {
-                haptic(20);
-                recalibrarMira();
-                toast.success("Mira centralizada! 🎯");
-              }}
-              aria-label="Centralizar Mira"
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-400/40 bg-red-500/10 text-xs font-bold text-red-300 transition-all duration-100 active:scale-95"
+              onClick={prevSlide}
+              disabled={busy || currentSlide <= 1}
+              aria-label="Voltar"
+              className="flex h-[60px] flex-1 items-center justify-center gap-2 rounded-2xl border border-[#3A4255] bg-[#1E2235] text-base font-bold text-white shadow-md transition-all duration-100 active:scale-95 active:bg-[#262D3D] disabled:opacity-40"
             >
-              <Crosshair className="h-4 w-4" />
-              Centralizar Mira 🎯
+              <ChevronLeft className="h-6 w-6" /> Voltar
             </button>
-          )}
-
-          {/* BOTÃO HERÓI AVANÇAR — no último slide aciona o pódio automático */}
-          <button
-            type="button"
-            onClick={nextSlide}
-            disabled={busy}
-            aria-label="Avançar"
-            className="relative flex h-[48vh] min-h-[240px] w-full items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
-          >
-            <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true" />
-            <div className="relative z-10 flex flex-col items-center justify-center gap-2">
-              <span className="text-[44px] font-black uppercase leading-none tracking-tight drop-shadow-lg sm:text-[56px]">
-                AVANÇAR
-              </span>
-              <ChevronRight className="h-14 w-14 drop-shadow-lg" strokeWidth={3} />
-            </div>
-          </button>
-
-          {/* LINHA C: VOLTAR — base extrema */}
-          <button
-            type="button"
-            onClick={prevSlide}
-            disabled={busy || currentSlide <= 1}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#3A4255] bg-[#1E2235] text-sm font-bold text-white shadow-md transition-all duration-100 active:scale-95 active:bg-[#262D3D] disabled:opacity-40"
-            aria-label="Voltar"
-          >
-            <ChevronLeft className="h-5 w-5" /> Voltar
-          </button>
+            <button
+              type="button"
+              onClick={nextSlide}
+              disabled={busy}
+              aria-label="Avançar"
+              className="relative flex h-[60px] flex-1 items-center justify-center gap-2 overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-base font-black uppercase tracking-wide text-white shadow-lg shadow-[#A6193C]/40 transition-all duration-100 active:scale-95 active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
+            >
+              Avançar
+              <ChevronRight className="h-6 w-6" strokeWidth={3} />
+            </button>
+          </div>
         </div>
       </main>
     </div>
