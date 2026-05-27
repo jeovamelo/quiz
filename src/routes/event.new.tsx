@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2, CalendarPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { GLOBAL_USER_ID } from "@/lib/constants";
+import { useRequireSpeaker } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,17 +15,19 @@ export const Route = createFileRoute("/event/new")({
 
 function NewEvent() {
   const navigate = useNavigate();
+  const { user } = useRequireSpeaker();
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function handleCreate() {
+    if (!user) return;
     if (!title.trim()) {
       toast.error("Informe o nome do evento");
       return;
     }
     setSaving(true);
     const { data, error } = await (supabase.from("events") as any)
-      .insert({ user_id: GLOBAL_USER_ID, title: title.trim() })
+      .insert({ user_id: user.id, title: title.trim() })
       .select("id")
       .single();
     setSaving(false);
