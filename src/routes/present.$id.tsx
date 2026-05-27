@@ -39,6 +39,7 @@ type Question = {
 };
 
 function Present() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);

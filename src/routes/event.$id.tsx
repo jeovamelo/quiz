@@ -72,6 +72,7 @@ type AvailablePres = {
 };
 
 function EventManage() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

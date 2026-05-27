@@ -34,6 +34,7 @@ type EditableQuestion = {
 };
 
 function EditQuizPage() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const { redirect_to_event } = Route.useSearch();
   const navigate = useNavigate();

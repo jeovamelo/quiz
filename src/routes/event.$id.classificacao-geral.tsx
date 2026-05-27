@@ -28,6 +28,7 @@ function formatAvgMs(ms: number) {
 }
 
 function ClassificacaoGeral() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
 

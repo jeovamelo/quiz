@@ -17,6 +17,7 @@ export const Route = createFileRoute("/event/$id/podium")({
 });
 
 function EventPodium() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const { finale } = Route.useSearch();
   const navigate = useNavigate();

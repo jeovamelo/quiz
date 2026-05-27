@@ -41,6 +41,7 @@ function pointsFor(a: Answer, q: Question) {
 }
 
 function ReviewPresentation() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [presentation, setPresentation] = useState<{ file_url: string; title: string; event_id: string | null } | null>(null);
