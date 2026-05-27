@@ -732,19 +732,20 @@ function Present() {
           </div>
         </div>
       )}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Coluna esquerda — PDF */}
+      <div className="flex flex-1 overflow-hidden max-h-screen">
+        {/* Coluna esquerda — PDF (exibe estritamente um único slide por vez) */}
         <div
-          className="relative flex-[2] cursor-pointer bg-black"
+          className="relative flex h-full max-h-full flex-[2] cursor-pointer items-center justify-center overflow-hidden bg-black"
           onClick={() => handleMasterAdvanceRef.current()}
           title="Clique para avançar / use as setas do teclado"
         >
           <iframe
             key={currentSlide}
             title={presentation.title}
-            src={`${presentation.file_url}#page=${currentSlide}&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=Fit&zoom=page-fit`}
-            className="pointer-events-none h-full w-full border-none bg-black"
-            style={{ objectFit: "contain" }}
+            src={`${presentation.file_url}#page=${currentSlide}&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=Fit&zoom=page-fit&pagemode=none`}
+            className="pointer-events-none block h-full w-full border-none bg-black"
+            style={{ objectFit: "contain", maxHeight: "100%", maxWidth: "100%" }}
+            scrolling="no"
           />
           {/* Camada protetora: bloqueia scroll/arrasto dentro do iframe do PDF */}
           <div className="absolute inset-0 z-10" aria-hidden="true" />
