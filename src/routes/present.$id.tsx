@@ -62,6 +62,10 @@ function Present() {
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
+  // Ref para a função mestre de avanço — garante uso de estado fresco em
+  // qualquer gatilho (clique no slide, teclado, broadcast do celular).
+  const handleMasterAdvanceRef = useRef<() => Promise<void>>(async () => {});
+
   // === APONTADOR LASER recebido do celular ===
   const [laserCoords, setLaserCoords] = useState<{ x: number; y: number } | null>(null);
   const laserTimerRef = useRef<number | null>(null);
@@ -129,7 +133,10 @@ function Present() {
       const liveSlide: number = fresh?.current_slide ?? 1;
 
       if (action === "NEXT") {
-        await setSlide(liveSlide + 1, { direction: "next", fired: (fresh as any)?.fired_question_ids ?? [] });
+        // Clique virtual do celular = mesmo comportamento do clique do mouse
+        // no slide. Toda a lógica vive em handleMasterAdvance no computador.
+        console.log("Clique remoto recebido do celular. Avançando apresentação...");
+        await handleMasterAdvanceRef.current();
       } else if (action === "PREV") {
         await setSlide(Math.max(1, liveSlide - 1), { direction: "prev" });
       } else if (action === "TOGGLE_FULLSCREEN") {
@@ -408,6 +415,72 @@ function Present() {
     await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
   }
 
+  /**
+   * Função MESTRE de avanço — única fonte de verdade da máquina de estados
+   * da apresentação. É disparada por 3 gatilhos idênticos:
+   *   1) Clique do mouse em qualquer ponto do slide.
+   *   2) Teclas ArrowRight ou Space no teclado físico.
+   *   3) Broadcast "MASTER_CLICK" / "NEXT" enviado pelo celular do palestrante.
+   *
+   * Sequência de estados (1 clique = 1 passo):
+   *   • Slide sem pergunta ativa, com quiz vinculado inédito → lança o quiz.
+   *   • Quiz ativo com timer rodando → revela os resultados (encerra o timer).
+   *   • Quiz revelado, OU slide sem quiz vinculado → avança para o próximo slide
+   *     (se for o último, encerra a apresentação e abre o pódio).
+   */
+  async function handleMasterAdvance() {
+    const { data: fresh } = await supabase
+      .from("sessions")
+      .select("current_slide, active_question_id, question_revealed, fired_question_ids, status")
+      .eq("id", id)
+      .single();
+    if (!fresh || (fresh as any).status === "ended") return;
+    const liveSlide: number = (fresh as any).current_slide ?? 1;
+    const fired: string[] = ((fresh as any).fired_question_ids as string[]) ?? [];
+    const activeId: string | null = (fresh as any).active_question_id ?? null;
+    const revealed: boolean = !!(fresh as any).question_revealed;
+    const activeQ = activeId
+      ? questionsRef.current.find((q) => q.id === activeId) || null
+      : null;
+
+    // ESTADO 2 — quiz rodando, ainda não revelado → revela.
+    if (activeQ && !revealed) {
+      await supabase
+        .from("sessions")
+        .update({ question_revealed: true })
+        .eq("id", id);
+      return;
+    }
+
+    // ESTADO 1 — slide com pergunta vinculada ainda não disparada → lança quiz.
+    if (!activeQ) {
+      const slideQ = questionsRef.current.find((q) => q.slide_number === liveSlide) || null;
+      if (
+        slideQ &&
+        !fired.includes(slideQ.id) &&
+        slideQ.display_mode === "simultaneous"
+      ) {
+        await (supabase.from("sessions") as any)
+          .update({
+            active_question_id: slideQ.id,
+            question_started_at: new Date().toISOString(),
+            question_revealed: false,
+            fired_question_ids: [...fired, slideQ.id],
+          })
+          .eq("id", id);
+        return;
+      }
+    }
+
+    // ESTADO 3 — avança para o próximo slide (sem reabrir quizzes já jogados).
+    await setSlide(liveSlide + 1, { direction: "next", fired });
+  }
+
+  // Mantém a ref sempre apontando para a função com closures atuais.
+  useEffect(() => {
+    handleMasterAdvanceRef.current = handleMasterAdvance;
+  });
+
   async function endSession(full = false) {
     const { error } = await supabase
       .from("sessions")
@@ -469,8 +542,15 @@ function Present() {
   // keyboard nav
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight") setSlide(currentSlide + 1, { direction: "next" });
-      else if (e.key === "ArrowLeft") setSlide(currentSlide - 1, { direction: "prev" });
+      // Ignora quando o foco está em campos de digitação
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowRight" || e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        handleMasterAdvanceRef.current();
+      } else if (e.key === "ArrowLeft") {
+        setSlide(currentSlide - 1, { direction: "prev" });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -652,7 +732,7 @@ function Present() {
         {/* Coluna esquerda — PDF */}
         <div
           className="relative flex-[2] cursor-pointer bg-black"
-          onClick={() => setSlide(currentSlide + 1, { direction: "next" })}
+          onClick={() => handleMasterAdvanceRef.current()}
           title="Clique para avançar / use as setas do teclado"
         >
           <iframe
