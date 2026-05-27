@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2, Shield, Zap, Clock, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { extractPdfText } from "@/lib/pdf-extract";
 import { generateQuestions } from "@/lib/ai.functions";
 import { Button } from "@/components/ui/button";
@@ -218,6 +219,44 @@ function NewQuiz() {
     } finally {
       setSaving(false);
     }
+  }
+
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-[#0E1015] text-white">
+        <header className="border-b border-[#262D3D] bg-[#131722] px-4 py-3">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/remote" })}
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#9CA3AF]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+          </button>
+          <h1 className="mt-1 text-lg font-bold">Novo Quiz</h1>
+        </header>
+        <main className="flex flex-1 items-center justify-center p-5">
+          <div className="w-full max-w-sm rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 text-center">
+            <Sparkles className="mx-auto h-10 w-10 text-[#F68B1F]" />
+            <h2 className="mt-3 text-base font-bold text-white">Recomendado no computador</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#9CA3AF]">
+              Para enviar novos arquivos PDF e gerar quizzes com IA de forma confortável, utilize o seu computador.
+            </p>
+            <p className="mt-3 text-xs text-[#9CA3AF]">
+              No celular, você pode <span className="font-semibold text-[#F68B1F]">iniciar e comandar</span> as apresentações ao vivo.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/remote" })}
+              className="mt-5 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-sm font-extrabold uppercase tracking-wide text-white shadow-lg transition-all duration-100 active:scale-95"
+            >
+              Ir para o Controle Remoto
+            </button>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
