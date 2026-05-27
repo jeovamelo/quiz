@@ -344,6 +344,19 @@ function Present() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, activeQuestion?.id, session?.question_revealed]);
 
+  // Disparo de pódio pelo controle remoto (force_podium = true → encerra sessão).
+  useEffect(() => {
+    if (session?.force_podium && session?.status !== "ended") {
+      (async () => {
+        await endSession(false);
+        await (supabase.from("sessions") as any)
+          .update({ force_podium: false })
+          .eq("id", id);
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.force_podium]);
+
   /**
    * Navegação síncrona com clique único:
    * - direction "next": avança o slide e, se houver pergunta inédita vinculada,
