@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, MonitorPlay } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import { haptic } from "@/hooks/use-haptic";
+import { rememberDashboardOrigin } from "@/lib/dashboard-origin";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -82,6 +83,7 @@ function Dashboard() {
     : null;
 
   async function startSession(presentationId: string) {
+    rememberDashboardOrigin();
     const { data: session, error } = await supabase
       .from("sessions")
       .insert({ presentation_id: presentationId, status: "lobby", current_slide: 1 })
