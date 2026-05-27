@@ -561,7 +561,7 @@ function Present() {
         {/* Coluna esquerda — PDF */}
         <div
           className="relative flex-[2] cursor-pointer bg-black"
-          onClick={() => setSlide(currentSlide + 1)}
+          onClick={() => setSlide(currentSlide + 1, { direction: "next" })}
           title="Clique para avançar / use as setas do teclado"
         >
           <iframe
