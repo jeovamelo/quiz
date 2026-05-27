@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
-import { Loader2, Maximize, Tv } from "lucide-react";
+import { Loader2, Maximize, Tv, Smartphone, QrCode } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -785,6 +785,30 @@ export function Present() {
       <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setOverlayFlag("show_join_qr", false)} />
       <GiantQrOverlay open={pairQrOpen} joinUrl={pairUrl} onClose={() => setOverlayFlag("show_pair_qr", false)} />
       <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setOverlayFlag("show_ranking", false)} />
+      {/* === ATALHOS FLUTUANTES (canto superior direito) ===
+          Discretos no modo cinema (opacity-20) — brilham no hover. */}
+      <div className="fixed top-4 right-4 z-[9999] flex flex-col items-end gap-3 group/floating">
+        <button
+          type="button"
+          onClick={() => setOverlayFlag("show_pair_qr", !pairQrOpen)}
+          title="Conectar Controle Remoto"
+          aria-label="Conectar Controle Remoto"
+          className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-20 shadow-xl backdrop-blur transition-opacity duration-300 hover:opacity-100 focus:opacity-100"
+        >
+          <Smartphone className="h-5 w-5" />
+          <span className="hidden whitespace-nowrap group-hover/floating:inline">Controle Remoto</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setOverlayFlag("show_join_qr", !giantQrOpen)}
+          title="Conectar Participantes"
+          aria-label="Conectar Participantes"
+          className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-20 shadow-xl backdrop-blur transition-opacity duration-300 hover:opacity-100 focus:opacity-100"
+        >
+          <QrCode className="h-5 w-5" />
+          <span className="hidden whitespace-nowrap group-hover/floating:inline">Participantes</span>
+        </button>
+      </div>
       {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
       {laserCoords && (
         <div
