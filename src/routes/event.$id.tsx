@@ -793,6 +793,86 @@ function EventManage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal: Encerrar Evento com validação de pendências */}
+      <AlertDialog open={endOpen} onOpenChange={(o) => !o && !ending && setEndOpen(false)}>
+        <AlertDialogContent className="border-[#262D3D] bg-[#161A23] text-foreground">
+          <AlertDialogHeader>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FFCB05]/15 ring-2 ring-[#FFCB05]/40">
+              <AlertTriangle className="h-8 w-8 text-[#FFCB05]" />
+            </div>
+            <AlertDialogTitle className="text-center text-xl text-white">
+              {pendingPresentations.length > 0
+                ? "Existem apresentações pendentes!"
+                : "Encerrar o evento agora?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-center text-sm text-[#9CA3AF]">
+                {pendingPresentations.length > 0 ? (
+                  <>
+                    <p className="mb-3">
+                      <span className="font-semibold text-[#F68B1F]">Atenção:</span> as
+                      apresentações abaixo ainda não foram realizadas. Se você encerrar o
+                      evento agora, os participantes não poderão mais jogar essas palestras
+                      e o campeão geral será consolidado apenas com os dados atuais.
+                    </p>
+                    <ul className="mx-auto max-h-40 max-w-md space-y-1 overflow-y-auto rounded-md border border-[#262D3D] bg-[#0E1015] p-3 text-left">
+                      {pendingPresentations.map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex items-center justify-between gap-2 text-xs"
+                        >
+                          <span className="truncate text-white">{p.title}</span>
+                          <span className="shrink-0 rounded-full bg-[#FFCB05]/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-[#FFCB05]">
+                            {(p.execution_status ?? "pending") === "active"
+                              ? "Em andamento"
+                              : "Pendente"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-xs">Deseja mesmo prosseguir?</p>
+                  </>
+                ) : (
+                  <p>
+                    Todas as apresentações deste evento já foram realizadas. Ao confirmar,
+                    iniciaremos a cerimônia dramática de premiação.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel
+              disabled={ending}
+              className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-foreground"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={ending}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmEndEvent();
+              }}
+              className="bg-[#A6193C] text-white hover:bg-[#8a1432]"
+            >
+              {ending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Encerrando...
+                </>
+              ) : (
+                <>
+                  <PowerOff className="mr-2 h-4 w-4" />
+                  {pendingPresentations.length > 0
+                    ? "Sim, encerrar evento assim mesmo"
+                    : "Confirmar encerramento"}
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
