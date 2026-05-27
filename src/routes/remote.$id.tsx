@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
-  BarChart3,
   ChevronLeft,
   ChevronRight,
   Home,
   Loader2,
+  Power,
   Sparkles,
+  Timer,
   Trophy,
   Users,
   Zap,
@@ -55,6 +56,8 @@ function RemoteControl() {
   } | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participantsCount, setParticipantsCount] = useState(0);
+  const [answersCount, setAnswersCount] = useState(0);
+  const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [synced, setSynced] = useState(false);
 
@@ -133,6 +136,23 @@ function RemoteControl() {
           setQuestions((qs as any) || []);
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "answers", filter: `session_id=eq.${id}` },
+        async () => {
+          const activeQid = (await supabase.from("sessions").select("active_question_id").eq("id", id).single()).data?.active_question_id;
+          if (!activeQid) {
+            setAnswersCount(0);
+            return;
+          }
+          const { count } = await supabase
+            .from("answers")
+            .select("id", { count: "exact", head: true })
+            .eq("session_id", id)
+            .eq("question_id", activeQid);
+          setAnswersCount(count ?? 0);
+        },
+      )
       .subscribe((status) => {
         setSynced(status === "SUBSCRIBED");
       });
@@ -142,6 +162,34 @@ function RemoteControl() {
       supabase.removeChannel(ch);
     };
   }, [id]);
+
+  // Refaz a contagem de respostas quando a pergunta ativa muda
+  useEffect(() => {
+    const qid = session?.active_question_id;
+    if (!qid) {
+      setAnswersCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { count } = await supabase
+        .from("answers")
+        .select("id", { count: "exact", head: true })
+        .eq("session_id", id)
+        .eq("question_id", qid);
+      if (!cancelled) setAnswersCount(count ?? 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.active_question_id, id]);
+
+  // Cronômetro
+  useEffect(() => {
+    if (!session?.question_started_at || session?.question_revealed) return;
+    const t = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(t);
+  }, [session?.question_started_at, session?.question_revealed]);
 
   const currentSlide: number = session?.current_slide || 1;
   const totalSlides = useMemo(() => {
@@ -158,6 +206,14 @@ function RemoteControl() {
   );
   const isEnded = session?.status === "ended";
 
+  const timeLimit = presentation?.default_time_limit ?? 30;
+  const elapsed = session?.question_started_at
+    ? Math.floor((now - new Date(session.question_started_at).getTime()) / 1000)
+    : 0;
+  const remaining = activeQuestion && !session?.question_revealed
+    ? Math.max(0, timeLimit - elapsed)
+    : null;
+
   async function withBusy<T>(fn: () => Promise<T>) {
     setBusy(true);
     try {
@@ -170,6 +226,28 @@ function RemoteControl() {
   async function nextSlide() {
     haptic(45);
     await withBusy(async () => {
+      // Se há pergunta ativa e ainda não foi revelada, "AVANÇAR" encerra o timer (revela)
+      if (activeQuestion && !session?.question_revealed) {
+        const { error } = await supabase
+          .from("sessions")
+          .update({ question_revealed: true })
+          .eq("id", id);
+        if (error) toast.error("Erro ao encerrar a pergunta.");
+        return;
+      }
+      // Se o slide atual tem pergunta e ela ainda não foi lançada, lança em vez de avançar
+      if (slideQuestion && !activeQuestion) {
+        const { error } = await supabase
+          .from("sessions")
+          .update({
+            active_question_id: slideQuestion.id,
+            question_started_at: new Date().toISOString(),
+            question_revealed: false,
+          })
+          .eq("id", id);
+        if (error) toast.error("Erro ao lançar a pergunta.");
+        return;
+      }
       const next = currentSlide + 1;
       const q = questions.find((qq) => qq.slide_number === next) || null;
       const patch: any = {
@@ -204,38 +282,8 @@ function RemoteControl() {
     });
   }
 
-  async function launchQuestion() {
-    if (!slideQuestion) return;
-    haptic(60);
-    await withBusy(async () => {
-      const { error } = await supabase
-        .from("sessions")
-        .update({
-          active_question_id: slideQuestion.id,
-          question_started_at: new Date().toISOString(),
-          question_revealed: false,
-        })
-        .eq("id", id);
-      if (error) toast.error("Erro ao lançar a pergunta.");
-      else toast.success("Pergunta lançada para os celulares!");
-    });
-  }
-
-  async function revealAnswer() {
-    if (!activeQuestion) return;
-    haptic(40);
-    await withBusy(async () => {
-      const { error } = await supabase
-        .from("sessions")
-        .update({ question_revealed: true })
-        .eq("id", id);
-      if (error) toast.error("Erro ao revelar resposta.");
-    });
-  }
-
-  async function showResults() {
+  async function showPodium() {
     haptic(50);
-    // Dispara broadcast para projetor abrir o painel de classificação
     try {
       const ch = supabase.channel(`present-remote-${id}`);
       await new Promise<void>((resolve) => {
@@ -253,9 +301,9 @@ function RemoteControl() {
       if (activeQuestion && !session?.question_revealed) {
         await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
       }
-      toast.success("Resultados exibidos no projetor.");
+      toast.success("Pódio exibido no projetor!");
     } catch {
-      toast.error("Falha ao exibir resultados.");
+      toast.error("Falha ao exibir o pódio.");
     }
   }
 
@@ -425,15 +473,16 @@ function RemoteControl() {
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col p-3">
-        {/* Console de Quiz — só aparece quando o slide tem pergunta vinculada */}
+        {/* MEIO — Status do Quiz (somente quando há pergunta no slide) */}
         {slideQuestion && (
           <section
-            className="mb-3 shrink-0 space-y-2.5 rounded-2xl border p-3 shadow-lg"
+            className="shrink-0 space-y-2 rounded-2xl border p-3 shadow-lg"
             style={{ borderColor: "#BA2172", background: "rgba(186, 33, 114, 0.12)" }}
           >
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#E879B5]">
-                <Zap className="h-3.5 w-3.5" /> Pergunta neste slide
+                <Zap className="h-3.5 w-3.5" />
+                {activeQuestion ? "Quiz no ar" : "Pergunta neste slide"}
               </p>
               {slideQuestion.is_prize_question && (
                 <span className="rounded-full bg-[#FFCB05] px-2 py-0.5 text-[10px] font-extrabold uppercase text-black">
@@ -442,26 +491,29 @@ function RemoteControl() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={launchQuestion}
-                disabled={busy || !!activeQuestion}
-                className="flex min-h-[60px] items-center justify-center gap-1.5 rounded-xl bg-[#BA2172] text-sm font-extrabold text-white shadow-md shadow-[#BA2172]/40 transition-all duration-100 active:scale-95 active:bg-[#8E1858] disabled:opacity-40"
-              >
-                <Zap className="h-4 w-4" /> Lançar Quiz
-              </button>
-              <button
-                type="button"
-                onClick={showResults}
-                disabled={busy || !activeQuestion}
-                className="flex min-h-[60px] items-center justify-center gap-1.5 rounded-xl bg-[#FFCB05] text-sm font-extrabold text-black shadow-md transition-all duration-100 active:scale-95 active:bg-[#E0B205] disabled:opacity-40"
-              >
-                <BarChart3 className="h-4 w-4" /> Mostrar Resultados
-              </button>
-            </div>
+            {activeQuestion && (
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="rounded-xl bg-[#0E1015]/70 px-2 py-1.5">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
+                    Respostas
+                  </p>
+                  <p className="text-base font-black text-white">
+                    {answersCount}
+                    <span className="text-xs font-bold text-[#9CA3AF]">/{participantsCount}</span>
+                  </p>
+                </div>
+                <div className="rounded-xl bg-[#0E1015]/70 px-2 py-1.5">
+                  <p className="flex items-center justify-center gap-1 text-[9px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
+                    <Timer className="h-3 w-3" /> Tempo
+                  </p>
+                  <p className="text-base font-black text-white">
+                    {session?.question_revealed ? "—" : `${remaining ?? timeLimit}s`}
+                  </p>
+                </div>
+              </div>
+            )}
 
-            <div className="flex items-center justify-between rounded-xl border border-[#FFCB05]/30 bg-[#0E1015]/60 px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border border-[#FFCB05]/30 bg-[#0E1015]/60 px-3 py-1.5">
               <span className="flex items-center gap-2 text-xs font-bold text-[#FFCB05]">
                 <Sparkles className="h-4 w-4" /> Pergunta Prêmio
               </span>
@@ -476,31 +528,79 @@ function RemoteControl() {
         {/* Espaço flexível */}
         <div className="min-h-2 flex-1" />
 
-        {/* === BOTÃO HERÓI AVANÇAR === */}
-        <button
-          type="button"
-          onClick={nextSlide}
-          disabled={busy}
-          aria-label="Avançar slide"
-          className="relative mx-auto flex h-[52vh] min-h-[260px] w-full shrink-0 items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:bg-[#C21D43] disabled:opacity-60"
-        >
-          <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true" />
-          <div className="relative z-10 flex flex-col items-center justify-center gap-2">
-            <span className="text-[40px] font-black uppercase leading-none tracking-tight drop-shadow-lg sm:text-[56px]">
-              AVANÇAR
-            </span>
-            <ChevronRight className="h-16 w-16 drop-shadow-lg" strokeWidth={3} />
-          </div>
-        </button>
+        {/* RODAPÉ DE CONTROLE — 4 botões persistentes */}
+        <div className="shrink-0 space-y-2.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+          {/* LINHA A: Encerrar (esq) + Mostrar Pódio (dir) */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => haptic(25)}
+                  className="flex h-11 items-center justify-center gap-1.5 rounded-xl border-2 border-[#A6193C]/60 bg-[#A6193C]/10 text-xs font-bold uppercase tracking-wide text-[#F87171] transition-all duration-100 active:scale-95 active:bg-[#A6193C]/25"
+                  aria-label="Encerrar apresentação"
+                >
+                  <Power className="h-4 w-4" /> Encerrar
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="border-[#262D3D] bg-[#0E1015] text-white">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-white">
+                    Encerrar esta apresentação?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-[#9CA3AF]">
+                    Deseja mesmo encerrar esta apresentação ativa? O projetor será liberado para a próxima.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-white">
+                    Cancelar
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={exitToHub}
+                    className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-95"
+                  >
+                    Sim, encerrar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-        {/* Botão Voltar — compacto, sempre visível na base, alto contraste */}
-        <div className="mt-3 flex shrink-0 justify-center pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+            <button
+              type="button"
+              onClick={showPodium}
+              disabled={busy}
+              className="flex h-11 items-center justify-center gap-1.5 rounded-xl border-2 border-[#FFCB05] bg-[#FFCB05]/10 text-xs font-bold uppercase tracking-wide text-[#FFCB05] transition-all duration-100 active:scale-95 active:bg-[#FFCB05]/25 disabled:opacity-40"
+              aria-label="Mostrar pódio"
+            >
+              <Trophy className="h-4 w-4" /> Mostrar Pódio
+            </button>
+          </div>
+
+          {/* LINHA B: BOTÃO HERÓI AVANÇAR */}
+          <button
+            type="button"
+            onClick={nextSlide}
+            disabled={busy}
+            aria-label="Avançar"
+            className="relative flex h-[42vh] min-h-[220px] w-full items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
+          >
+            <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true" />
+            <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+              <span className="text-[44px] font-black uppercase leading-none tracking-tight drop-shadow-lg sm:text-[56px]">
+                AVANÇAR
+              </span>
+              <ChevronRight className="h-14 w-14 drop-shadow-lg" strokeWidth={3} />
+            </div>
+          </button>
+
+          {/* LINHA C: VOLTAR — base extrema */}
           <button
             type="button"
             onClick={prevSlide}
             disabled={busy || currentSlide <= 1}
-            className="flex h-12 w-[60%] min-w-[180px] items-center justify-center gap-2 rounded-xl border border-[#3A4255] bg-[#1E2235] text-sm font-bold text-white shadow-md transition-all duration-100 active:scale-95 active:bg-[#262D3D] disabled:opacity-40"
-            aria-label="Voltar slide"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#3A4255] bg-[#1E2235] text-sm font-bold text-white shadow-md transition-all duration-100 active:scale-95 active:bg-[#262D3D] disabled:opacity-40"
+            aria-label="Voltar"
           >
             <ChevronLeft className="h-5 w-5" /> Voltar
           </button>
