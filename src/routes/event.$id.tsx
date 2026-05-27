@@ -454,7 +454,7 @@ function EventManage() {
       })
       .eq("id", presentationId);
 
-    navigate({ to: "/lobby/$id", params: { id: session.id } });
+    navigate({ to: "/present/$id/pair", params: { id: session.id } });
   }
 
   return (
