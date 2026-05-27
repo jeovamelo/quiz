@@ -405,6 +405,65 @@ export function Present() {
     };
   }, [id]);
 
+  // === MÁQUINA DE ESTADOS DE ABERTURA ===
+  // Monitora controles remotos pareados em tempo real para avançar da
+  // fase "esperando_controle" para "esperando_participantes".
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRemotes() {
+      const { data } = await supabase
+        .from("session_remotes")
+        .select("id")
+        .eq("session_id", id);
+      if (!cancelled) setRemotesCount((data ?? []).length);
+    }
+    fetchRemotes();
+    const ch = supabase
+      .channel(`present-remotes-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "session_remotes", filter: `session_id=eq.${id}` },
+        () => fetchRemotes(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [id]);
+
+  // Quando o primeiro controle parear, marca o fluxo como concluído.
+  useEffect(() => {
+    if (remotesCount > 0 && !pairFlowDone) setPairFlowDone(true);
+  }, [remotesCount, pairFlowDone]);
+
+  // Driver dos overlays de abertura. Só atua enquanto a sessão está em
+  // 'lobby'. Em 'live' garante que QRs sumam para foco total no slide.
+  useEffect(() => {
+    if (!session) return;
+    const status = session.status;
+    const showPair = !!(session as any).show_pair_qr;
+    const showJoin = !!session.show_join_qr;
+    const showRanking = !!session.show_ranking;
+    if (status === "lobby") {
+      if (!pairFlowDone) {
+        // ETAPA 1 — somente QR do Controle Remoto.
+        if (!showPair) setOverlayFlag("show_pair_qr", true);
+        if (showJoin) setOverlayFlag("show_join_qr", false);
+        if (showRanking) setOverlayFlag("show_ranking", false);
+      } else {
+        // ETAPA 2 — somente QR dos Participantes (Lobby).
+        if (showPair) setOverlayFlag("show_pair_qr", false);
+        if (!showJoin) setOverlayFlag("show_join_qr", true);
+        if (showRanking) setOverlayFlag("show_ranking", false);
+      }
+    } else if (status === "live") {
+      if (showPair) setOverlayFlag("show_pair_qr", false);
+      if (showJoin) setOverlayFlag("show_join_qr", false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.status, session?.show_pair_qr, session?.show_join_qr, session?.show_ranking, pairFlowDone]);
+
   // Carrega total de páginas do PDF via pdfjs
   useEffect(() => {
     if (!presentation?.file_url) return;
