@@ -832,9 +832,11 @@ function Present() {
           </div>
         </div>
 
-        {/* Coluna direita — painel admin */}
+        {/* Coluna direita — painel admin (oculta se show_sidebar = false) */}
+        {session?.show_sidebar !== false && (
         <aside className="flex w-[400px] flex-col gap-3 overflow-y-auto border-l border-border bg-card p-4">
-          {/* Convite sempre visível */}
+          {/* Convite — controlado pelo toggle de QR no celular */}
+          {session?.show_join_qr !== false && (
           <div className="rounded-lg border border-border bg-background/40 p-3 text-center">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Entre na sala a qualquer momento
@@ -851,6 +853,7 @@ function Present() {
               </Button>
             </div>
           </div>
+          )}
 
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{presentation.title}</p>
