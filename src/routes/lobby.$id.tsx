@@ -73,7 +73,7 @@ function Lobby() {
       toast.error("Falha ao iniciar");
       return;
     }
-    navigate({ to: "/present/$id", params: { id } });
+    navigate({ to: "/present/$id/pair", params: { id } });
   }
 
   return (

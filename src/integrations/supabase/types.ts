@@ -300,17 +300,51 @@ export type Database = {
           },
         ]
       }
+      session_remotes: {
+        Row: {
+          created_at: string
+          device_token: string | null
+          id: string
+          last_seen_at: string
+          operator_name: string
+          session_id: string
+          slot: number
+        }
+        Insert: {
+          created_at?: string
+          device_token?: string | null
+          id?: string
+          last_seen_at?: string
+          operator_name: string
+          session_id: string
+          slot: number
+        }
+        Update: {
+          created_at?: string
+          device_token?: string | null
+          id?: string
+          last_seen_at?: string
+          operator_name?: string
+          session_id?: string
+          slot?: number
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           active_question_id: string | null
           created_at: string
           current_slide: number
           fired_question_ids: string[]
+          force_podium: boolean
           id: string
           is_fullscreen: boolean
           presentation_id: string
           question_revealed: boolean
           question_started_at: string | null
+          show_join_qr: boolean
+          show_ranking: boolean
+          show_sidebar: boolean
           status: string
           updated_at: string
         }
@@ -319,11 +353,15 @@ export type Database = {
           created_at?: string
           current_slide?: number
           fired_question_ids?: string[]
+          force_podium?: boolean
           id?: string
           is_fullscreen?: boolean
           presentation_id: string
           question_revealed?: boolean
           question_started_at?: string | null
+          show_join_qr?: boolean
+          show_ranking?: boolean
+          show_sidebar?: boolean
           status?: string
           updated_at?: string
         }
@@ -332,11 +370,15 @@ export type Database = {
           created_at?: string
           current_slide?: number
           fired_question_ids?: string[]
+          force_podium?: boolean
           id?: string
           is_fullscreen?: boolean
           presentation_id?: string
           question_revealed?: boolean
           question_started_at?: string | null
+          show_join_qr?: boolean
+          show_ranking?: boolean
+          show_sidebar?: boolean
           status?: string
           updated_at?: string
         }

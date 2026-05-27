@@ -1,56 +1,110 @@
 ## Objetivo
 
-Transformar o celular do palestrante logado em um "clicker" físico: ele escolhe a apresentação no celular, dispara no projetor via Realtime e comanda tudo com botão "Avançar" gigante. O projetor (computador) fica em modo lobby ouvindo comandos.
+Refatorar o fluxo "Iniciar Apresentação" para que o projetor primeiro mostre uma **tela de pareamento de até 2 controles remotos** via QR Code, o celular peça apenas o **nome do apresentador** (sem login) e o controle remoto ganhe uma **nova UI ergonômica** (Avançar gigante + Voltar pequeno + gaveta "Outras Funcionalidades") com controle duplo síncrono.
 
-## 1. Detecção de dispositivo + redirecionamento
+---
 
-- Em `src/routes/dashboard.tsx`: ao detectar mobile (`useIsMobile`) + usuário logado, redirecionar automaticamente para nova rota `/remote` (hub do celular). Manter dashboard normal em desktop.
+## Fase 1 — Tela de pareamento no projetor (`/present/$id/pair`)
 
-## 2. Nova rota `/remote` — Hub de seleção no celular
+Nova rota intermediária mostrada **antes** do primeiro slide quando o palestrante clica em "Iniciar Apresentação" no Dashboard.
 
-Novo arquivo `src/routes/remote.index.tsx`:
-- Lista eventos do palestrante e, dentro de cada um, cards de apresentações
-- Cada card tem botão destacado **"Apresentar no Projetor"** (ícone Tv/Play)
-- Ao clicar: cria/atualiza uma `session` para aquela apresentação, marca `status='presenting'`, e envia broadcast Realtime no canal `event-lobby-{event_id}` com `{ type: 'launch', session_id, presentation_id }`
-- Em seguida, navega o celular para `/remote/$id` (controle remoto já existente)
+- Título: **"Conectar Controles Remotos"**
+- QR Code único da sessão apontando para `/remote/$id/join?slot=auto`
+- **2 slots visuais**:
+  - Slot 1: amarelo piscante "📱 Controle 1: Aguardando conexão..." → verde "🟢 Controle 1 Ativo: {nome}"
+  - Slot 2: amarelo "📱 Controle 2: Aguardando conexão (Opcional)..." → verde "🟢 Controle 2 Ativo: {nome}"
+- Botão rodapé: **"Iniciar Apresentação Agora 🚀"** (sempre ativo, mesmo com 0 controles) → navega para `/present/$id`
+- Atualização em tempo real via Supabase Realtime na nova tabela `session_remotes`
 
-## 3. Nova rota `/event/$id/lobby` — Modo Receptor (projetor)
+## Fase 2 — Captura de nome no celular (`/remote/$id/join`)
 
-Novo arquivo `src/routes/event.$id.lobby.tsx`:
-- Tela cheia em modo espera com mensagem "Aguardando palestrante iniciar apresentação pelo celular..."
-- Mostra QR/lista das apresentações do evento (só visual)
-- Inscreve-se no canal Realtime `event-lobby-{id}`
-- Ao receber evento `launch`, navega automaticamente para `/present/{session_id}` em tela cheia
-- Também ouve evento `return_to_lobby` para voltar à espera
+Tela pública (sem login):
+- Campo: "Qual é o seu nome?" (obrigatório, validado)
+- Botão gradiente BNB (#A6193C → #F68B1F): **"Ativar Controle Remoto 📱"**
+- Ao enviar: insere em `session_remotes` ocupando o próximo slot livre (1 ou 2). Se ambos cheios, mensagem "Os 2 controles já estão conectados."
+- Salva `remote_id` em `localStorage` e redireciona para `/remote/$id` com slot e nome no estado.
 
-## 4. Refatorar `/remote/$id` — Interface clicker otimizada
+## Fase 3 — Nova interface do celular (`/remote/$id`)
 
-Editar `src/routes/remote.$id.tsx`:
-- **Remover** exibição do texto/alternativas/gabarito da pergunta atual (regra de ouro)
-- Cabeçalho compacto: título da palestra + indicador "Slide X de Y" + contador de usuários online + botão "Sair" (volta ao hub via modal de confirmação que dispara `return_to_lobby` no canal e limpa `active_question_id`)
-- **Console de Quiz** (somente se slide atual tem pergunta vinculada):
-  - Botão "Lançar Quiz"
-  - Botão "Mostrar Resultados" (dispara broadcast `toggle_ranking` show=true ou marca `question_revealed`)
-  - Switch "Ativar Pergunta Prêmio" (toggla `is_prize_question` + `prize_multiplier` 3-5x na pergunta)
-- **Botão herói "AVANÇAR"**: ~70% da área útil inferior, gradiente `#A6193C → #F68B1F`, ícone `ArrowRight` grande, texto "AVANÇAR" em tamanho dominante
-- **Botão "Voltar"**: pequeno, isolado no canto, estilo outline cinza `#1E2235`, ícone `ChevronLeft`
+Layout **estático `100dvh` sem rolagem**.
 
-## 5. Modal "Sair da Apresentação"
+**Cabeçalho fixo:** "Você é o Controle {N} ({Nome})" + badge de status de conexão.
 
-No cabeçalho do `/remote/$id`:
-- Botão "Mudar de Palestra" abre `AlertDialog`: "Deseja fechar esta apresentação no projetor e escolher outra?"
-- Confirmar: marca session como `ended` (ou limpa `active_question_id`), envia broadcast `return_to_lobby` no canal `event-lobby-{event_id}`, navega celular para `/remote`
-- Projetor recebe e volta para `/event/$id/lobby`
+**Tela principal:**
+- **AVANÇAR** (70% da área inferior): botão gigante, gradiente BNB, ícone de seta, dispara `handleMasterAdvance` no projetor (mesmo comportamento do clique do mouse, já implementado).
+- **VOLTAR**: pequeno, cinza escuro, base extrema.
+- **⚙️ Outras Funcionalidades**: botão central que abre `Drawer` (shadcn) cobrindo a tela.
 
-## 6. Detalhes técnicos
+**Gaveta de funcionalidades** (toggles + ações):
+- Alternar Tela Cheia (F11) — `is_fullscreen` na sessão
+- Exibir/Ocultar QR Code no Projetor — novo campo `show_join_qr`
+- Exibir/Ocultar Classificação Geral — novo campo `show_ranking`
+- Exibir/Ocultar Barra Lateral Direita — novo campo `show_sidebar`
+- **Encerrar Apresentação** (vermelho) → modal full-screen "Deseja realmente encerrar o evento e revelar o pódio agora?" → ao confirmar, dispara transição imediata do projetor para a tela de pódio.
 
-- Canal Realtime novo: `event-lobby-${event_id}` (broadcast events: `launch`, `return_to_lobby`)
-- Total de usuários online: count de `participants` por `event_id` agregando sessões do evento
-- Para pergunta prêmio: update na tabela `questions` (`is_prize_question`, `prize_multiplier`)
-- Nenhuma mudança de schema necessária — colunas já existem
+## Fase 4 — Controle duplo síncrono
 
-## Arquivos
+Ambos os controles compartilham os mesmos privilégios. Como toda ação já passa pelo canal Broadcast `remote-bridge-{sessionId}` e/ou updates na tabela `sessions`, basta garantir que:
+- O projetor escuta todas as ações independentemente do `from`.
+- O badge de status no celular mostra qual slot ele ocupa.
+- A presença na tabela `session_remotes` (com heartbeat) define quem está ativo.
 
-- **Criar**: `src/routes/remote.index.tsx`, `src/routes/event.$id.lobby.tsx`
-- **Editar**: `src/routes/remote.$id.tsx` (refatoração de UI + console quiz + botão herói + sair), `src/routes/dashboard.tsx` (redirect mobile→/remote)
-- **Auto-gerado**: `src/routeTree.gen.ts`
+---
+
+## Detalhes técnicos
+
+### Banco de dados (1 migration)
+
+```sql
+-- Slots de controles remotos pareados por sessão
+CREATE TABLE public.session_remotes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL,
+  slot integer NOT NULL CHECK (slot IN (1, 2)),
+  operator_name text NOT NULL,
+  device_token text,
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (session_id, slot)
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.session_remotes TO anon, authenticated;
+GRANT ALL ON public.session_remotes TO service_role;
+ALTER TABLE public.session_remotes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY open_all ON public.session_remotes FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.session_remotes;
+
+-- Toggles de visibilidade controlados pelo celular
+ALTER TABLE public.sessions
+  ADD COLUMN show_join_qr boolean NOT NULL DEFAULT true,
+  ADD COLUMN show_ranking boolean NOT NULL DEFAULT true,
+  ADD COLUMN show_sidebar boolean NOT NULL DEFAULT true,
+  ADD COLUMN force_podium boolean NOT NULL DEFAULT false;
+```
+
+### Arquivos criados
+- `src/routes/present.$id.pair.tsx` — tela de pareamento no projetor
+- `src/routes/remote.$id.join.tsx` — captura de nome no celular
+- `src/components/remote-drawer.tsx` — gaveta "Outras Funcionalidades"
+
+### Arquivos editados
+- `src/routes/dashboard.tsx` — `startSession()` agora navega para `/present/$id/pair` em vez de `/present/$id`
+- `src/routes/lobby.$id.tsx` — botão "Iniciar Apresentação" idem
+- `src/routes/remote.$id.tsx` — nova UI ergonômica (Avançar gigante, Voltar pequeno, gaveta), leitura de slot/nome
+- `src/routes/remote.index.tsx` — passa a redirecionar para `/remote/$id/join` quando há sessão alvo
+- `src/routes/present.$id.tsx` — respeita `show_join_qr`, `show_ranking`, `show_sidebar` e `force_podium`; remove cards condicionalmente
+- `src/hooks/use-pairing-presence.tsx` — heartbeat passa a atualizar `session_remotes.last_seen_at` do slot atual
+
+### Pontos de atenção
+- A rota `/present/$id/pair` deve ser acessível só pelo palestrante logado (igual a `/present/$id`).
+- O QR Code do pareamento é **diferente** do QR de participantes (que continua em `/join?session=...`).
+- O slot é atribuído server-side por ordem de chegada (transação curta) para evitar corrida entre 2 celulares escaneando ao mesmo tempo.
+- Toda UI em **PT-BR**.
+
+---
+
+## Fora do escopo
+- Persistir controles entre sessões diferentes (cada sessão começa do zero).
+- Autenticação dos controles (continua público, identificado só pelo nome).
+- Mudanças no fluxo do participante final (`/join`).
+
+Aprove para eu implementar.

@@ -107,7 +107,7 @@ function RemoteHub() {
       window.setTimeout(() => supabase.removeChannel(ch), 400);
 
       toast.success("Apresentação iniciada no projetor!", { id: t });
-      navigate({ to: "/remote/$id", params: { id: session.id } });
+      navigate({ to: "/remote/$id/join", params: { id: session.id } });
     } catch (e: any) {
       toast.error(e?.message || "Falha ao iniciar no projetor", { id: t });
     }
