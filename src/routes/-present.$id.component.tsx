@@ -52,6 +52,15 @@ export function Present() {
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
+  // Máquina de estados de abertura do projetor:
+  //   esperando_controle   → mostra apenas o QR do Controle Remoto
+  //   esperando_participantes → mostra apenas o QR da plateia (Lobby)
+  //   apresentando_slides  → status === 'live'; nenhum overlay de lobby
+  // `pairFlowDone` marca que o palestrante já pareou OU fechou o QR
+  // do controle manualmente (X/Esc), liberando a transição para o
+  // QR de participantes.
+  const [pairFlowDone, setPairFlowDone] = useState(false);
+  const [remotesCount, setRemotesCount] = useState(0);
   // Frames flutuantes — agora sincronizados pelas colunas booleanas da
   // sessão (show_join_qr, show_ranking, show_pair_qr). Isso garante
   // sincronia bidirecional automática entre celular, projetor e Console
@@ -396,6 +405,65 @@ export function Present() {
     };
   }, [id]);
 
+  // === MÁQUINA DE ESTADOS DE ABERTURA ===
+  // Monitora controles remotos pareados em tempo real para avançar da
+  // fase "esperando_controle" para "esperando_participantes".
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRemotes() {
+      const { data } = await supabase
+        .from("session_remotes")
+        .select("id")
+        .eq("session_id", id);
+      if (!cancelled) setRemotesCount((data ?? []).length);
+    }
+    fetchRemotes();
+    const ch = supabase
+      .channel(`present-remotes-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "session_remotes", filter: `session_id=eq.${id}` },
+        () => fetchRemotes(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [id]);
+
+  // Quando o primeiro controle parear, marca o fluxo como concluído.
+  useEffect(() => {
+    if (remotesCount > 0 && !pairFlowDone) setPairFlowDone(true);
+  }, [remotesCount, pairFlowDone]);
+
+  // Driver dos overlays de abertura. Só atua enquanto a sessão está em
+  // 'lobby'. Em 'live' garante que QRs sumam para foco total no slide.
+  useEffect(() => {
+    if (!session) return;
+    const status = session.status;
+    const showPair = !!(session as any).show_pair_qr;
+    const showJoin = !!session.show_join_qr;
+    const showRanking = !!session.show_ranking;
+    if (status === "lobby") {
+      if (!pairFlowDone) {
+        // ETAPA 1 — somente QR do Controle Remoto.
+        if (!showPair) setOverlayFlag("show_pair_qr", true);
+        if (showJoin) setOverlayFlag("show_join_qr", false);
+        if (showRanking) setOverlayFlag("show_ranking", false);
+      } else {
+        // ETAPA 2 — somente QR dos Participantes (Lobby).
+        if (showPair) setOverlayFlag("show_pair_qr", false);
+        if (!showJoin) setOverlayFlag("show_join_qr", true);
+        if (showRanking) setOverlayFlag("show_ranking", false);
+      }
+    } else if (status === "live") {
+      if (showPair) setOverlayFlag("show_pair_qr", false);
+      if (showJoin) setOverlayFlag("show_join_qr", false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.status, session?.show_pair_qr, session?.show_join_qr, session?.show_ranking, pairFlowDone]);
+
   // Carrega total de páginas do PDF via pdfjs
   useEffect(() => {
     if (!presentation?.file_url) return;
@@ -544,6 +612,13 @@ export function Present() {
       .eq("id", id)
       .single();
     if (!fresh || (fresh as any).status === "ended") return;
+    // ETAPA 3 — primeira ação de avançar durante o lobby promove a
+    // sessão para 'live', encerrando os QRs de abertura e levando o
+    // projetor ao foco absoluto no Slide 1 (modo cinema).
+    if ((fresh as any).status === "lobby") {
+      await supabase.from("sessions").update({ status: "live" }).eq("id", id);
+      return;
+    }
     const liveSlide: number = (fresh as any).current_slide ?? 1;
     const fired: string[] = ((fresh as any).fired_question_ids as string[]) ?? [];
     const activeId: string | null = (fresh as any).active_question_id ?? null;
@@ -783,7 +858,16 @@ export function Present() {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setOverlayFlag("show_join_qr", false)} />
-      <GiantQrOverlay open={pairQrOpen} joinUrl={pairUrl} onClose={() => setOverlayFlag("show_pair_qr", false)} />
+      <GiantQrOverlay
+        open={pairQrOpen}
+        joinUrl={pairUrl}
+        onClose={() => {
+          // Fechamento manual (X / Esc) — libera a transição para o
+          // QR dos Participantes mesmo sem pareamento.
+          setPairFlowDone(true);
+          setOverlayFlag("show_pair_qr", false);
+        }}
+      />
       <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setOverlayFlag("show_ranking", false)} />
       {/* === ATALHOS FLUTUANTES (canto superior direito) ===
           Discretos no modo cinema (opacity-20) — brilham no hover. */}

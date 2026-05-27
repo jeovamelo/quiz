@@ -28,7 +28,10 @@ import { toast } from "sonner";
  */
 function openPresentationPopup(sessionId: string) {
   if (typeof window === "undefined") return;
-  const url = `/present/${sessionId}/pair`;
+  // Abre diretamente a janela do projetor — a máquina de estados
+  // interna controla o lobby (QR do Controle Remoto → QR dos
+  // Participantes → Slides) sem rotas intermediárias.
+  const url = `/present/${sessionId}`;
   const scr: any = window.screen || {};
   const width = scr.width || 1280;
   const height = scr.height || 800;
@@ -123,7 +126,17 @@ function Dashboard() {
     rememberDashboardOrigin();
     const { data: session, error } = await supabase
       .from("sessions")
-      .insert({ presentation_id: presentationId, status: "lobby", current_slide: 1 })
+      .insert({
+        presentation_id: presentationId,
+        status: "lobby",
+        current_slide: 1,
+        // Estado de abertura: somente QR do Controle Remoto.
+        // Lobby de participantes e classificação ficam ocultos até a
+        // máquina de estados do projetor liberar cada etapa.
+        show_pair_qr: true,
+        show_join_qr: false,
+        show_ranking: false,
+      } as any)
       .select("id")
       .single();
     if (error) {
