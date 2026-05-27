@@ -128,9 +128,32 @@ function Present() {
         }
       })
       .subscribe();
+    // Canal do evento — recebe "return_to_lobby" do celular do palestrante
+    let lobbyCh: ReturnType<typeof supabase.channel> | null = null;
+    (async () => {
+      const { data: sRow } = await supabase
+        .from("sessions")
+        .select("presentation_id")
+        .eq("id", id)
+        .single();
+      if (!sRow) return;
+      const { data: pRow } = await (supabase.from("presentations") as any)
+        .select("event_id")
+        .eq("id", sRow.presentation_id)
+        .single();
+      const evId = (pRow as any)?.event_id;
+      if (!evId) return;
+      lobbyCh = supabase
+        .channel(`event-lobby-${evId}`)
+        .on("broadcast", { event: "return_to_lobby" }, () => {
+          navigate({ to: "/event/$id/lobby", params: { id: evId } });
+        })
+        .subscribe();
+    })();
     return () => {
       supabase.removeChannel(ch);
       supabase.removeChannel(remoteCh);
+      if (lobbyCh) supabase.removeChannel(lobbyCh);
     };
   }, [id]);
 
