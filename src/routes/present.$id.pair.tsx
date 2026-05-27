@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, Rocket, Smartphone, Tv } from "lucide-react";
+import { ArrowRight, Loader2, Smartphone, Tv } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import type { SessionRemote } from "@/lib/session-remotes";
@@ -21,7 +21,7 @@ function PairRemotes() {
   const [presentationTitle, setPresentationTitle] = useState<string | null>(null);
 
   useEffect(() => {
-    setPairUrl(`${window.location.origin}/remote/${id}/join`);
+    setPairUrl(`${window.location.origin}/remote-setup/${id}`);
   }, [id]);
 
   // Carrega título do evento/apresentação para contexto.
@@ -82,8 +82,8 @@ function PairRemotes() {
   const slot1 = remotes.find((r) => r.slot === 1) ?? null;
   const slot2 = remotes.find((r) => r.slot === 2) ?? null;
 
-  function startPresentation() {
-    navigate({ to: "/present/$id", params: { id } });
+  function advanceToLobby() {
+    navigate({ to: "/lobby/$id", params: { id } });
   }
 
   if (!pairUrl) {
@@ -143,10 +143,10 @@ function PairRemotes() {
           </p>
           <button
             type="button"
-            onClick={startPresentation}
+            onClick={advanceToLobby}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-8 py-4 text-base font-extrabold uppercase tracking-wide text-white shadow-2xl shadow-[#A6193C]/40 transition-all duration-100 hover:scale-[1.02] active:scale-95"
           >
-            <Rocket className="h-5 w-5" /> Iniciar Apresentação Agora 🚀
+            <ArrowRight className="h-5 w-5" /> Avançar para o Lobby 🚀
           </button>
         </div>
       </footer>
