@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Loader2, LogOut, Trophy } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, LogOut, Trophy } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -404,6 +404,21 @@ function Present() {
           <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-black/60 px-2 py-1 text-xs text-white/80">
             Slide {currentSlide}
           </div>
+          {/* Botão voltar para Evento */}
+          {presentation.event_id && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate({ to: "/event/$id", params: { id: presentation.event_id! } });
+              }}
+              title="Voltar para o Evento"
+              aria-label="Voltar para o Evento"
+              className="absolute left-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#262D3D] bg-[#161A23]/90 text-[#9CA3AF] shadow-lg backdrop-blur transition hover:scale-105 hover:text-[#F68B1F] hover:bg-[#161A23]"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+          )}
           {/* Botão flutuante de Classificação */}
           <button
             type="button"
