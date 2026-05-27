@@ -4,7 +4,7 @@ import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, 
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { PairingStatusBadge } from "@/components/pairing-status-badge";
+import { usePresenceMonitor } from "@/hooks/use-presence-monitor";
 import { haptic } from "@/hooks/use-haptic";
 import { rememberDashboardOrigin } from "@/lib/dashboard-origin";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,10 @@ function Dashboard() {
   const { user } = useRequireSpeaker();
   const userId = user?.id;
   const isMobile = useIsMobile();
+
+  /* Mantém heartbeat de pareamento ativo em segundo plano,
+     mesmo sem exibir o selo visual no cabeçalho. */
+  usePresenceMonitor(userId, "desktop");
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["presentations", userId],
@@ -185,21 +189,18 @@ function Dashboard() {
                 {user?.user_metadata?.full_name || user?.email || "Palestrante"}
               </h1>
             </div>
-            <div className="flex items-center gap-2">
-              <PairingStatusBadge userId={userId} variant="mobile" compact />
-              <button
-                type="button"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  toast.success("Você saiu da sua conta.");
-                  navigate({ to: "/", replace: true });
-                }}
-                className="rounded-lg p-2 text-[#9CA3AF] hover:bg-[#1E2235] hover:text-[#F68B1F]"
-                aria-label="Sair"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                toast.success("Você saiu da sua conta.");
+                navigate({ to: "/", replace: true });
+              }}
+              className="rounded-lg p-2 text-[#9CA3AF] hover:bg-[#1E2235] hover:text-[#F68B1F]"
+              aria-label="Sair"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </header>
 
@@ -349,7 +350,6 @@ function Dashboard() {
             <p className="text-sm text-muted-foreground">{user?.user_metadata?.full_name || user?.email || "Palestrante"}</p>
           </div>
           <div className="flex items-center gap-2">
-            <PairingStatusBadge userId={userId} variant="desktop" />
             <Button
               asChild
               variant="ghost"
