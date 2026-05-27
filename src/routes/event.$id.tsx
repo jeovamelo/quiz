@@ -580,6 +580,15 @@ function EventManage() {
                   >
                     <Pencil className="mr-1 h-4 w-4" /> Editar
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setResetTarget(p)}
+                    className="border-[#262D3D] text-[#9CA3AF] hover:border-[#A6193C] hover:text-[#A6193C]"
+                    title="Reiniciar apresentação (apaga histórico e pontuação)"
+                  >
+                    <RotateCcw className="mr-1 h-4 w-4" /> Reiniciar
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => detach(p.id)} title="Desvincular do evento">
                     <Trash2 className="h-4 w-4" />
                   </Button>
