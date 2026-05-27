@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/event/$id")({
+export const Route = createFileRoute("/event/$id/")({
   head: () => ({ meta: [{ title: "Evento — QuizPulse" }] }),
   component: EventManage,
 });
