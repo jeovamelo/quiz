@@ -72,6 +72,10 @@ function Dashboard() {
   const userId = user?.id;
   const isMobile = useIsMobile();
 
+  /* Mantém heartbeat de pareamento ativo em segundo plano,
+     mesmo sem exibir o selo visual no cabeçalho. */
+  usePresenceMonitor(userId, "desktop");
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["presentations", userId],
     enabled: !!userId,
