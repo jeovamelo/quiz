@@ -62,6 +62,7 @@ function Join() {
   const [eventId, setEventId] = useState<string | null>(null);
   const [resolvingIdentity, setResolvingIdentity] = useState(true);
   const [winnerPlace, setWinnerPlace] = useState<1 | 2 | 3 | null>(null);
+  const [finaleLocked, setFinaleLocked] = useState(false);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [participantCreatedAt, setParticipantCreatedAt] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -238,12 +239,24 @@ function Join() {
         if (payload?.device_token && payload.device_token === deviceToken) {
           const place = payload.place as 1 | 2 | 3;
           setWinnerPlace(place);
+          setFinaleLocked(false);
           try {
             (navigator as any)?.vibrate?.([200, 80, 200, 80, 400]);
           } catch {
             /* sem vibração */
           }
         }
+      })
+      .on("broadcast", { event: "finale:lock" }, () => {
+        setFinaleLocked(true);
+        try {
+          (navigator as any)?.vibrate?.([120, 60, 120]);
+        } catch {
+          /* sem vibração */
+        }
+      })
+      .on("broadcast", { event: "event:closed" }, () => {
+        setFinaleLocked(false);
       })
       .subscribe();
     return () => {
