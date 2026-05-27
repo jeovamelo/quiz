@@ -588,13 +588,21 @@ function RemoteControl() {
       {/* Cabeçalho: identidade do slot + status de pareamento */}
       <header className="sticky top-0 z-10 shrink-0 border-b border-[#262D3D] bg-[#131722]/95 px-3 py-2 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-semibold uppercase tracking-widest text-[#F68B1F]">
-              Você é o Controle {stored?.slot ?? "?"}
-            </p>
-            <h1 className="truncate text-[13px] font-bold leading-tight text-white">
-              {stored?.name ?? "—"} · {presentation.title}
+          <Link
+            to="/dashboard"
+            aria-label="Painel de Controle"
+            className="flex shrink-0 items-center gap-1 rounded-md border border-[#3A4255] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF] transition-colors hover:border-[#9CA3AF] hover:text-white"
+          >
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Painel
+          </Link>
+          <div className="min-w-0 flex-1 px-2 text-center">
+            <h1 className="truncate text-[12px] font-bold leading-tight text-white">
+              {presentation.title}
             </h1>
+            <p className="truncate text-[10px] text-[#9CA3AF]">
+              Slide {currentSlide} de {totalSlides}
+            </p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <NetworkStatusBadge transport={tunnel.transport} compact />
@@ -618,21 +626,16 @@ function RemoteControl() {
               }`}
             />
             {bridge.partnerOnline
-              ? "Conectado"
+              ? "Sincronizado"
               : bridge.status === "connected"
               ? "Aguardando"
-              : "Sem sinal"}
+              : "Sem conexão"}
             </div>
           </div>
         </div>
-        <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#9CA3AF]">
-          <span className="rounded bg-[#0E1015] px-2 py-0.5 font-mono text-white">
-            Slide {currentSlide} de {totalSlides}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5 text-[#07A684]" />
-            <span className="font-semibold text-white">{participantsCount}</span> usuários
-          </span>
+        <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[11px] text-[#9CA3AF]">
+          <Users className="h-3.5 w-3.5 text-[#07A684]" />
+          <span className="font-semibold text-white">{participantsCount}</span> usuários online
         </div>
       </header>
 
