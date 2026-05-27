@@ -177,6 +177,20 @@ export function Present() {
         return;
       }
 
+      // Frame flutuante de cadastro de controles — instantâneo.
+      if (action === "SHOW_PAIRING") {
+        setPairingFrameOpen(true);
+        return;
+      }
+      if (action === "HIDE_PAIRING") {
+        setPairingFrameOpen(false);
+        return;
+      }
+      if (action === "TOGGLE_PAIRING") {
+        setPairingFrameOpen((v) => !v);
+        return;
+      }
+
       // Re-busca o estado mais recente para evitar usar React state desatualizado.
       const { data: fresh } = await supabase
         .from("sessions")
@@ -239,6 +253,9 @@ export function Present() {
       // Reaplica a mesma lógica do bridge.onAction.
       if (action === "SHOW_GIANT_QR") return setGiantQrOpen(true);
       if (action === "HIDE_GIANT_QR") return setGiantQrOpen(false);
+      if (action === "SHOW_PAIRING") return setPairingFrameOpen(true);
+      if (action === "HIDE_PAIRING") return setPairingFrameOpen(false);
+      if (action === "TOGGLE_PAIRING") return setPairingFrameOpen((v) => !v);
       if (action === "NEXT") {
         handleMasterAdvanceRef.current();
         return;
@@ -804,6 +821,11 @@ export function Present() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       <NetworkFallbackBanner transport={aggregateTransport} />
       <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setGiantQrOpen(false)} />
+      <PairingFrameOverlay
+        open={pairingFrameOpen}
+        sessionId={id}
+        onClose={() => setPairingFrameOpen(false)}
+      />
       {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
       {laserCoords && (
         <div
