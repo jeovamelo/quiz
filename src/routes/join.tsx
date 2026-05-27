@@ -66,7 +66,6 @@ function Join() {
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [participantCreatedAt, setParticipantCreatedAt] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [birth, setBirth] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [question, setQuestion] = useState<Q | null>(null);
@@ -317,8 +316,8 @@ function Join() {
 
   async function join() {
     if (!sessionId) return;
-    if (!name.trim() || !birth) {
-      toast.error("Preencha nome e data de nascimento");
+    if (!name.trim()) {
+      toast.error("Preencha seu nome");
       return;
     }
     setSubmitting(true);
@@ -326,7 +325,7 @@ function Join() {
       .insert({
         session_id: sessionId,
         name: name.trim(),
-        birth_date: birth,
+        birth_date: "2000-01-01",
         device_token: deviceToken,
         event_id: eventId,
       })
@@ -403,7 +402,7 @@ function Join() {
             participant_id: participantId,
             device_token: deviceToken,
             participant_name: pName || name || "",
-            birth_date: pBirth || birth || null,
+            birth_date: pBirth || "2000-01-01",
             score: newScore,
             correct_count: newCorrect,
             answer_count: newAnswerCount,
@@ -477,10 +476,6 @@ function Join() {
           <div>
             <Label htmlFor="name">Nome</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" />
-          </div>
-          <div>
-            <Label htmlFor="birth">Data de nascimento</Label>
-            <Input id="birth" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
           </div>
           <Button className="w-full" onClick={join} disabled={submitting}>
             {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
