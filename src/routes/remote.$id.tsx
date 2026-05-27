@@ -6,7 +6,7 @@ import {
   Loader2,
   Trophy,
   Users,
-  Crosshair,
+  Target,
   LayoutDashboard,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -640,14 +640,35 @@ function RemoteControl() {
             onClick={toggleLaser}
             aria-pressed={laserOn}
             aria-label="Apontador Laser"
-            className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-all duration-100 active:scale-95 ${
+            className={`flex h-16 w-full items-center gap-3 rounded-2xl border px-4 text-left text-sm font-bold shadow-md transition-all duration-100 active:scale-[0.98] ${
               laserOn
-                ? "border-red-400 bg-gradient-to-r from-red-600 to-red-500 text-white shadow-[0_0_20px_-2px_rgba(239,68,68,0.7)] animate-pulse"
-                : "border-[#3A4255] bg-[#1E2235] text-[#9CA3AF] hover:text-white"
+                ? "border-[#A6193C] bg-red-500/10 text-white shadow-[0_0_24px_-4px_rgba(166,25,60,0.55)]"
+                : "border-[#262D3D] bg-[#161A23] text-white"
             }`}
           >
-            <Crosshair className={`h-5 w-5 ${laserOn ? "text-white" : "text-red-400"}`} />
-            {laserOn ? "🔴 Laser Ativo — Mova o celular" : "Apontador Laser 🔴"}
+            <span
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                laserOn
+                  ? "border-[#A6193C]/60 bg-[#A6193C]/30 text-white"
+                  : "border-[#262D3D] bg-[#0E1015] text-red-400"
+              }`}
+            >
+              <Target className={`h-5 w-5 ${laserOn ? "animate-pulse" : ""}`} />
+            </span>
+            <span className="flex-1">
+              <span className="block text-base font-extrabold">
+                {laserOn ? (
+                  <>
+                    <span className="animate-pulse">🔴</span> Laser Ativo
+                  </>
+                ) : (
+                  "Apontador Laser 🔴"
+                )}
+              </span>
+              <span className={`block text-[11px] font-medium ${laserOn ? "text-red-200" : "text-[#9CA3AF]"}`}>
+                {laserOn ? "Mova o celular para mirar" : "Toque para ativar o ponteiro"}
+              </span>
+            </span>
           </button>
 
           {/* PAR SIMÉTRICO — VOLTAR + AVANÇAR (ergonomia para uma mão) */}
@@ -657,19 +678,21 @@ function RemoteControl() {
               onClick={prevSlide}
               disabled={busy || currentSlide <= 1}
               aria-label="Voltar"
-              className="flex h-[60px] flex-1 items-center justify-center gap-2 rounded-2xl border border-[#3A4255] bg-[#1E2235] text-base font-bold text-white shadow-md transition-all duration-100 active:scale-95 active:bg-[#262D3D] disabled:opacity-40"
+              style={{ flexBasis: "35%" }}
+              className="flex h-[78px] grow items-center justify-center gap-2 rounded-2xl border border-[#262D3D] bg-[#161A23] text-base font-bold text-gray-300 shadow-md transition-all duration-100 active:scale-[0.97] active:bg-[#1E2235] disabled:opacity-40"
             >
-              <ChevronLeft className="h-6 w-6" /> Voltar
+              <ChevronLeft className="h-6 w-6" strokeWidth={2.5} /> Voltar
             </button>
             <button
               type="button"
               onClick={nextSlide}
               disabled={busy}
               aria-label="Avançar"
-              className="relative flex h-[60px] flex-1 items-center justify-center gap-2 overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-base font-black uppercase tracking-wide text-white shadow-lg shadow-[#A6193C]/40 transition-all duration-100 active:scale-95 active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
+              style={{ flexBasis: "65%" }}
+              className="relative flex h-[78px] grow items-center justify-center gap-2 overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-lg font-black uppercase tracking-wide text-white shadow-lg shadow-orange-500/20 transition-all duration-100 active:scale-[0.97] active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
             >
-              Avançar
-              <ChevronRight className="h-6 w-6" strokeWidth={3} />
+              AVANÇAR
+              <ChevronRight className="h-7 w-7" strokeWidth={3} />
             </button>
           </div>
         </div>
