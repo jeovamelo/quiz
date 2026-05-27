@@ -6,8 +6,6 @@ import {
   ChevronRight,
   Home,
   Loader2,
-  LogOut,
-  Smartphone,
   Sparkles,
   Trophy,
   Users,
