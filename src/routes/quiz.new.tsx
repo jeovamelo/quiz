@@ -176,7 +176,7 @@ function NewQuiz() {
     } else {
       updateQ(i, {
         question_type: "multiple_choice",
-        options: { A: q.options.A || "", B: q.options.B || "", C: q.options.C || "", D: q.options.D || "" },
+        options: { A: q.options.A || "", B: q.options.B || "" },
       });
     }
   }
@@ -212,17 +212,36 @@ function NewQuiz() {
         .select("id")
         .single();
       if (pErr) throw pErr;
-      const rows = questions.map((q, idx) => ({
+      const rows = questions.map((q, idx) => {
+        let opts: Record<string, string>;
+        let correct = q.correct_option;
+        if (q.question_type === "true_false") {
+          opts = { A: "Verdadeiro", B: "Falso" };
+        } else {
+          const keys = Object.keys(q.options).sort();
+          const kept = keys.filter(
+            (k) => typeof q.options[k] === "string" && q.options[k].trim() !== "",
+          );
+          opts = {};
+          kept.forEach((oldK, j) => {
+            const newK = String.fromCharCode(65 + j);
+            opts[newK] = q.options[oldK].trim();
+            if (oldK === q.correct_option) correct = newK;
+          });
+          if (!opts[correct]) correct = "A";
+        }
+        return {
         presentation_id: pres.id,
         question_text: q.question_text,
         question_type: q.question_type,
-        options: q.options,
-        correct_option: q.correct_option,
+        options: opts,
+        correct_option: correct,
         slide_number: q.slide_number,
         display_mode: q.display_mode,
         time_limit: q.time_limit,
         position: idx,
-      }));
+        };
+      });
       const { error: qErr } = await supabase.from("questions").insert(rows);
       if (qErr) throw qErr;
       toast.success("Quiz salvo com sucesso!");
