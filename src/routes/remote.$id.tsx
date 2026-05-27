@@ -239,27 +239,11 @@ function RemoteControl() {
       // FALLBACK (sem sinal do projetor): aplica a mesma lógica via DB.
       const { data: fresh } = await supabase
         .from("sessions")
-        .select("current_slide, active_question_id, question_revealed")
+        .select("current_slide, fired_question_ids")
         .eq("id", id)
         .single();
       const liveSlide: number = fresh?.current_slide ?? currentSlide;
-      const liveActiveQid: string | null = fresh?.active_question_id ?? null;
-      const liveRevealed: boolean = !!fresh?.question_revealed;
-      const liveActive = questions.find((q) => q.id === liveActiveQid) || null;
-      const liveSlideQ = questions.find((q) => q.slide_number === liveSlide) || null;
-
-      if (liveActive && !liveRevealed) {
-        await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
-        return;
-      }
-      if (liveSlideQ && !liveActive) {
-        await supabase.from("sessions").update({
-          active_question_id: liveSlideQ.id,
-          question_started_at: new Date().toISOString(),
-          question_revealed: false,
-        }).eq("id", id);
-        return;
-      }
+      const fired: string[] = ((fresh as any)?.fired_question_ids as string[]) ?? [];
       // Pódio automático: se já estamos no último slide conhecido, encerra
       // a sessão (gatilho de revelação dramática no projetor).
       if (liveSlide >= totalSlides) {
@@ -281,15 +265,17 @@ function RemoteControl() {
       }
       const next = liveSlide + 1;
       const q = questions.find((qq) => qq.slide_number === next) || null;
+      const alreadyFired = q ? fired.includes(q.id) : false;
       const patch: any = {
         current_slide: next,
         question_revealed: false,
         active_question_id: null,
         question_started_at: null,
       };
-      if (q && q.display_mode === "simultaneous") {
+      if (q && !alreadyFired && q.display_mode === "simultaneous") {
         patch.active_question_id = q.id;
         patch.question_started_at = new Date().toISOString();
+        patch.fired_question_ids = [...fired, q.id];
       }
       await supabase.from("sessions").update(patch).eq("id", id);
     });
