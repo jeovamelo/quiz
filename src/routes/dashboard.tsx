@@ -24,7 +24,7 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useRequireSpeaker();
+  const { user } = useRequireSpeaker();
   const userId = user?.id;
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["presentations", userId],
