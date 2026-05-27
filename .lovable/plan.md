@@ -1,49 +1,56 @@
-## Plano: Edição Avançada de Apresentação + Pergunta Prêmio
+## Objetivo
 
-### 1. Banco de Dados (migration)
-Adicionar colunas:
-- `presentations.default_time_limit` (integer, default 30) — tempo geral padrão da apresentação
-- `questions.is_prize_question` (boolean, default false) — marca pergunta prêmio
-- `questions.prize_multiplier` (integer, default 5) — multiplicador 3/4/5x
-- `questions.difficulty` (text, default 'medium') — easy/medium/hard/extreme (se ainda não existir; verificar schema atual)
+Transformar o celular do palestrante logado em um "clicker" físico: ele escolhe a apresentação no celular, dispara no projetor via Realtime e comanda tudo com botão "Avançar" gigante. O projetor (computador) fica em modo lobby ouvindo comandos.
 
-Observação: `questions.time_limit` já existe. NULL/0 = usar padrão geral.
+## 1. Detecção de dispositivo + redirecionamento
 
-### 2. Tela de Edição (`src/routes/quiz.$id.edit.tsx`)
+- Em `src/routes/dashboard.tsx`: ao detectar mobile (`useIsMobile`) + usuário logado, redirecionar automaticamente para nova rota `/remote` (hub do celular). Manter dashboard normal em desktop.
 
-**Cabeçalho novo:**
-- Input "Nome da Apresentação" pré-preenchido com `presentations.title`
-- Seletor "Tempo Geral de Resposta (Padrão)" com opções 15s/30s/45s/60s/90s
+## 2. Nova rota `/remote` — Hub de seleção no celular
 
-**Card de cada pergunta:**
-- Campo numérico "Tempo de Resposta para esta pergunta" — placeholder mostra o tempo geral; se vazio, salva como `time_limit = 0` (usa padrão)
-- Switch "Definir como Pergunta Prêmio 🏆"
-- Quando ativo: dificuldade trava em "Extremo", seletor de multiplicador (3x/4x/5x), badge animado "⚡ PERGUNTA PRÊMIO", borda dourada `#FFCB05`, fundo `#1F1E24`
+Novo arquivo `src/routes/remote.index.tsx`:
+- Lista eventos do palestrante e, dentro de cada um, cards de apresentações
+- Cada card tem botão destacado **"Apresentar no Projetor"** (ícone Tv/Play)
+- Ao clicar: cria/atualiza uma `session` para aquela apresentação, marca `status='presenting'`, e envia broadcast Realtime no canal `event-lobby-{event_id}` com `{ type: 'launch', session_id, presentation_id }`
+- Em seguida, navega o celular para `/remote/$id` (controle remoto já existente)
 
-**Save:**
-- UPDATE em `presentations` (title, default_time_limit)
-- UPSERT em `questions` com novos campos
+## 3. Nova rota `/event/$id/lobby` — Modo Receptor (projetor)
 
-### 3. Tela de Projeção (`src/routes/present.$id.tsx`)
-- Resolver tempo: `question.time_limit > 0 ? question.time_limit : presentation.default_time_limit`
-- Se `is_prize_question`: cronômetro amarelo `#FFCB05` com `animate-pulse`, badge gigante piscando "ATENÇÃO: PERGUNTA PRÊMIO VALENDO {multiplier}X MAIS PONTOS!"
-- Pontuação multiplicada por `prize_multiplier` ao gravar resposta correta
+Novo arquivo `src/routes/event.$id.lobby.tsx`:
+- Tela cheia em modo espera com mensagem "Aguardando palestrante iniciar apresentação pelo celular..."
+- Mostra QR/lista das apresentações do evento (só visual)
+- Inscreve-se no canal Realtime `event-lobby-{id}`
+- Ao receber evento `launch`, navega automaticamente para `/present/{session_id}` em tela cheia
+- Também ouve evento `return_to_lobby` para voltar à espera
 
-### 4. Tela do Participante (`src/routes/join.tsx` ou rota de quiz ao vivo)
-- Quando pergunta ativa tem `is_prize_question`: overlay fullscreen dourado/laranja com faíscas, texto "⚡ HORA DA VIRADA! Pergunta Prêmio Ativa! Vale até {max} pontos!"
-- Disparar `navigator.vibrate([200,100,200,100,200])` em loop curto
+## 4. Refatorar `/remote/$id` — Interface clicker otimizada
 
-### 5. Cálculo de Pontos
-No handler de resposta (provavelmente no celular ou trigger de score), multiplicar pontos base pelo `prize_multiplier` quando `is_prize_question = true`.
+Editar `src/routes/remote.$id.tsx`:
+- **Remover** exibição do texto/alternativas/gabarito da pergunta atual (regra de ouro)
+- Cabeçalho compacto: título da palestra + indicador "Slide X de Y" + contador de usuários online + botão "Sair" (volta ao hub via modal de confirmação que dispara `return_to_lobby` no canal e limpa `active_question_id`)
+- **Console de Quiz** (somente se slide atual tem pergunta vinculada):
+  - Botão "Lançar Quiz"
+  - Botão "Mostrar Resultados" (dispara broadcast `toggle_ranking` show=true ou marca `question_revealed`)
+  - Switch "Ativar Pergunta Prêmio" (toggla `is_prize_question` + `prize_multiplier` 3-5x na pergunta)
+- **Botão herói "AVANÇAR"**: ~70% da área útil inferior, gradiente `#A6193C → #F68B1F`, ícone `ArrowRight` grande, texto "AVANÇAR" em tamanho dominante
+- **Botão "Voltar"**: pequeno, isolado no canto, estilo outline cinza `#1E2235`, ícone `ChevronLeft`
 
-### Arquivos a tocar
-- migration nova
-- `src/routes/quiz.$id.edit.tsx`
-- `src/routes/present.$id.tsx`
-- rota do participante ao vivo (preciso localizar — provavelmente `src/routes/play.$id.tsx` ou similar dentro de `join`)
+## 5. Modal "Sair da Apresentação"
 
-### Perguntas antes de continuar
-1. Existe coluna `difficulty` em `questions` hoje? (não aparece no schema fornecido — vou adicionar)
-2. Qual o valor base de pontos por pergunta hoje? Há lógica de pontuação por dificuldade já implementada ou todos valem igual? Vou assumir que o `prize_multiplier` apenas multiplica o score atual calculado.
+No cabeçalho do `/remote/$id`:
+- Botão "Mudar de Palestra" abre `AlertDialog`: "Deseja fechar esta apresentação no projetor e escolher outra?"
+- Confirmar: marca session como `ended` (ou limpa `active_question_id`), envia broadcast `return_to_lobby` no canal `event-lobby-{event_id}`, navega celular para `/remote`
+- Projetor recebe e volta para `/event/$id/lobby`
 
-Confirma para eu prosseguir com a migration + implementação?
+## 6. Detalhes técnicos
+
+- Canal Realtime novo: `event-lobby-${event_id}` (broadcast events: `launch`, `return_to_lobby`)
+- Total de usuários online: count de `participants` por `event_id` agregando sessões do evento
+- Para pergunta prêmio: update na tabela `questions` (`is_prize_question`, `prize_multiplier`)
+- Nenhuma mudança de schema necessária — colunas já existem
+
+## Arquivos
+
+- **Criar**: `src/routes/remote.index.tsx`, `src/routes/event.$id.lobby.tsx`
+- **Editar**: `src/routes/remote.$id.tsx` (refatoração de UI + console quiz + botão herói + sair), `src/routes/dashboard.tsx` (redirect mobile→/remote)
+- **Auto-gerado**: `src/routeTree.gen.ts`
