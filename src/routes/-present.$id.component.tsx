@@ -126,31 +126,18 @@ export function Present() {
         return;
       }
 
-      // Sobreposição QR Gigante — instantânea, sem ir ao banco.
-      if (action === "SHOW_GIANT_QR") {
-        setGiantQrOpen(true);
-        return;
-      }
-      if (action === "HIDE_GIANT_QR") {
-        setGiantQrOpen(false);
-        return;
-      }
-      if (action === "TOGGLE_GIANT_QR") {
-        setGiantQrOpen((v) => !v);
-        return;
-      }
-      if (action === "SHOW_RANKING") {
-        setRankingOpen(true);
-        return;
-      }
-      if (action === "HIDE_RANKING") {
-        setRankingOpen(false);
-        return;
-      }
-      if (action === "TOGGLE_RANKING") {
-        setRankingOpen((v) => !v);
-        return;
-      }
+      // Overlays — agora persistidos como colunas booleanas em `sessions`
+      // para sincronia bidirecional natural entre celular, projetor e
+      // Console do Operador. O projetor reage via postgres_changes.
+      if (action === "SHOW_GIANT_QR")  { await setOverlayFlag("show_join_qr", true);   return; }
+      if (action === "HIDE_GIANT_QR")  { await setOverlayFlag("show_join_qr", false);  return; }
+      if (action === "TOGGLE_GIANT_QR"){ await setOverlayFlag("show_join_qr", !giantQrOpen); return; }
+      if (action === "SHOW_RANKING")   { await setOverlayFlag("show_ranking", true);   return; }
+      if (action === "HIDE_RANKING")   { await setOverlayFlag("show_ranking", false);  return; }
+      if (action === "TOGGLE_RANKING") { await setOverlayFlag("show_ranking", !rankingOpen); return; }
+      if (action === "SHOW_PAIR_QR")   { await setOverlayFlag("show_pair_qr", true);   return; }
+      if (action === "HIDE_PAIR_QR")   { await setOverlayFlag("show_pair_qr", false);  return; }
+      if (action === "TOGGLE_PAIR_QR") { await setOverlayFlag("show_pair_qr", !pairQrOpen); return; }
       if (action === "END_EARLY") {
         await endSession(false);
         return;
@@ -177,7 +164,7 @@ export function Present() {
           .update({ is_fullscreen: nextVal })
           .eq("id", id);
       } else if (action === "SHOW_PODIUM") {
-        setRankingOpen(true);
+        await setOverlayFlag("show_ranking", true);
         const liveActive = questionsRef.current.find((q) => q.id === fresh?.active_question_id) || null;
         const liveRevealed: boolean = !!fresh?.question_revealed;
         if (liveActive && !liveRevealed) {
@@ -214,12 +201,15 @@ export function Present() {
       const action = detail.action as string;
       const payload = detail.payload ?? {};
       // Reaplica a mesma lógica do bridge.onAction.
-      if (action === "SHOW_GIANT_QR") return setGiantQrOpen(true);
-      if (action === "HIDE_GIANT_QR") return setGiantQrOpen(false);
-      if (action === "TOGGLE_GIANT_QR") return setGiantQrOpen((v) => !v);
-      if (action === "SHOW_RANKING") return setRankingOpen(true);
-      if (action === "HIDE_RANKING") return setRankingOpen(false);
-      if (action === "TOGGLE_RANKING") return setRankingOpen((v) => !v);
+      if (action === "SHOW_GIANT_QR")  { setOverlayFlag("show_join_qr", true);   return; }
+      if (action === "HIDE_GIANT_QR")  { setOverlayFlag("show_join_qr", false);  return; }
+      if (action === "TOGGLE_GIANT_QR"){ setOverlayFlag("show_join_qr", !giantQrOpen); return; }
+      if (action === "SHOW_RANKING")   { setOverlayFlag("show_ranking", true);   return; }
+      if (action === "HIDE_RANKING")   { setOverlayFlag("show_ranking", false);  return; }
+      if (action === "TOGGLE_RANKING") { setOverlayFlag("show_ranking", !rankingOpen); return; }
+      if (action === "SHOW_PAIR_QR")   { setOverlayFlag("show_pair_qr", true);   return; }
+      if (action === "HIDE_PAIR_QR")   { setOverlayFlag("show_pair_qr", false);  return; }
+      if (action === "TOGGLE_PAIR_QR") { setOverlayFlag("show_pair_qr", !pairQrOpen); return; }
       if (action === "END_EARLY") {
         (async () => { await endSession(false); })();
         return;
