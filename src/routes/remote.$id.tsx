@@ -385,13 +385,14 @@ function RemoteControl() {
   async function nextSlide() {
     haptic(45);
     await withBusy(async () => {
-      // Comando primário via Broadcast — projetor é a fonte de verdade
-      // (conhece o total de páginas do PDF e dispara o pódio automático
-      // ao avançar além da última página). Fallback de banco abaixo só
-      // roda se a ponte estiver desconectada.
-      const sent = bridge.status === "connected" && bridge.partnerOnline
-        ? await bridge.send("NEXT")
-        : false;
+      // 1ª tentativa — túnel WebRTC P2P (latência zero).
+      // 2ª tentativa — broadcast realtime via nuvem.
+      // 3ª tentativa — escrita direta no banco (fallback final).
+      const sent =
+        (await sendCommand("NEXT")) ||
+        (bridge.status === "connected" && bridge.partnerOnline
+          ? await bridge.send("NEXT")
+          : false);
       if (sent) return;
 
       // FALLBACK (sem sinal do projetor): aplica a mesma lógica via DB.
@@ -442,9 +443,11 @@ function RemoteControl() {
   async function prevSlide() {
     haptic(25);
     await withBusy(async () => {
-      const sent = bridge.status === "connected" && bridge.partnerOnline
-        ? await bridge.send("PREV")
-        : false;
+      const sent =
+        (await sendCommand("PREV")) ||
+        (bridge.status === "connected" && bridge.partnerOnline
+          ? await bridge.send("PREV")
+          : false);
       if (sent) return;
       const { data: fresh } = await supabase
         .from("sessions")
@@ -468,7 +471,8 @@ function RemoteControl() {
   async function toggleFullscreen() {
     haptic(30);
     const next = !session?.is_fullscreen;
-    bridge.send("TOGGLE_FULLSCREEN", { value: next });
+    sendCommand("TOGGLE_FULLSCREEN", { value: next });
+    bridge.send("TOGGLE_FULLSCREEN", { value: next }).catch(() => {});
     const { error } = await (supabase.from("sessions") as any)
       .update({ is_fullscreen: next })
       .eq("id", id);
@@ -485,6 +489,14 @@ function RemoteControl() {
       .update({ [field]: next })
       .eq("id", id);
     if (error) toast.error("Falha ao atualizar a projeção.");
+  }
+
+  async function showGiantQr() {
+    haptic(40);
+    // Túnel P2P primeiro, broadcast em paralelo como garantia.
+    sendCommand("SHOW_GIANT_QR");
+    bridge.send("SHOW_GIANT_QR" as any).catch(() => {});
+    toast.success("QR Gigante exibido no projetor!");
   }
 
   async function exitToHub() {
