@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Loader2, Trophy } from "lucide-react";
+import { ArrowLeft, Trophy, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
@@ -30,18 +30,21 @@ function ClassificacaoGeral() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
 
-  const { data: event } = useQuery({
+  const { data: event, isLoading: loadingEvent, isError: eventError } = useQuery({
     queryKey: ["event", id],
     queryFn: async () => {
-      const { data } = await (supabase.from("events") as any)
+      const { data, error } = await (supabase.from("events") as any)
         .select("title")
         .eq("id", id)
         .maybeSingle();
-      return data;
+      if (error) throw error;
+      return data ?? null;
     },
+    enabled: !!id,
+    retry: 1,
   });
 
-  const { data: ranking, isLoading } = useQuery({
+  const { data: ranking, isLoading: loadingRanking } = useQuery({
     queryKey: ["event-classificacao-geral", id],
     queryFn: async () => {
       const { data, error } = await (supabase.from("participant_scores") as any)
@@ -61,28 +64,28 @@ function ClassificacaoGeral() {
         presentation_id: string;
       }>;
       const map = new Map<string, AggRow & { _presIds: Set<string> }>();
-      for (const r of rows) {
+      for (const r of rows ?? []) {
         const key =
-          r.device_token ||
-          `anon:${r.participant_name}:${r.birth_date ?? ""}:${r.presentation_id}`;
+          r?.device_token ||
+          `anon:${r?.participant_name ?? ""}:${r?.birth_date ?? ""}:${r?.presentation_id ?? ""}`;
         const cur = map.get(key);
         if (cur) {
-          cur.score += r.score;
-          cur.correct_count += r.correct_count;
-          cur.answer_count += r.answer_count;
-          cur.total_response_ms += r.total_response_ms;
-          cur._presIds.add(r.presentation_id);
+          cur.score += r.score ?? 0;
+          cur.correct_count += r.correct_count ?? 0;
+          cur.answer_count += r.answer_count ?? 0;
+          cur.total_response_ms += r.total_response_ms ?? 0;
+          if (r.presentation_id) cur._presIds.add(r.presentation_id);
         } else {
           map.set(key, {
             key,
             name: r.participant_name || "Participante",
-            score: r.score,
-            correct_count: r.correct_count,
-            answer_count: r.answer_count,
-            total_response_ms: r.total_response_ms,
+            score: r.score ?? 0,
+            correct_count: r.correct_count ?? 0,
+            answer_count: r.answer_count ?? 0,
+            total_response_ms: r.total_response_ms ?? 0,
             birth_date: r.birth_date ?? "9999-12-31",
             presentations_participated: 1,
-            _presIds: new Set([r.presentation_id]),
+            _presIds: new Set(r.presentation_id ? [r.presentation_id] : []),
           });
         }
       }
@@ -106,8 +109,39 @@ function ClassificacaoGeral() {
       });
       return list;
     },
+    enabled: !!id,
+    retry: 1,
     refetchInterval: 5000,
   });
+
+  if (loadingEvent || loadingRanking) {
+    return (
+      <div className="min-h-screen bg-[#0E1015] flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 rounded-full border-4 border-t-transparent border-[#F68B1F] animate-spin" />
+        <p className="text-sm text-[#9CA3AF] font-medium">
+          Carregando classificação do evento...
+        </p>
+      </div>
+    );
+  }
+
+  if (eventError || !event) {
+    return (
+      <div className="min-h-screen bg-[#0E1015] flex flex-col items-center justify-center gap-4 text-center p-6">
+        <AlertTriangle className="h-10 w-10 text-amber-500" />
+        <h2 className="text-lg font-bold text-white">Evento não encontrado</h2>
+        <p className="text-xs text-[#9CA3AF] max-w-sm">
+          O link está corrompido ou o evento foi removido do painel administrativo.
+        </p>
+        <button
+          onClick={() => navigate({ to: "/dashboard" })}
+          className="mt-4 px-4 py-2 bg-[#161A23] border border-[#262D3D] text-white rounded-xl text-xs hover:bg-[#252C41] transition"
+        >
+          Voltar ao Painel
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0E1015] text-foreground">
@@ -137,11 +171,7 @@ function ClassificacaoGeral() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        {isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Calculando classificação...
-          </div>
-        ) : !ranking || ranking.length === 0 ? (
+        {!ranking || ranking.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[#262D3D] bg-[#161A23] p-12 text-center">
             <Trophy className="mx-auto h-12 w-12 text-[#9CA3AF]" />
             <h2 className="mt-4 text-lg font-semibold text-white">
@@ -164,7 +194,7 @@ function ClassificacaoGeral() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262D3D]">
-                {ranking.map((p, idx) => {
+                {ranking?.map((p, idx) => {
                   const pos = idx + 1;
                   const avg = p.answer_count ? p.total_response_ms / p.answer_count : 0;
                   const badge =
