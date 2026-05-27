@@ -348,29 +348,42 @@ function Dashboard() {
               {events.map((ev) => (
                 <div
                   key={ev.id}
-                  className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60"
+                  className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Calendar className="h-5 w-5 shrink-0 text-primary" />
-                    <div className="min-w-0">
-                      <h3 className="truncate font-semibold">{ev.title}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(ev.created_at).toLocaleDateString("pt-BR")}
-                      </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Calendar className="h-5 w-5 shrink-0 text-primary" />
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold">{ev.title}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(ev.created_at).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button asChild size="sm" variant="ghost" title="Grande Pódio">
+                        <Link to="/event/$id/podium" params={{ id: ev.id }}>
+                          <Trophy className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/event/$id" params={{ id: ev.id }}>
+                          Gerenciar
+                        </Link>
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button asChild size="sm" variant="ghost" title="Grande Pódio">
-                      <Link to="/event/$id/podium" params={{ id: ev.id }}>
-                        <Trophy className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button asChild size="sm" variant="outline">
-                      <Link to="/event/$id" params={{ id: ev.id }}>
-                        Gerenciar
-                      </Link>
-                    </Button>
-                  </div>
+                  {/* Atalho: Ativar Modo Receptor — Projetor */}
+                  <Link
+                    to="/event/$id/lobby"
+                    params={{ id: ev.id }}
+                    onClick={() => rememberDashboardOrigin()}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-sm font-bold text-white shadow-lg shadow-[#A6193C]/30 transition-all duration-100 hover:opacity-95 active:scale-[0.98]"
+                    title="Abrir tela de espera para projetar este evento"
+                  >
+                    <MonitorPlay className="h-4 w-4" />
+                    Ativar Modo Receptor — Projetor 📺
+                  </Link>
                 </div>
               ))}
             </div>
