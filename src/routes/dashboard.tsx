@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { GLOBAL_USER_ID, GLOBAL_USER_NAME } from "@/lib/constants";
+import { useRequireSpeaker } from "@/hooks/use-auth";
+import { toast as toastFn } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -24,13 +25,16 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useRequireSpeaker();
+  const userId = user?.id;
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["presentations"],
+    queryKey: ["presentations", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("presentations")
         .select("id, title, file_url, created_at, event_id")
-        .eq("user_id", GLOBAL_USER_ID)
+        .eq("user_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -38,11 +42,12 @@ function Dashboard() {
   });
 
   const { data: events } = useQuery({
-    queryKey: ["events"],
+    queryKey: ["events", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await (supabase.from("events") as any)
         .select("id, title, created_at")
-        .eq("user_id", GLOBAL_USER_ID)
+        .eq("user_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Array<{ id: string; title: string; created_at: string }>;
@@ -91,7 +96,7 @@ function Dashboard() {
             <h1 className="text-2xl font-bold tracking-tight">
               QuizPulse <span className="text-primary">·</span> Meus Quizzes
             </h1>
-            <p className="text-sm text-muted-foreground">{GLOBAL_USER_NAME}</p>
+            <p className="text-sm text-muted-foreground">{user?.user_metadata?.full_name || user?.email || "Palestrante"}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -114,6 +119,19 @@ function Dashboard() {
               <Link to="/quiz/new">
                 <Plus className="mr-2 h-5 w-5" /> Novo Quiz
               </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Sair"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                toastFn.success("Você saiu da sua conta.");
+                navigate({ to: "/", replace: true });
+              }}
+              className="text-[#9CA3AF] hover:bg-[#1E2235] hover:text-[#F68B1F]"
+            >
+              <LogOut className="h-5 w-5" />
             </Button>
           </div>
         </div>
