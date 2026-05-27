@@ -62,6 +62,7 @@ function Join() {
   const [eventId, setEventId] = useState<string | null>(null);
   const [resolvingIdentity, setResolvingIdentity] = useState(true);
   const [winnerPlace, setWinnerPlace] = useState<1 | 2 | 3 | null>(null);
+  const [finaleLocked, setFinaleLocked] = useState(false);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [participantCreatedAt, setParticipantCreatedAt] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -238,12 +239,24 @@ function Join() {
         if (payload?.device_token && payload.device_token === deviceToken) {
           const place = payload.place as 1 | 2 | 3;
           setWinnerPlace(place);
+          setFinaleLocked(false);
           try {
             (navigator as any)?.vibrate?.([200, 80, 200, 80, 400]);
           } catch {
             /* sem vibração */
           }
         }
+      })
+      .on("broadcast", { event: "finale:lock" }, () => {
+        setFinaleLocked(true);
+        try {
+          (navigator as any)?.vibrate?.([120, 60, 120]);
+        } catch {
+          /* sem vibração */
+        }
+      })
+      .on("broadcast", { event: "event:closed" }, () => {
+        setFinaleLocked(false);
       })
       .subscribe();
     return () => {
@@ -422,6 +435,25 @@ function Join() {
         <p className="text-center text-muted-foreground">
           Link inválido. Escaneie o QR Code do palestrante para entrar.
         </p>
+      </div>
+    );
+  }
+
+  // Bloqueio de clímax: o palestrante iniciou a cerimônia de revelação no projetor
+  if (finaleLocked && !winnerPlace) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black p-6 text-center text-white">
+        <div className="text-6xl animate-pulse">👀</div>
+        <h1 className="text-2xl font-extrabold text-[#FFCB05]">
+          Fique atento à tela principal!
+        </h1>
+        <p className="max-w-xs text-sm text-white/80">
+          A revelação do pódio está acontecendo agora. Olhe para a tela do projetor
+          para descobrir os campeões.
+        </p>
+        <div className="mt-2 h-1 w-32 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-1/2 animate-[pulse_1.2s_ease-in-out_infinite] bg-[#A6193C]" />
+        </div>
       </div>
     );
   }

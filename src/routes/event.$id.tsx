@@ -82,6 +82,7 @@ function EventManage() {
   const [resetting, setResetting] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [endStage, setEndStage] = useState<"confirm" | "choose">("confirm");
 
   const { data: event } = useQuery({
     queryKey: ["event", id],
@@ -306,17 +307,66 @@ function EventManage() {
           .update({ execution_status: "completed_partial" })
           .in("id", idsToClose);
       }
-      setEndOpen(false);
-      navigate({
-        to: "/event/$id/podium",
-        params: { id },
-        search: { finale: 1 },
-      });
+      // Avança para a etapa de escolha do clímax
+      setEndStage("choose");
+      await refetch();
     } catch (e: any) {
       toast.error(e?.message || "Falha ao encerrar o evento");
     } finally {
       setEnding(false);
     }
+  }
+
+  async function finishWithoutSuspense() {
+    try {
+      // Garante que os celulares saiam da tela passiva
+      const ch = supabase.channel(`event-finale-${id}`);
+      await new Promise<void>((resolve) => {
+        ch.subscribe((status) => {
+          if (status === "SUBSCRIBED") resolve();
+        });
+        window.setTimeout(() => resolve(), 600);
+      });
+      await ch.send({
+        type: "broadcast",
+        event: "event:closed",
+        payload: { event_id: id },
+      });
+      window.setTimeout(() => supabase.removeChannel(ch), 400);
+    } catch {
+      /* ignora falhas de realtime */
+    }
+    setEndOpen(false);
+    setEndStage("confirm");
+    toast.success("Evento encerrado.");
+  }
+
+  async function finishWithSuspense() {
+    try {
+      // Bloqueia celulares: exibirão "Fique atento à tela principal..."
+      const ch = supabase.channel(`event-finale-${id}`);
+      await new Promise<void>((resolve) => {
+        ch.subscribe((status) => {
+          if (status === "SUBSCRIBED") resolve();
+        });
+        window.setTimeout(() => resolve(), 700);
+      });
+      await ch.send({
+        type: "broadcast",
+        event: "finale:lock",
+        payload: { event_id: id },
+      });
+      window.setTimeout(() => supabase.removeChannel(ch), 400);
+    } catch {
+      /* ignora falhas de realtime */
+    }
+    setEndOpen(false);
+    setEndStage("confirm");
+    navigate({
+      to: "/event/$id/podium",
+      params: { id },
+      search: { finale: 1 },
+    });
   }
 
   function openAddModal() {
@@ -811,8 +861,18 @@ function EventManage() {
       </AlertDialog>
 
       {/* Modal: Encerrar Evento com validação de pendências */}
-      <AlertDialog open={endOpen} onOpenChange={(o) => !o && !ending && setEndOpen(false)}>
+      <AlertDialog
+        open={endOpen}
+        onOpenChange={(o) => {
+          if (!o && !ending) {
+            setEndOpen(false);
+            setEndStage("confirm");
+          }
+        }}
+      >
         <AlertDialogContent className="border-[#262D3D] bg-[#161A23] text-foreground">
+          {endStage === "confirm" ? (
+          <>
           <AlertDialogHeader>
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FFCB05]/15 ring-2 ring-[#FFCB05]/40">
               <AlertTriangle className="h-8 w-8 text-[#FFCB05]" />
@@ -852,7 +912,7 @@ function EventManage() {
                 ) : (
                   <p>
                     Todas as apresentações deste evento já foram realizadas. Ao confirmar,
-                    iniciaremos a cerimônia dramática de premiação.
+                    seguiremos para a escolha de como apresentar a classificação final.
                   </p>
                 )}
               </div>
@@ -887,6 +947,47 @@ function EventManage() {
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
+          </>
+          ) : (
+          <>
+            <AlertDialogHeader>
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FFCB05]/15 ring-2 ring-[#FFCB05]/40">
+                <Trophy className="h-8 w-8 text-[#FFCB05]" />
+              </div>
+              <AlertDialogTitle className="text-center text-xl text-white">
+                Deseja mostrar a classificação final com suspense agora?
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="text-center text-sm text-[#9CA3AF]">
+                  <p>
+                    Se escolher <span className="font-semibold text-white">Sim</span>, os
+                    celulares dos usuários serão bloqueados e a tela do projetor entrará
+                    na cerimônia dramática de revelação do pódio (3º → 2º → 1º).
+                  </p>
+                  <p className="mt-2">
+                    Se escolher <span className="font-semibold text-white">Não</span>, o
+                    evento será apenas encerrado e você voltará para a tela do evento.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-2">
+              <Button
+                variant="outline"
+                onClick={() => void finishWithoutSuspense()}
+                className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-foreground"
+              >
+                Não, apenas encerrar
+              </Button>
+              <Button
+                onClick={() => void finishWithSuspense()}
+                className="border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white shadow-lg shadow-[#A6193C]/40 hover:opacity-95"
+              >
+                <Sparkles className="mr-2 h-4 w-4" /> Sim, Revelar Campeões
+              </Button>
+            </AlertDialogFooter>
+          </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </div>
