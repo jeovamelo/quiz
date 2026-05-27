@@ -247,6 +247,90 @@ function DramaticReveal({
     };
   }, []);
 
+  function getCtxSafe(): AudioContext | null {
+    if (!audioCtxRef.current) {
+      try {
+        const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (Ctx) audioCtxRef.current = new Ctx();
+      } catch {
+        return null;
+      }
+    }
+    return audioCtxRef.current;
+  }
+
+  // Ruído branco filtrado simulando tambores rufando
+  function playDrumRoll(durationMs: number, intensity: number) {
+    const ctx = getCtxSafe();
+    if (!ctx) return;
+    const seconds = durationMs / 1000;
+    const bufferSize = Math.floor(ctx.sampleRate * seconds);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      // Tremor: amplitude modulada para parecer um rufar
+      const tremor = 0.6 + 0.4 * Math.sin((i / ctx.sampleRate) * 2 * Math.PI * 22);
+      data[i] = (Math.random() * 2 - 1) * tremor;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 380;
+    const gain = ctx.createGain();
+    const peak = Math.min(0.45, 0.18 + intensity * 0.12);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + seconds * 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + seconds);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start();
+    src.stop(ctx.currentTime + seconds);
+  }
+
+  // Acorde triunfal ascendente (fanfarra sintetizada)
+  function playVictoryChord() {
+    const ctx = getCtxSafe();
+    if (!ctx) return;
+    // Notas ascendentes: C5, E5, G5, C6 e acorde maior final
+    const sequence: Array<{ freq: number; offset: number; dur: number }> = [
+      { freq: 523.25, offset: 0.0, dur: 0.22 },
+      { freq: 659.25, offset: 0.18, dur: 0.22 },
+      { freq: 783.99, offset: 0.36, dur: 0.24 },
+      { freq: 1046.5, offset: 0.55, dur: 1.4 },
+    ];
+    const chord = [523.25, 659.25, 783.99, 1046.5];
+    sequence.forEach(({ freq, offset, dur }) => {
+      ["triangle", "sawtooth"].forEach((type, idx) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type as OscillatorType;
+        o.frequency.value = freq;
+        const t0 = ctx.currentTime + offset;
+        const amp = idx === 0 ? 0.18 : 0.07;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(amp, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        o.connect(g).connect(ctx.destination);
+        o.start(t0);
+        o.stop(t0 + dur + 0.05);
+      });
+    });
+    // Acorde sustentado no clímax final
+    const t0 = ctx.currentTime + 0.55;
+    chord.forEach((freq) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "triangle";
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.13, t0 + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0);
+      o.stop(t0 + 1.9);
+    });
+  }
+
   async function broadcastWinner(place: 1 | 2 | 3, p?: RankItem) {
     if (!p?.device_token) return;
     try {
@@ -306,17 +390,21 @@ function DramaticReveal({
   async function revealNext() {
     if (step >= 3) return;
     if (step === 0) {
+      playDrumRoll(1600, 1);
       fireConfetti(false);
       await broadcastWinner(3, third);
       setStep(1);
     } else if (step === 1) {
+      playDrumRoll(2000, 2);
       fireConfetti(false);
       await broadcastWinner(2, second);
       setStep(2);
     } else if (step === 2) {
+      playDrumRoll(2400, 3);
       setFlash(true);
       window.setTimeout(() => setFlash(false), 320);
       fireConfetti(true);
+      window.setTimeout(() => playVictoryChord(), 280);
       await broadcastWinner(1, first);
       setStep(3);
     }
