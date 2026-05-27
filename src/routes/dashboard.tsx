@@ -3,7 +3,6 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
-import { toast as toastFn } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -126,7 +125,7 @@ function Dashboard() {
               title="Sair"
               onClick={async () => {
                 await supabase.auth.signOut();
-                toastFn.success("Você saiu da sua conta.");
+                toast.success("Você saiu da sua conta.");
                 navigate({ to: "/", replace: true });
               }}
               className="text-[#9CA3AF] hover:bg-[#1E2235] hover:text-[#F68B1F]"
