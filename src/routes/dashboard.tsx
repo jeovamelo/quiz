@@ -357,6 +357,46 @@ function Dashboard() {
           </span>
         </Link>
       )}
+
+      <Dialog open={pairOpen} onOpenChange={setPairOpen}>
+        <DialogContent className="border-[#262D3D] bg-[#0E1015] text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <SmartphoneCharging className="h-5 w-5 text-[#F68B1F]" /> Parear Controle Remoto
+            </DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">
+              Aponte a câmera do seu celular para o QR Code abaixo. Faça login (se necessário) e o controle remoto abrirá automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            {phonePaired ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center animate-fade-in">
+                <CheckCircle2 className="h-16 w-16 text-[#07A684] drop-shadow-[0_0_18px_rgba(7,166,132,0.6)]" />
+                <p className="text-lg font-bold text-[#07A684]">Celular pareado!</p>
+                <p className="text-sm text-[#9CA3AF]">Você já pode usar seu celular como controle remoto.</p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl bg-white p-3">
+                  {pairUrl && <QRCodeSVG value={pairUrl} size={200} />}
+                </div>
+                <div className="w-full">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                    Ou abra este link no celular:
+                  </p>
+                  <code className="block w-full truncate rounded bg-[#1E2235] px-3 py-2 text-xs text-[#F68B1F]">
+                    {pairUrl}
+                  </code>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[#9CA3AF]">
+                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#FFCB05]" />
+                  Aguardando o celular se conectar...
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
