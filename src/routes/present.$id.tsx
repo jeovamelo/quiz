@@ -55,7 +55,8 @@ function Present() {
   const [now, setNow] = useState(Date.now());
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [joinUrl, setJoinUrl] = useState("");
-  const [showRanking, setShowRanking] = useState(false);
+  // showRanking agora é controlado pela sessão (session.show_ranking),
+  // permitindo que ambos os controles remotos alternem em sincronia.
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
@@ -145,7 +146,9 @@ function Present() {
           .update({ is_fullscreen: nextVal })
           .eq("id", id);
       } else if (action === "SHOW_PODIUM") {
-        setShowRanking(true);
+        await (supabase.from("sessions") as any)
+          .update({ show_ranking: true })
+          .eq("id", id);
         const liveActive = questionsRef.current.find((q) => q.id === fresh?.active_question_id) || null;
         const liveRevealed: boolean = !!fresh?.question_revealed;
         if (liveActive && !liveRevealed) {
@@ -260,17 +263,6 @@ function Present() {
       .on("postgres_changes", { event: "*", schema: "public", table: "participants", filter: `session_id=eq.${id}` }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "answers", filter: `session_id=eq.${id}` }, load)
       .subscribe();
-    // Canal de broadcast do controle remoto do celular (alternar painel de classificação)
-    const remoteCh = supabase
-      .channel(`present-remote-${id}`)
-      .on("broadcast", { event: "toggle_ranking" }, ({ payload }) => {
-        if (payload && typeof payload.show === "boolean") {
-          setShowRanking(payload.show);
-        } else {
-          setShowRanking((v) => !v);
-        }
-      })
-      .subscribe();
     // Canal do evento — recebe "return_to_lobby" do celular do palestrante
     let lobbyCh: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
@@ -295,7 +287,6 @@ function Present() {
     })();
     return () => {
       supabase.removeChannel(ch);
-      supabase.removeChannel(remoteCh);
       if (lobbyCh) supabase.removeChannel(lobbyCh);
     };
   }, [id]);
@@ -352,6 +343,19 @@ function Present() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, activeQuestion?.id, session?.question_revealed]);
+
+  // Disparo de pódio pelo controle remoto (force_podium = true → encerra sessão).
+  useEffect(() => {
+    if (session?.force_podium && session?.status !== "ended") {
+      (async () => {
+        await endSession(false);
+        await (supabase.from("sessions") as any)
+          .update({ force_podium: false })
+          .eq("id", id);
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.force_podium]);
 
   /**
    * Navegação síncrona com clique único:
@@ -762,15 +766,17 @@ function Present() {
               <ArrowLeft className="h-6 w-6" />
             </button>
           )}
-          {/* Botão flutuante de Classificação */}
+          {/* Botão flutuante de Classificação — espelha session.show_ranking */}
           <button
             type="button"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
-              setShowRanking((v) => !v);
+              await (supabase.from("sessions") as any)
+                .update({ show_ranking: !session?.show_ranking })
+                .eq("id", id);
             }}
-            title={showRanking ? "Ocultar Classificação" : "Mostrar Classificação"}
-            aria-label={showRanking ? "Ocultar Classificação" : "Mostrar Classificação"}
+            title={session?.show_ranking ? "Ocultar Classificação" : "Mostrar Classificação"}
+            aria-label={session?.show_ranking ? "Ocultar Classificação" : "Mostrar Classificação"}
             className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#262D3D] bg-[#161A23]/90 text-[#FFCB05] shadow-lg backdrop-blur transition hover:scale-105 hover:bg-[#161A23]"
           >
             <Trophy className="h-6 w-6" />
@@ -784,9 +790,9 @@ function Present() {
         {/* Painel retrátil — Classificação em tempo real */}
         <div
           className={`overflow-hidden border-l border-[#262D3D] bg-[#161A23] transition-all duration-300 ease-in-out ${
-            showRanking ? "w-80" : "w-0"
+            session?.show_ranking ? "w-80" : "w-0"
           }`}
-          aria-hidden={!showRanking}
+          aria-hidden={!session?.show_ranking}
         >
           <div className="flex h-full w-80 flex-col">
             <div className="border-b border-[#262D3D] px-4 py-3">
@@ -839,9 +845,11 @@ function Present() {
           </div>
         </div>
 
-        {/* Coluna direita — painel admin */}
+        {/* Coluna direita — painel admin (oculta se show_sidebar = false) */}
+        {session?.show_sidebar !== false && (
         <aside className="flex w-[400px] flex-col gap-3 overflow-y-auto border-l border-border bg-card p-4">
-          {/* Convite sempre visível */}
+          {/* Convite — controlado pelo toggle de QR no celular */}
+          {session?.show_join_qr !== false && (
           <div className="rounded-lg border border-border bg-background/40 p-3 text-center">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Entre na sala a qualquer momento
@@ -858,6 +866,7 @@ function Present() {
               </Button>
             </div>
           </div>
+          )}
 
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{presentation.title}</p>
@@ -1024,6 +1033,7 @@ function Present() {
             </AlertDialogContent>
           </AlertDialog>
         </aside>
+        )}
       </div>
     </div>
   );

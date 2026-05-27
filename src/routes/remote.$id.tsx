@@ -3,31 +3,20 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
   ChevronRight,
-  Home,
   Loader2,
-  Maximize,
-  Minimize,
   Trophy,
   Users,
   Crosshair,
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useRequireSpeaker } from "@/hooks/use-auth";
 import { haptic } from "@/hooks/use-haptic";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
-import { usePairingPresence } from "@/hooks/use-pairing-presence";
-import { PairingStatusBadge } from "@/components/pairing-status-badge";
+import {
+  heartbeatRemote,
+  loadStoredRemote,
+  type StoredRemote,
+} from "@/lib/session-remotes";
+import { RemoteDrawer } from "@/components/remote-drawer";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/remote/$id")({
@@ -45,9 +34,9 @@ type Question = {
 };
 
 function RemoteControl() {
-  const { user } = useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const [stored, setStored] = useState<StoredRemote | null>(null);
   const [session, setSession] = useState<any>(null);
   const [presentation, setPresentation] = useState<{
     title: string;
@@ -60,13 +49,28 @@ function RemoteControl() {
   const [answersCount, setAnswersCount] = useState(0);
   const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
-  const [synced, setSynced] = useState(false);
 
   // Ponte de tempo real (Broadcast) entre celular e projetor.
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
 
-  // Anuncia presença ao Dashboard do palestrante (pareamento global).
-  usePairingPresence(user?.id, "mobile");
+  // === Identidade do controle (slot 1 ou 2) — exige cadastro prévio em /join ===
+  useEffect(() => {
+    const s = loadStoredRemote(id);
+    if (!s) {
+      navigate({ to: "/remote/$id/join", params: { id }, replace: true });
+      return;
+    }
+    setStored(s);
+  }, [id, navigate]);
+
+  // Heartbeat para manter o slot vivo (20s).
+  useEffect(() => {
+    if (!stored?.remoteId) return;
+    const tick = () => heartbeatRemote(stored.remoteId).catch(() => {});
+    tick();
+    const t = window.setInterval(tick, 20000);
+    return () => window.clearInterval(t);
+  }, [stored?.remoteId]);
 
   // === PERSISTÊNCIA: salva a última sessão ativa para auto-reconectar ===
   useEffect(() => {
@@ -290,12 +294,9 @@ function RemoteControl() {
           setAnswersCount(count ?? 0);
         },
       )
-      .subscribe((status) => {
-        setSynced(status === "SUBSCRIBED");
-      });
+      .subscribe();
     return () => {
       cancelled = true;
-      setSynced(false);
       supabase.removeChannel(ch);
     };
   }, [id]);
@@ -457,6 +458,14 @@ function RemoteControl() {
     }
   }
 
+  async function toggleSessionFlag(field: "show_join_qr" | "show_ranking" | "show_sidebar") {
+    const next = !session?.[field];
+    const { error } = await (supabase.from("sessions") as any)
+      .update({ [field]: next })
+      .eq("id", id);
+    if (error) toast.error("Falha ao atualizar a projeção.");
+  }
+
   async function exitToHub() {
     await withBusy(async () => {
       try {
@@ -541,54 +550,19 @@ function RemoteControl() {
           Reconectando ao projetor...
         </div>
       )}
-      {/* Cabeçalho de status */}
+      {/* Cabeçalho: identidade do slot + status de pareamento */}
       <header className="sticky top-0 z-10 shrink-0 border-b border-[#262D3D] bg-[#131722]/95 px-3 py-2 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                onClick={() => haptic(25)}
-                aria-label="Voltar ao painel de apresentações"
-                className="flex items-center gap-1 rounded-lg border border-[#262D3D] bg-[#1E2235] px-2.5 py-1.5 text-[11px] font-semibold text-[#9CA3AF] transition-all duration-100 active:scale-95 active:bg-[#262D3D]"
-              >
-                <Home className="h-3.5 w-3.5" /> Painel
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="border-[#262D3D] bg-[#0E1015] text-white">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-white">
-                  Trocar de apresentação?
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-[#9CA3AF]">
-                  Isso encerra a sessão atual no projetor e leva você de volta ao painel para escolher outra apresentação.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-white">
-                  Cancelar
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={exitToHub}
-                  className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-95"
-                >
-                  Sim, encerrar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <div className="min-w-0 flex-1 text-center">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-[10px] font-semibold uppercase tracking-widest text-[#F68B1F]">
-              {presentation.event_title || "Apresentação"}
+              Você é o Controle {stored?.slot ?? "?"}
             </p>
-            <h1 className="truncate text-[13px] font-bold leading-tight">
-              {presentation.title}
+            <h1 className="truncate text-[13px] font-bold leading-tight text-white">
+              {stored?.name ?? "—"} · {presentation.title}
             </h1>
           </div>
-
           <div
-            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${
+            className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${
               bridge.status === "connected" && bridge.partnerOnline
                 ? "border-[#07A684]/40 bg-[#07A684]/10 text-[#07A684]"
                 : bridge.status === "connected"
@@ -596,13 +570,6 @@ function RemoteControl() {
                 : "border-[#A6193C]/40 bg-[#A6193C]/10 text-[#F68B1F]"
             }`}
             aria-live="polite"
-            aria-label={
-              bridge.partnerOnline
-                ? "Conectado ao projetor"
-                : bridge.status === "connected"
-                ? "Aguardando projetor"
-                : "Sem sinal do projetor"
-            }
           >
             <span
               className={`inline-block h-2 w-2 rounded-full ${
@@ -628,27 +595,6 @@ function RemoteControl() {
             <Users className="h-3.5 w-3.5 text-[#07A684]" />
             <span className="font-semibold text-white">{participantsCount}</span> usuários
           </span>
-          <PairingStatusBadge userId={user?.id} variant="mobile" />
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            aria-label={session?.is_fullscreen ? "Sair da tela cheia" : "Ativar tela cheia"}
-            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wide transition-all duration-100 active:scale-95 ${
-              session?.is_fullscreen
-                ? "border-[#FFCB05]/60 bg-[#FFCB05]/15 text-[#FFCB05]"
-                : "border-[#262D3D] bg-[#1E2235] text-[#9CA3AF]"
-            }`}
-          >
-            {session?.is_fullscreen ? (
-              <>
-                <Minimize className="h-3 w-3" /> Sair
-              </>
-            ) : (
-              <>
-                <Maximize className="h-3 w-3" /> Tela Cheia
-              </>
-            )}
-          </button>
         </div>
       </header>
 
@@ -658,6 +604,19 @@ function RemoteControl() {
 
         {/* RODAPÉ DE CONTROLE — Avançar (herói) + Voltar */}
         <div className="shrink-0 space-y-2.5 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+          {/* DRAWER de outras funcionalidades (F11, QR, ranking, sidebar, encerrar) */}
+          <RemoteDrawer
+            showJoinQr={!!session?.show_join_qr}
+            showRanking={!!session?.show_ranking}
+            showSidebar={!!session?.show_sidebar}
+            isFullscreen={!!session?.is_fullscreen}
+            onToggleFullscreen={toggleFullscreen}
+            onToggleJoinQr={() => toggleSessionFlag("show_join_qr")}
+            onToggleRanking={() => toggleSessionFlag("show_ranking")}
+            onToggleSidebar={() => toggleSessionFlag("show_sidebar")}
+            onEndSession={exitToHub}
+          />
+
           {/* APONTADOR LASER — toggle */}
           <button
             type="button"
