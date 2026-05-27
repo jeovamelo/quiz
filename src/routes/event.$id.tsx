@@ -710,6 +710,52 @@ function EventManage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!resetTarget} onOpenChange={(o) => !o && !resetting && setResetTarget(null)}>
+        <AlertDialogContent className="border-[#A6193C]/40 bg-[#161A23] text-foreground">
+          <AlertDialogHeader>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#A6193C]/15 ring-2 ring-[#A6193C]/40">
+              <AlertTriangle className="h-8 w-8 text-[#FFCB05]" />
+            </div>
+            <AlertDialogTitle className="text-center text-xl">
+              Deseja realmente reiniciar esta apresentação?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-sm text-[#9CA3AF]">
+              <span className="block font-semibold text-[#F68B1F]">Atenção:</span>
+              Ao reiniciar, todo o histórico de respostas dos participantes e a pontuação obtida
+              por eles nesta palestra específica
+              {resetTarget ? ` (${resetTarget.title})` : ""} serão permanentemente apagados. Esta
+              ação não poderá ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel
+              disabled={resetting}
+              className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-foreground"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (resetTarget) void resetPresentation(resetTarget.id);
+              }}
+              className="bg-[#A6193C] text-white hover:bg-[#8a1432]"
+            >
+              {resetting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reiniciando...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="mr-2 h-4 w-4" /> Sim, reiniciar e apagar pontos
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
