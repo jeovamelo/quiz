@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -67,6 +67,7 @@ type AvailablePres = {
 function EventManage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [mode, setMode] = useState<"choose" | "link">("choose");
   const [linking, setLinking] = useState(false);
@@ -102,7 +103,11 @@ function EventManage() {
 
   // Mapa: presentation_id → último sessionId encerrado (para o botão "Ver Resultados")
   const { data: endedSessions } = useQuery({
-    queryKey: ["event-ended-sessions", id, presentations?.length ?? 0],
+    queryKey: [
+      "event-ended-sessions",
+      id,
+      (presentations ?? []).map((p) => `${p.id}:${p.execution_status ?? "pending"}`).join("|"),
+    ],
     enabled: !!presentations && presentations.length > 0,
     queryFn: async () => {
       const ids = (presentations ?? []).map((p) => p.id);
@@ -272,7 +277,8 @@ function EventManage() {
 
       toast.success("Apresentação reiniciada. Status limpo com sucesso!");
       setResetTarget(null);
-      refetch();
+      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ["event-ended-sessions", id] });
     } catch (e: any) {
       toast.error(e?.message || "Falha ao reiniciar apresentação");
     } finally {
@@ -584,7 +590,7 @@ function EventManage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {endedSessions && endedSessions[p.id] ? (
+                  {(p.execution_status ?? "pending") !== "pending" && endedSessions && endedSessions[p.id] ? (
                     <Button
                       size="sm"
                       variant="secondary"
@@ -598,7 +604,11 @@ function EventManage() {
                       <BarChart3 className="mr-1 h-4 w-4" /> Ver Resultados
                     </Button>
                   ) : (
-                    <Button size="sm" onClick={() => startSession(p.id)}>
+                    <Button
+                      size="sm"
+                      onClick={() => startSession(p.id)}
+                      className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-90"
+                    >
                       <Play className="mr-1 h-4 w-4" /> Iniciar
                     </Button>
                   )}
