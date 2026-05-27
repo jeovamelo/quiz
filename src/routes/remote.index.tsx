@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Calendar, Loader2, LogOut, Smartphone, Tv } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
