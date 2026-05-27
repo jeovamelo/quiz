@@ -11,6 +11,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
+import { useWebRTCTunnel } from "@/hooks/use-webrtc-tunnel";
+import { NetworkStatusBadge, NetworkFallbackBanner } from "@/components/network-status-badge";
 import {
   heartbeatRemote,
   loadStoredRemote,
@@ -52,6 +54,25 @@ function RemoteControl() {
 
   // Ponte de tempo real (Broadcast) entre celular e projetor.
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
+
+  // Túnel WebRTC P2P (latência zero quando na mesma rede local).
+  const tunnel = useWebRTCTunnel({
+    sessionId: id,
+    slot: (stored?.slot as 1 | 2) ?? 1,
+    role: "guest",
+    enabled: !!stored?.slot,
+  });
+
+  /**
+   * Envia um comando preferencialmente pelo túnel P2P (instantâneo);
+   * se indisponível, cai automaticamente no broadcast da nuvem.
+   */
+  function sendCommand(action: string, extra?: Record<string, any>) {
+    const payload = { action, ts: Date.now(), from: stored?.slot ?? 0, ...(extra ?? {}) };
+    const viaP2P = tunnel.transport === "p2p" ? tunnel.send(payload) : false;
+    if (viaP2P) return Promise.resolve(true);
+    return bridge.send(action as any, extra);
+  }
 
   // === Identidade do controle (slot 1 ou 2) — exige cadastro prévio em /join ===
   useEffect(() => {
