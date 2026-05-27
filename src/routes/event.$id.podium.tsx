@@ -400,11 +400,22 @@ function DramaticReveal({
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
+          {!audio.enabled && (
+            <Button
+              onClick={() => audio.enable()}
+              size="lg"
+              variant="outline"
+              className="border-[#FFCB05]/50 bg-[#FFCB05]/10 text-[#FFCB05] hover:bg-[#FFCB05]/20 hover:text-[#FFCB05]"
+            >
+              <Volume2 className="mr-2 h-5 w-5" /> Ativar Som da Cerimônia
+            </Button>
+          )}
           {step < 3 ? (
             <Button
               onClick={revealNext}
+              disabled={!audio.enabled}
               size="lg"
-              className="border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-8 text-base font-bold text-white shadow-2xl shadow-[#A6193C]/50 hover:opacity-95"
+              className="border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-8 text-base font-bold text-white shadow-2xl shadow-[#A6193C]/50 hover:opacity-95 disabled:opacity-50"
             >
               <Zap className="mr-2 h-5 w-5" /> {nextLabel}
             </Button>
@@ -415,7 +426,12 @@ function DramaticReveal({
           )}
           <Button
             variant="outline"
-            onClick={onExit}
+            onClick={() => {
+              audio.stopHeartbeat();
+              audio.stopDrumLoop();
+              audio.stopFanfareLoop();
+              onExit();
+            }}
             className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
           >
             Sair da Revelação
