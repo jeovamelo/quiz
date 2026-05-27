@@ -857,8 +857,14 @@ export function Present() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setOverlayFlag("show_join_qr", false)} />
       <GiantQrOverlay
+        variant="participant"
+        open={giantQrOpen}
+        joinUrl={joinUrl}
+        onClose={() => setOverlayFlag("show_join_qr", false)}
+      />
+      <GiantQrOverlay
+        variant="remote"
         open={pairQrOpen}
         joinUrl={pairUrl}
         onClose={() => {
