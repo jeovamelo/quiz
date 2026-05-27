@@ -123,7 +123,17 @@ function Dashboard() {
     rememberDashboardOrigin();
     const { data: session, error } = await supabase
       .from("sessions")
-      .insert({ presentation_id: presentationId, status: "lobby", current_slide: 1 })
+      .insert({
+        presentation_id: presentationId,
+        status: "lobby",
+        current_slide: 1,
+        // Estado de abertura: somente QR do Controle Remoto.
+        // Lobby de participantes e classificação ficam ocultos até a
+        // máquina de estados do projetor liberar cada etapa.
+        show_pair_qr: true,
+        show_join_qr: false,
+        show_ranking: false,
+      } as any)
       .select("id")
       .single();
     if (error) {
