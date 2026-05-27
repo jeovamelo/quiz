@@ -24,6 +24,8 @@ type Q = {
   options: Record<string, string>;
   correct_option: string;
   time_limit: number;
+  is_prize_question?: boolean;
+  prize_multiplier?: number;
 };
 
 const DEVICE_TOKEN_KEY = "qp:device_token";
@@ -67,6 +69,8 @@ function Join() {
   const [submitting, setSubmitting] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [question, setQuestion] = useState<Q | null>(null);
+  const [defaultTimeLimit, setDefaultTimeLimit] = useState<number>(30);
+  const [showPrizeIntro, setShowPrizeIntro] = useState(false);
   const [myAnswer, setMyAnswer] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -123,11 +127,14 @@ function Join() {
       if (!cancelled) setPresentationId(presId);
 
       const { data: presRow } = await (supabase.from("presentations") as any)
-        .select("event_id")
+        .select("event_id, default_time_limit")
         .eq("id", presId)
         .maybeSingle();
       const evId = (presRow?.event_id as string | null) ?? null;
-      if (!cancelled) setEventId(evId);
+      if (!cancelled) {
+        setEventId(evId);
+        setDefaultTimeLimit((presRow as any)?.default_time_limit ?? 30);
+      }
 
       // 2. Já existe participante desta sessão com este device token?
       const { data: existingThisSession } = await (supabase.from("participants") as any)
@@ -247,7 +254,16 @@ function Join() {
   // reset answer when question changes
   useEffect(() => {
     setMyAnswer(null);
-  }, [question?.id]);
+    // Pergunta prêmio: vibração intensa + overlay de suspense
+    if (question?.is_prize_question) {
+      setShowPrizeIntro(true);
+      try {
+        (navigator as any)?.vibrate?.([300, 100, 300, 100, 300, 100, 500]);
+      } catch {}
+      const t = setTimeout(() => setShowPrizeIntro(false), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [question?.id, question?.is_prize_question]);
 
   // fetch existing answer for current question
   useEffect(() => {
@@ -282,8 +298,9 @@ function Join() {
   const remaining = useMemo(() => {
     if (!question || !session?.question_started_at || session.question_revealed) return 0;
     const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
-    return Math.max(0, Math.ceil(question.time_limit - elapsed));
-  }, [question, session, now]);
+    const limit = question.time_limit && question.time_limit > 0 ? question.time_limit : defaultTimeLimit;
+    return Math.max(0, Math.ceil(limit - elapsed));
+  }, [question, session, now, defaultTimeLimit]);
 
   async function join() {
     if (!sessionId) return;
@@ -322,11 +339,14 @@ function Join() {
     const elapsedMs = now - new Date(session.question_started_at).getTime();
     const isCorrect = option === question.correct_option;
     // Novo cálculo: Base 500 + bônus proporcional ao tempo restante
-    const totalMs = (question.time_limit || 10) * 1000;
+    const effectiveLimitSec = question.time_limit && question.time_limit > 0 ? question.time_limit : defaultTimeLimit;
+    const totalMs = effectiveLimitSec * 1000;
     const remainingMs = Math.max(0, totalMs - elapsedMs);
     const BASE = 500;
     const BONUS = 500;
-    const points = isCorrect ? BASE + Math.round((remainingMs / totalMs) * BONUS) : 0;
+    const rawPoints = isCorrect ? BASE + Math.round((remainingMs / totalMs) * BONUS) : 0;
+    const multiplier = question.is_prize_question ? (question.prize_multiplier ?? 5) : 1;
+    const points = rawPoints * multiplier;
     const { error } = await supabase.from("answers").insert({
       session_id: sessionId,
       question_id: question.id,
