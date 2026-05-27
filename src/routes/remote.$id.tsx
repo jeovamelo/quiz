@@ -7,12 +7,8 @@ import {
   Loader2,
   Maximize,
   Minimize,
-  Power,
-  Sparkles,
-  Timer,
   Trophy,
   Users,
-  Zap,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -25,7 +21,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { haptic } from "@/hooks/use-haptic";
