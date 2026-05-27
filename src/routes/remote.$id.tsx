@@ -482,7 +482,7 @@ function RemoteControl() {
           onClick={nextSlide}
           disabled={busy}
           aria-label="Avançar slide"
-          className="relative flex h-[60vh] min-h-[280px] w-full shrink-0 items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:bg-[#C21D43] disabled:opacity-60"
+          className="relative mx-auto flex h-[52vh] min-h-[260px] w-full shrink-0 items-center justify-center gap-3 overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-[#A6193C] via-[#D14628] to-[#F68B1F] text-white shadow-2xl shadow-[#A6193C]/50 transition-all duration-100 active:scale-95 active:bg-[#C21D43] disabled:opacity-60"
         >
           <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" aria-hidden="true" />
           <div className="relative z-10 flex flex-col items-center justify-center gap-2">
@@ -493,16 +493,16 @@ function RemoteControl() {
           </div>
         </button>
 
-        {/* Botão Voltar — pequeno, isolado */}
-        <div className="mt-2 flex shrink-0 justify-start">
+        {/* Botão Voltar — compacto, sempre visível na base, alto contraste */}
+        <div className="mt-3 flex shrink-0 justify-center pb-[max(env(safe-area-inset-bottom),0.5rem)]">
           <button
             type="button"
             onClick={prevSlide}
             disabled={busy || currentSlide <= 1}
-            className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#262D3D] bg-[#1E2235] px-4 py-2.5 text-xs font-semibold text-[#9CA3AF] transition-all duration-100 active:scale-95 active:bg-[#262D3D] disabled:opacity-30"
+            className="flex h-12 w-[60%] min-w-[180px] items-center justify-center gap-2 rounded-xl border border-[#3A4255] bg-[#1E2235] text-sm font-bold text-white shadow-md transition-all duration-100 active:scale-95 active:bg-[#262D3D] disabled:opacity-40"
             aria-label="Voltar slide"
           >
-            <ChevronLeft className="h-4 w-4" /> Voltar
+            <ChevronLeft className="h-5 w-5" /> Voltar
           </button>
         </div>
       </main>
