@@ -158,6 +158,20 @@ function EditQuizPage() {
   }
 
   async function handleSave() {
+    // Validação: cada MC precisa de ao menos 2 alternativas preenchidas
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (q.question_type !== "multiple_choice") continue;
+      const filledCount = Object.values(q.options).filter(
+        (v) => typeof v === "string" && v.trim() !== "",
+      ).length;
+      if (filledCount < 2) {
+        toast.error(
+          `Pergunta ${i + 1}: uma pergunta de múltipla escolha precisa de pelo menos 2 alternativas preenchidas.`,
+        );
+        return;
+      }
+    }
     // Validação: gabarito precisa existir e ter texto
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];

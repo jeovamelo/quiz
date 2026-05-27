@@ -122,19 +122,36 @@ function NewQuiz() {
       const res = await generateFn({
         data: { pdfText, context: aiContext, count, numPages, difficulty, displayMode },
       });
-      const drafts: DraftQuestion[] = res.questions.map((q) => ({
+      const drafts: DraftQuestion[] = res.questions.map((q) => {
+        let options: Record<string, string>;
+        if (q.question_type === "true_false") {
+          options = { A: "Verdadeiro", B: "Falso" };
+        } else {
+          // Inclui apenas alternativas com texto válido (sem campos em branco)
+          const raw = (q.options || {}) as Record<string, string>;
+          const filled = ["A", "B", "C", "D"]
+            .map((k) => (typeof raw[k] === "string" ? raw[k].trim() : ""))
+            .filter((t) => t.length > 0)
+            .slice(0, 3); // máximo 3 alternativas (A, B, C)
+          options = {};
+          filled.forEach((text, idx) => {
+            options[String.fromCharCode(65 + idx)] = text;
+          });
+          if (Object.keys(options).length < 2) {
+            options = { A: raw.A || "Alternativa A", B: raw.B || "Alternativa B" };
+          }
+        }
+        const correct = options[q.correct_option] ? q.correct_option : "A";
+        return {
         question_text: q.question_text,
         question_type: q.question_type,
-        options: (
-          q.question_type === "true_false"
-            ? { A: "Verdadeiro", B: "Falso" }
-            : { A: q.options.A || "", B: q.options.B || "", C: q.options.C || "", D: q.options.D || "" }
-        ) as Record<string, string>,
-        correct_option: q.correct_option,
+        options,
+        correct_option: correct,
         slide_number: Math.min(Math.max(1, q.slide_number || 1), numPages),
         display_mode: displayMode,
         time_limit: timeLimit,
-      }));
+        };
+      });
       setQuestions(drafts);
       setStep(3);
     } catch (e: any) {
@@ -159,7 +176,7 @@ function NewQuiz() {
     } else {
       updateQ(i, {
         question_type: "multiple_choice",
-        options: { A: q.options.A || "", B: q.options.B || "", C: q.options.C || "", D: q.options.D || "" },
+        options: { A: q.options.A || "", B: q.options.B || "" },
       });
     }
   }
@@ -195,17 +212,36 @@ function NewQuiz() {
         .select("id")
         .single();
       if (pErr) throw pErr;
-      const rows = questions.map((q, idx) => ({
+      const rows = questions.map((q, idx) => {
+        let opts: Record<string, string>;
+        let correct = q.correct_option;
+        if (q.question_type === "true_false") {
+          opts = { A: "Verdadeiro", B: "Falso" };
+        } else {
+          const keys = Object.keys(q.options).sort();
+          const kept = keys.filter(
+            (k) => typeof q.options[k] === "string" && q.options[k].trim() !== "",
+          );
+          opts = {};
+          kept.forEach((oldK, j) => {
+            const newK = String.fromCharCode(65 + j);
+            opts[newK] = q.options[oldK].trim();
+            if (oldK === q.correct_option) correct = newK;
+          });
+          if (!opts[correct]) correct = "A";
+        }
+        return {
         presentation_id: pres.id,
         question_text: q.question_text,
         question_type: q.question_type,
-        options: q.options,
-        correct_option: q.correct_option,
+        options: opts,
+        correct_option: correct,
         slide_number: q.slide_number,
         display_mode: q.display_mode,
         time_limit: q.time_limit,
         position: idx,
-      }));
+        };
+      });
       const { error: qErr } = await supabase.from("questions").insert(rows);
       if (qErr) throw qErr;
       toast.success("Quiz salvo com sucesso!");
