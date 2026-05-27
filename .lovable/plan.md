@@ -1,80 +1,74 @@
-# Plano de Refatoração: Controle Remoto P2P + Painel Multifuncional
 
-Trabalho grande, dividido em 5 fases. Tudo em **PT-BR** (celular, tela, usuário, cadastrar, arquivo).
+# Refator: Fluxo Sequencial, Controle Único e Overlays Centrais
 
-## Fase 1 — Tela de pareamento no projetor (`/present/$id/pair`)
+Este é um refator amplo. Antes de implementar, confirme se a direção abaixo está correta — vários itens conflitam com o estado atual do projeto.
 
-Já existe (`src/routes/present.$id.pair.tsx`), mas hoje o Dashboard pula direto pro lobby/present. Vou:
-- Garantir que **"Iniciar Apresentação"** no Dashboard e na página do Evento sempre passe por `/present/$id/pair` **antes** de qualquer slide.
-- Redesenhar a tela: título "Conectar Controles Remotos", QR code grande, 2 slots (1 obrigatório visual, 2 opcional), botão de rodapé **"Iniciar Apresentação Agora 🚀"** sempre habilitado.
-- Adicionar etiqueta de status de rede (verde "Conexão Direta Ativa" / amarela piscante "Redes Diferentes").
+## Escopo
 
-## Fase 2 — Captura de nome no celular (`/remote/$id/join`)
+### 1. Fluxo sequencial em 3 etapas no projetor
 
-- Tela única: campo "Qual é o seu nome?" + botão gradiente BNB "Ativar Controle Remoto 📱".
-- Sem login/email. Grava nome + `device_token` em `session_remotes` (já existe), reivindica slot 1 ou 2, redireciona para `/remote/$id`.
+**Etapa 1 — `/present/$id/pair` (volta a ser uma tela real, não redireciona)**
+- Tela escura centralizada: "Conectar Controle Remoto"
+- QR code apontando para `/remote-setup/[SESSION_ID]`
+- **Um único slot** "📱 Aguardando conexão do controle..." (amarelo piscante)
+- Quando o slot ficar verde ("🟢 Controle Conectado: [Nome]"), habilita botão **"Avançar para o Lobby"**
 
-## Fase 3 — Túnel WebRTC P2P com fallback
+**Etapa 2 — `/present/$id/lobby` (nova rota intermediária)**
+- QR code gigante centralizado + link de acesso para participantes
+- Avatares/nomes aparecendo em tempo real
+- Botão "Iniciar Apresentação" (no celular do palestrante e no computador)
 
-Novo hook `src/hooks/use-webrtc-control.tsx`:
-- **Sinalização** via canal Supabase Realtime `session_signaling_{sessionId}_{slot}` (broadcast SDP offer/answer + ICE candidates). Nada persistido em tabela.
-- Projetor cria `RTCPeerConnection` por slot, emite SDP offer ao detectar novo remote pareado. Celular escuta o canal ao entrar, envia answer + ICE.
-- `RTCDataChannel('control-channel')` ordenado.
-- **Timeout 8s**: se `iceConnectionState` não chegar em `connected`/`completed`, marca `network: 'fallback'` e usa Supabase Realtime broadcast como transporte.
-- Estados expostos: `transport: 'p2p' | 'fallback' | 'connecting'`, `send(msg)`, `onMessage(cb)`.
-- Etiqueta verde quando P2P; barra amarela piscante no topo do celular e do projetor quando fallback.
+**Etapa 3 — `/present/$id` (apresentação limpa)**
+- Slide em tela cheia, fundo `#000000`, **sem barra lateral fixa de QR/ranking**
+- Apenas o slide. QR e ranking só aparecem via overlay sob comando do celular.
 
-Protocolo de mensagens (JSON):
-```
-{ type: 'NEXT_STEP' | 'PREV_STEP' | 'TOGGLE_FULLSCREEN' | 'TOGGLE_QR_SIDEBAR'
-       | 'TOGGLE_RANKING' | 'TOGGLE_SIDEBAR' | 'SHOW_GIANT_QR' | 'HIDE_GIANT_QR'
-       | 'END_PRESENTATION', ts: number, from: 1 | 2 }
-```
-Projetor executa por ordem cronológica de chegada (concorrência natural do socket).
+### 2. Controle único (de 2 → 1 slot)
 
-## Fase 4 — Nova UI do controle remoto (`/remote/$id`)
+Atualmente o sistema permite 2 controles concorrentes (slot 1 e 2). A spec pede **um único controle**. Mudanças:
+- `claimRemoteSlot` em `src/lib/session-remotes.ts`: limita a 1 slot
+- `pairing-frame-overlay.tsx`, `dashboard.tsx`, `remote.$id.tsx`: removem referências ao slot 2
+- 2º túnel WebRTC (`tunnel2`) removido em `-present.$id.component.tsx`
 
-`height: 100dvh`, sem rolagem:
-- **AVANÇAR** gigante (70% do rodapé, gradiente BNB, envia `NEXT_STEP`).
-- **VOLTAR** pequeno, cinza escuro, base extrema (`PREV_STEP`).
-- Botão central **"Outras Funcionalidades ⚙️"** abre Drawer com:
-  - Alternar Tela Cheia
-  - Exibir/Ocultar QR Code lateral
-  - Exibir/Ocultar Ranking
-  - Exibir/Ocultar Barra Lateral
-  - Exibir QR Code Gigante 🎯
-  - Encerrar Apresentação (vermelho, com confirmação)
-- Badge de transporte (verde P2P / amarela fallback).
+### 3. Overlays centrais (substituem coluna lateral)
 
-## Fase 5 — Receptor no projetor (`-present.$id.component.tsx`)
+- **Frame QR Central**: modal flutuante centralizada (fundo `#161A23`, borda `#262D3D`), com QR de entrada + texto "Entre a qualquer momento!". Disparada por `TOGGLE_GIANT_QR` do celular.
+- **Frame Ranking Central**: painel vertical flutuante central com lista ordenada (pontuação ↓, tempo médio ↑, idade ↑). Disparada por novo sinal `TOGGLE_RANKING`.
+- Remover toda a coluna lateral atual de QR/ranking no projetor.
 
-- Monta `useWebRTCControl({ role: 'host' })` por slot.
-- Handlers para cada tipo de mensagem (já existem flags em `sessions`: `show_sidebar`, `show_ranking`, `show_join_qr`, `is_fullscreen`).
-- **Overlay QR Gigante**: novo modal full-screen translúcido com o QR de `/join?session=ID`.
-- **Chevron flutuante** na borda interna da sidebar direita para ocultar/exibir localmente.
-- Badge no topo do projetor: "🟢 Conexão Direta Ativa" ou "⚠️ Redes Diferentes Detectadas".
+### 4. Nova UI do celular (`/remote/$id`)
+
+Layout `100dvh` sem rolagem, hierarquia:
+1. **AVANÇAR** (herói) — 60–70% largura, gradiente `#A6193C → #F68B1F`
+2. **VOLTAR** — 44–48px, `#1E2235`
+3. **Outras Funcionalidades ⚙️** — abre gaveta com toggles:
+   - Alternar Tela Cheia (F11)
+   - Mostrar/Ocultar QR Code Central
+   - Mostrar/Ocultar Classificação Central
+   - Encerrar Apresentação Precocemente (vermelho → pula para pódio Top 3 + confetes)
+
+A gaveta de cadastrar controle e os controles de laser/áudio existentes serão preservados ou movidos para dentro dessa gaveta única.
+
+### 5. Idioma PT-BR
+
+Auditar toda UI nova/alterada para usar exclusivamente: celular, tela, usuário, cadastrar, arquivo.
 
 ## Arquivos afetados
 
-**Novos:**
-- `src/hooks/use-webrtc-control.tsx` — handshake + fallback + send/recv
-- `src/components/network-status-badge.tsx`
-- `src/components/giant-qr-overlay.tsx`
+- `src/lib/session-remotes.ts` — limitar a 1 slot
+- `src/routes/present.$id.pair.tsx` — restaurar tela de pareamento (Etapa 1)
+- `src/routes/present.$id.lobby.tsx` — **novo arquivo** (Etapa 2)
+- `src/routes/-present.$id.component.tsx` — remover sidebar, adicionar overlay ranking central, remover 2º túnel, ajustar handlers
+- `src/components/pairing-frame-overlay.tsx` — simplificar para 1 slot (ou substituir pela tela cheia da Etapa 1)
+- `src/components/giant-qr-overlay.tsx` — manter mas estilizar como frame central
+- `src/components/ranking-overlay.tsx` — **novo** (frame central de ranking)
+- `src/components/remote-drawer.tsx` — nova organização da gaveta
+- `src/routes/remote.$id.tsx` — nova UI hero AVANÇAR/VOLTAR/⚙️
+- `src/routes/dashboard.tsx` — botão "Iniciar Apresentação" deve ir para `/present/$id/pair`
+- `src/hooks/use-remote-bridge.tsx` — adicionar `TOGGLE_RANKING`, `END_EARLY`
 
-**Editados:**
-- `src/routes/dashboard.tsx` — sempre navegar para `/present/$id/pair`
-- `src/routes/event.$id.tsx` — idem
-- `src/routes/present.$id.pair.tsx` — host WebRTC + UI refinada
-- `src/routes/remote.$id.join.tsx` — tela "Qual é o seu nome?"
-- `src/routes/remote.$id.tsx` — nova UI ergonômica + drawer + WebRTC client
-- `src/routes/-present.$id.component.tsx` — receptor multi-canal, overlay QR gigante, chevron sidebar, badge de rede
-- `src/routes/remote-setup.$id.tsx` — manter redirect
+## Perguntas antes de implementar
 
-**Sem mudanças de schema:** `session_remotes` e `sessions` já cobrem todas as flags necessárias. Sinalização WebRTC é efêmera via Realtime broadcast.
-
-## Riscos e notas
-
-- WebRTC em browsers sem permissão de rede local: fallback automático em 8s, sem bloquear o usuário.
-- Concorrência dos 2 controles: cada slot tem seu próprio `RTCPeerConnection`; o projetor processa mensagens na ordem de chegada (não há merge/dedupe — comportamento solicitado).
-- Sem servidor STUN/TURN próprio: uso `stun:stun.l.google.com:19302` (público) só para descoberta ICE local; o caminho P2P real é LAN.
-- Tudo PT-BR, paleta BNB já existente (`#A6193C` → `#F68B1F`).
+1. **Controle único vs duplo**: confirma reduzir de 2 para 1 slot? Isso quebra o pareamento existente de qualquer sessão em uso.
+2. **Lobby separado**: criar nova rota `/present/$id/lobby` ou reaproveitar a já existente `/lobby/$id`?
+3. **Funcionalidades existentes do celular** (laser por giroscópio, áudio, navegação por slides com keyboard): mantenho dentro da nova gaveta ⚙️ ou removo para simplificar?
+4. **Coluna lateral atual** do projetor: remover completamente, ou manter como opção legada acionável via toggle?
