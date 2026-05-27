@@ -70,6 +70,8 @@ function EventManage() {
   const [mode, setMode] = useState<"choose" | "link">("choose");
   const [linking, setLinking] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [resetTarget, setResetTarget] = useState<Pres | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   const { data: event } = useQuery({
     queryKey: ["event", id],
@@ -213,6 +215,66 @@ function EventManage() {
       .eq("id", presentationId);
     toast.success("Apresentação desvinculada");
     refetch();
+  }
+
+  async function resetPresentation(presentationId: string) {
+    setResetting(true);
+    try {
+      // 1. Buscar sessões dessa apresentação
+      const { data: sess } = await supabase
+        .from("sessions")
+        .select("id")
+        .eq("presentation_id", presentationId);
+      const sessionIds = ((sess ?? []) as Array<{ id: string }>).map((s) => s.id);
+
+      // 2. Sinalizar celulares conectados (status -> ended) antes de apagar
+      if (sessionIds.length > 0) {
+        await (supabase.from("sessions") as any)
+          .update({ status: "ended", active_question_id: null, question_revealed: false })
+          .in("id", sessionIds);
+
+        // Broadcast adicional para forçar saída imediata
+        try {
+          for (const sid of sessionIds) {
+            const ch = supabase.channel(`reset-${sid}`);
+            await new Promise<void>((resolve) => {
+              ch.subscribe((status) => {
+                if (status === "SUBSCRIBED") resolve();
+              });
+              window.setTimeout(() => resolve(), 400);
+            });
+            await ch.send({ type: "broadcast", event: "presentation_reset", payload: { presentation_id: presentationId } });
+            window.setTimeout(() => supabase.removeChannel(ch), 300);
+          }
+        } catch {
+          /* ignora erros de realtime */
+        }
+
+        // 3. Limpar respostas, pontuações, participantes e sessões
+        await supabase.from("answers").delete().in("session_id", sessionIds);
+        await supabase.from("participants").delete().in("session_id", sessionIds);
+        await supabase.from("participant_scores").delete().in("session_id", sessionIds);
+        await supabase.from("sessions").delete().in("id", sessionIds);
+      }
+
+      // 4. Resetar metadados da apresentação
+      const { error } = await (supabase.from("presentations") as any)
+        .update({
+          execution_status: "pending",
+          presented_at: null,
+          chronological_index: null,
+        })
+        .eq("id", presentationId);
+      if (error) throw error;
+
+      toast.success("Apresentação reiniciada. Status limpo com sucesso!");
+      setResetTarget(null);
+      refetch();
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao reiniciar apresentação");
+    } finally {
+      setResetting(false);
+    }
   }
 
   function openAddModal() {
