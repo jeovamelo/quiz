@@ -185,21 +185,18 @@ function Dashboard() {
                 {user?.user_metadata?.full_name || user?.email || "Palestrante"}
               </h1>
             </div>
-            <div className="flex items-center gap-2">
-              <PairingStatusBadge userId={userId} variant="mobile" compact />
-              <button
-                type="button"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  toast.success("Você saiu da sua conta.");
-                  navigate({ to: "/", replace: true });
-                }}
-                className="rounded-lg p-2 text-[#9CA3AF] hover:bg-[#1E2235] hover:text-[#F68B1F]"
-                aria-label="Sair"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                toast.success("Você saiu da sua conta.");
+                navigate({ to: "/", replace: true });
+              }}
+              className="rounded-lg p-2 text-[#9CA3AF] hover:bg-[#1E2235] hover:text-[#F68B1F]"
+              aria-label="Sair"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </header>
 
