@@ -7,6 +7,8 @@ export type RemoteAction =
   | "PREV"
   | "TOGGLE_FULLSCREEN"
   | "SHOW_PODIUM"
+  | "SHOW_GIANT_QR"
+  | "HIDE_GIANT_QR"
   | "LASER"
   | "LASER_OFF";
 

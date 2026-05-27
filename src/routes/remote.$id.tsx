@@ -11,6 +11,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
+import { useWebRTCTunnel } from "@/hooks/use-webrtc-tunnel";
+import { NetworkStatusBadge, NetworkFallbackBanner } from "@/components/network-status-badge";
 import {
   heartbeatRemote,
   loadStoredRemote,
@@ -52,6 +54,25 @@ function RemoteControl() {
 
   // Ponte de tempo real (Broadcast) entre celular e projetor.
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
+
+  // Túnel WebRTC P2P (latência zero quando na mesma rede local).
+  const tunnel = useWebRTCTunnel({
+    sessionId: id,
+    slot: (stored?.slot as 1 | 2) ?? 1,
+    role: "guest",
+    enabled: !!stored?.slot,
+  });
+
+  /**
+   * Envia um comando preferencialmente pelo túnel P2P (instantâneo);
+   * se indisponível, cai automaticamente no broadcast da nuvem.
+   */
+  function sendCommand(action: string, extra?: Record<string, any>) {
+    const payload = { action, ts: Date.now(), from: stored?.slot ?? 0, ...(extra ?? {}) };
+    const viaP2P = tunnel.transport === "p2p" ? tunnel.send(payload) : false;
+    if (viaP2P) return Promise.resolve(true);
+    return bridge.send(action as any, extra);
+  }
 
   // === Identidade do controle (slot 1 ou 2) — exige cadastro prévio em /join ===
   useEffect(() => {
@@ -364,13 +385,14 @@ function RemoteControl() {
   async function nextSlide() {
     haptic(45);
     await withBusy(async () => {
-      // Comando primário via Broadcast — projetor é a fonte de verdade
-      // (conhece o total de páginas do PDF e dispara o pódio automático
-      // ao avançar além da última página). Fallback de banco abaixo só
-      // roda se a ponte estiver desconectada.
-      const sent = bridge.status === "connected" && bridge.partnerOnline
-        ? await bridge.send("NEXT")
-        : false;
+      // 1ª tentativa — túnel WebRTC P2P (latência zero).
+      // 2ª tentativa — broadcast realtime via nuvem.
+      // 3ª tentativa — escrita direta no banco (fallback final).
+      const sent =
+        (await sendCommand("NEXT")) ||
+        (bridge.status === "connected" && bridge.partnerOnline
+          ? await bridge.send("NEXT")
+          : false);
       if (sent) return;
 
       // FALLBACK (sem sinal do projetor): aplica a mesma lógica via DB.
@@ -421,9 +443,11 @@ function RemoteControl() {
   async function prevSlide() {
     haptic(25);
     await withBusy(async () => {
-      const sent = bridge.status === "connected" && bridge.partnerOnline
-        ? await bridge.send("PREV")
-        : false;
+      const sent =
+        (await sendCommand("PREV")) ||
+        (bridge.status === "connected" && bridge.partnerOnline
+          ? await bridge.send("PREV")
+          : false);
       if (sent) return;
       const { data: fresh } = await supabase
         .from("sessions")
@@ -447,7 +471,8 @@ function RemoteControl() {
   async function toggleFullscreen() {
     haptic(30);
     const next = !session?.is_fullscreen;
-    bridge.send("TOGGLE_FULLSCREEN", { value: next });
+    sendCommand("TOGGLE_FULLSCREEN", { value: next });
+    bridge.send("TOGGLE_FULLSCREEN", { value: next }).catch(() => {});
     const { error } = await (supabase.from("sessions") as any)
       .update({ is_fullscreen: next })
       .eq("id", id);
@@ -464,6 +489,14 @@ function RemoteControl() {
       .update({ [field]: next })
       .eq("id", id);
     if (error) toast.error("Falha ao atualizar a projeção.");
+  }
+
+  async function showGiantQr() {
+    haptic(40);
+    // Túnel P2P primeiro, broadcast em paralelo como garantia.
+    sendCommand("SHOW_GIANT_QR");
+    bridge.send("SHOW_GIANT_QR" as any).catch(() => {});
+    toast.success("QR Gigante exibido no projetor!");
   }
 
   async function exitToHub() {
@@ -545,6 +578,7 @@ function RemoteControl() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#0E1015] text-white">
+      <NetworkFallbackBanner transport={tunnel.transport} />
       {bridge.status !== "connected" && (
         <div className="shrink-0 bg-[#F68B1F] px-3 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-black animate-pulse">
           Reconectando ao projetor...
@@ -561,7 +595,9 @@ function RemoteControl() {
               {stored?.name ?? "—"} · {presentation.title}
             </h1>
           </div>
-          <div
+          <div className="flex shrink-0 items-center gap-1.5">
+            <NetworkStatusBadge transport={tunnel.transport} compact />
+            <div
             className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${
               bridge.status === "connected" && bridge.partnerOnline
                 ? "border-[#07A684]/40 bg-[#07A684]/10 text-[#07A684]"
@@ -585,6 +621,7 @@ function RemoteControl() {
               : bridge.status === "connected"
               ? "Aguardando"
               : "Sem sinal"}
+            </div>
           </div>
         </div>
         <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#9CA3AF]">
@@ -614,6 +651,7 @@ function RemoteControl() {
             onToggleJoinQr={() => toggleSessionFlag("show_join_qr")}
             onToggleRanking={() => toggleSessionFlag("show_ranking")}
             onToggleSidebar={() => toggleSessionFlag("show_sidebar")}
+            onShowGiantQr={showGiantQr}
             onEndSession={exitToHub}
           />
 

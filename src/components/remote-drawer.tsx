@@ -26,6 +26,7 @@ import {
   PanelRightClose,
   Power,
   Settings,
+  ScanLine,
 } from "lucide-react";
 import { haptic } from "@/hooks/use-haptic";
 
@@ -38,6 +39,7 @@ type Props = {
   onToggleJoinQr: () => void;
   onToggleRanking: () => void;
   onToggleSidebar: () => void;
+  onShowGiantQr: () => void;
   onEndSession: () => void;
 };
 
@@ -50,6 +52,7 @@ export function RemoteDrawer({
   onToggleJoinQr,
   onToggleRanking,
   onToggleSidebar,
+  onShowGiantQr,
   onEndSession,
 }: Props) {
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -106,6 +109,26 @@ export function RemoteDrawer({
               active={showSidebar}
               onToggle={onToggleSidebar}
             />
+            <button
+              type="button"
+              onClick={() => {
+                haptic(35);
+                onShowGiantQr();
+              }}
+              className="flex w-full items-center gap-3 rounded-xl border border-[#F68B1F]/60 bg-gradient-to-br from-[#F68B1F]/15 to-[#A6193C]/15 px-4 py-3 text-left transition active:scale-[0.98]"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#A6193C] to-[#F68B1F] text-white">
+                <ScanLine className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-white">
+                  Exibir QR Code Gigante 🎯
+                </span>
+                <span className="block text-[11px] text-[#9CA3AF]">
+                  Mostra um QR enorme no projetor sobre o slide atual
+                </span>
+              </span>
+            </button>
           </div>
 
           <DrawerFooter className="gap-2">
