@@ -670,7 +670,13 @@ function Join() {
         >
           <p className="text-lg font-bold">{userCorrect ? "Você acertou! 🎉" : myAnswer ? "Errou." : "Sem resposta"}</p>
           <p className="mt-1 text-sm">
-            Resposta correta: <span className="font-semibold">{question.correct_option}</span>
+            Resposta correta:{" "}
+            <span className="font-semibold">
+              {(() => {
+                const idx = optionKeys.indexOf(question.correct_option);
+                return idx >= 0 ? String.fromCharCode(65 + idx) : question.correct_option;
+              })()}
+            </span>
           </p>
         </div>
       )}
