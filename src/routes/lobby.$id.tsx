@@ -102,6 +102,18 @@ function Lobby() {
     navigate({ to: "/present/$id", params: { id } });
   }
 
+  async function startWithOperator() {
+    const { error } = await supabase
+      .from("sessions")
+      .update({ status: "live", current_slide: 1 })
+      .eq("id", id);
+    if (error) {
+      toast.error("Falha ao iniciar");
+      return;
+    }
+    navigate({ to: "/operator/$id", params: { id } });
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50">
@@ -142,8 +154,16 @@ function Lobby() {
               <Copy className="mr-2 h-4 w-4" /> Copiar
             </Button>
           </div>
-          <Button size="lg" className="mt-6 w-full" onClick={start}>
-            <Play className="mr-2 h-5 w-5" /> Iniciar Apresentação
+          <Button size="lg" className="mt-6 w-full" onClick={startWithOperator}>
+            <Play className="mr-2 h-5 w-5" /> Iniciar com Central de Controle
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 w-full"
+            onClick={start}
+          >
+            Modo simples (sem console do operador)
           </Button>
         </div>
         <div className="rounded-xl border border-border bg-card p-6">

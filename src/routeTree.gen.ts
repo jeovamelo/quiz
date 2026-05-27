@@ -17,6 +17,7 @@ import { Route as RemoteIdRouteImport } from './routes/remote.$id'
 import { Route as RemoteSetupIdRouteImport } from './routes/remote-setup.$id'
 import { Route as QuizNewRouteImport } from './routes/quiz.new'
 import { Route as PresentIdRouteImport } from './routes/present.$id'
+import { Route as OperatorIdRouteImport } from './routes/operator.$id'
 import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
 import { Route as EventNewRouteImport } from './routes/event.new'
 import { Route as EventIdRouteImport } from './routes/event.$id'
@@ -65,6 +66,11 @@ const QuizNewRoute = QuizNewRouteImport.update({
 const PresentIdRoute = PresentIdRouteImport.update({
   id: '/present/$id',
   path: '/present/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OperatorIdRoute = OperatorIdRouteImport.update({
+  id: '/operator/$id',
+  path: '/operator/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LobbyIdRoute = LobbyIdRouteImport.update({
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
+  '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
+  '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
+  '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
+    | '/operator/$id'
     | '/present/$id'
     | '/quiz/new'
     | '/remote-setup/$id'
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
+    | '/operator/$id'
     | '/present/$id'
     | '/quiz/new'
     | '/remote-setup/$id'
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
+    | '/operator/$id'
     | '/present/$id'
     | '/quiz/new'
     | '/remote-setup/$id'
@@ -239,6 +251,7 @@ export interface RootRouteChildren {
   EventIdRoute: typeof EventIdRouteWithChildren
   EventNewRoute: typeof EventNewRoute
   LobbyIdRoute: typeof LobbyIdRoute
+  OperatorIdRoute: typeof OperatorIdRoute
   PresentIdRoute: typeof PresentIdRouteWithChildren
   QuizNewRoute: typeof QuizNewRoute
   RemoteSetupIdRoute: typeof RemoteSetupIdRoute
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       path: '/present/$id'
       fullPath: '/present/$id'
       preLoaderRoute: typeof PresentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/operator/$id': {
+      id: '/operator/$id'
+      path: '/operator/$id'
+      fullPath: '/operator/$id'
+      preLoaderRoute: typeof OperatorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lobby/$id': {
@@ -417,6 +437,7 @@ const rootRouteChildren: RootRouteChildren = {
   EventIdRoute: EventIdRouteWithChildren,
   EventNewRoute: EventNewRoute,
   LobbyIdRoute: LobbyIdRoute,
+  OperatorIdRoute: OperatorIdRoute,
   PresentIdRoute: PresentIdRouteWithChildren,
   QuizNewRoute: QuizNewRoute,
   RemoteSetupIdRoute: RemoteSetupIdRoute,
