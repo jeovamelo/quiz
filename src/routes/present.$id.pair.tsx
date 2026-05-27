@@ -146,7 +146,7 @@ function PairRemotes() {
             onClick={advanceToLobby}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-8 py-4 text-base font-extrabold uppercase tracking-wide text-white shadow-2xl shadow-[#A6193C]/40 transition-all duration-100 hover:scale-[1.02] active:scale-95"
           >
-            <ArrowRight className="h-5 w-5" /> Avançar para o Lobby 🚀
+            <ArrowRight className="h-5 w-5" /> Iniciar Apresentação Agora 🚀
           </button>
         </div>
       </footer>
