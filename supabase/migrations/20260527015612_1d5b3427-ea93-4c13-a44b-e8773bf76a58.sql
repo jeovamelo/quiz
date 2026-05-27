@@ -1,0 +1,1 @@
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS fired_question_ids uuid[] NOT NULL DEFAULT '{}';
