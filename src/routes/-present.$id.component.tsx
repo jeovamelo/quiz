@@ -903,6 +903,17 @@ export function Present() {
           }`}
           aria-hidden={!session?.show_ranking || rankingHiddenLocal}
         >
+          {session?.show_ranking && rankingHiddenLocal && (
+            <button
+              type="button"
+              onClick={() => setRankingHiddenLocal(false)}
+              title="Mostrar classificação"
+              aria-label="Mostrar painel de classificação"
+              className="absolute right-0 top-1/2 z-30 flex h-12 w-7 -translate-y-1/2 items-center justify-center rounded-l-lg border border-[#262D3D] bg-[#161A23]/90 text-[#9CA3AF] shadow-lg backdrop-blur transition hover:text-[#F68B1F]"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
           <div className="flex h-full w-80 flex-col">
             <div className="border-b border-[#262D3D] px-4 py-3">
               <div className="flex items-center justify-between gap-2">
