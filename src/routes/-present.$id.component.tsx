@@ -762,6 +762,8 @@ export function Present() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
+      <NetworkFallbackBanner transport={aggregateTransport} />
+      <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setGiantQrOpen(false)} />
       {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
       {laserCoords && (
         <div
@@ -871,6 +873,25 @@ export function Present() {
           <div className="absolute right-20 top-4 z-20">
             <PairingStatusBadge userId={user?.id} variant="desktop" compact />
           </div>
+          {/* Selo de transporte (P2P / Nuvem) */}
+          <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2">
+            <NetworkStatusBadge transport={aggregateTransport} compact />
+          </div>
+          {/* Chevron flutuante — recolhe/expande a barra lateral direita localmente */}
+          {session?.show_sidebar !== false && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSidebarCollapsedLocal((v) => !v);
+              }}
+              title={sidebarCollapsedLocal ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+              aria-label={sidebarCollapsedLocal ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+              className="absolute right-2 top-1/2 z-30 flex h-12 w-8 -translate-y-1/2 items-center justify-center rounded-l-lg border border-[#262D3D] bg-[#161A23]/90 text-[#9CA3AF] shadow-lg backdrop-blur transition hover:text-[#F68B1F]"
+            >
+              {sidebarCollapsedLocal ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+            </button>
+          )}
         </div>
 
         {/* Painel retrátil — Classificação em tempo real */}
@@ -931,8 +952,8 @@ export function Present() {
           </div>
         </div>
 
-        {/* Coluna direita — painel admin (oculta se show_sidebar = false) */}
-        {session?.show_sidebar !== false && (
+        {/* Coluna direita — painel admin (oculta se show_sidebar = false ou recolhido localmente) */}
+        {session?.show_sidebar !== false && !sidebarCollapsedLocal && (
         <aside className="flex w-[400px] flex-col gap-3 overflow-y-auto border-l border-border bg-card p-4">
           {/* Convite — controlado pelo toggle de QR no celular */}
           {session?.show_join_qr !== false && (
