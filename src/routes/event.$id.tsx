@@ -82,6 +82,7 @@ function EventManage() {
   const [resetting, setResetting] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [endStage, setEndStage] = useState<"confirm" | "choose">("confirm");
 
   const { data: event } = useQuery({
     queryKey: ["event", id],
@@ -306,17 +307,66 @@ function EventManage() {
           .update({ execution_status: "completed_partial" })
           .in("id", idsToClose);
       }
-      setEndOpen(false);
-      navigate({
-        to: "/event/$id/podium",
-        params: { id },
-        search: { finale: 1 },
-      });
+      // Avança para a etapa de escolha do clímax
+      setEndStage("choose");
+      await refetch();
     } catch (e: any) {
       toast.error(e?.message || "Falha ao encerrar o evento");
     } finally {
       setEnding(false);
     }
+  }
+
+  async function finishWithoutSuspense() {
+    try {
+      // Garante que os celulares saiam da tela passiva
+      const ch = supabase.channel(`event-finale-${id}`);
+      await new Promise<void>((resolve) => {
+        ch.subscribe((status) => {
+          if (status === "SUBSCRIBED") resolve();
+        });
+        window.setTimeout(() => resolve(), 600);
+      });
+      await ch.send({
+        type: "broadcast",
+        event: "event:closed",
+        payload: { event_id: id },
+      });
+      window.setTimeout(() => supabase.removeChannel(ch), 400);
+    } catch {
+      /* ignora falhas de realtime */
+    }
+    setEndOpen(false);
+    setEndStage("confirm");
+    toast.success("Evento encerrado.");
+  }
+
+  async function finishWithSuspense() {
+    try {
+      // Bloqueia celulares: exibirão "Fique atento à tela principal..."
+      const ch = supabase.channel(`event-finale-${id}`);
+      await new Promise<void>((resolve) => {
+        ch.subscribe((status) => {
+          if (status === "SUBSCRIBED") resolve();
+        });
+        window.setTimeout(() => resolve(), 700);
+      });
+      await ch.send({
+        type: "broadcast",
+        event: "finale:lock",
+        payload: { event_id: id },
+      });
+      window.setTimeout(() => supabase.removeChannel(ch), 400);
+    } catch {
+      /* ignora falhas de realtime */
+    }
+    setEndOpen(false);
+    setEndStage("confirm");
+    navigate({
+      to: "/event/$id/podium",
+      params: { id },
+      search: { finale: 1 },
+    });
   }
 
   function openAddModal() {
