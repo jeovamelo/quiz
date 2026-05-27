@@ -60,6 +60,8 @@ export function Present() {
   const fullscreenAppliedRef = useRef<boolean | null>(null);
   // Controle local da Barra Lateral direita no próprio projetor (chevron flutuante)
   const [sidebarCollapsedLocal, setSidebarCollapsedLocal] = useState(false);
+  // Controle local do painel "Classificação em tempo real" (chevron flutuante)
+  const [rankingHiddenLocal, setRankingHiddenLocal] = useState(false);
   // Sobreposição do QR Code gigante (acionada pelo controle remoto)
   const [giantQrOpen, setGiantQrOpen] = useState(false);
   const questionsRef = useRef<Question[]>([]);
@@ -897,15 +899,26 @@ export function Present() {
         {/* Painel retrátil — Classificação em tempo real */}
         <div
           className={`overflow-hidden border-l border-[#262D3D] bg-[#161A23] transition-all duration-300 ease-in-out ${
-            session?.show_ranking ? "w-80" : "w-0"
+            session?.show_ranking && !rankingHiddenLocal ? "w-80" : "w-0"
           }`}
-          aria-hidden={!session?.show_ranking}
+          aria-hidden={!session?.show_ranking || rankingHiddenLocal}
         >
           <div className="flex h-full w-80 flex-col">
             <div className="border-b border-[#262D3D] px-4 py-3">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                Classificação em tempo real
-              </h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                  Classificação em tempo real
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setRankingHiddenLocal(true)}
+                  title="Ocultar painel"
+                  aria-label="Ocultar painel de classificação"
+                  className="rounded p-1 text-[#9CA3AF] transition hover:bg-[#0E1015] hover:text-[#F68B1F]"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
                 {ranking.length} {ranking.length === 1 ? "participante" : "participantes"}
               </p>
@@ -1140,6 +1153,17 @@ export function Present() {
             </AlertDialogContent>
           </AlertDialog>
         </aside>
+        )}
+        {session?.show_ranking && rankingHiddenLocal && (
+          <button
+            type="button"
+            onClick={() => setRankingHiddenLocal(false)}
+            title="Mostrar classificação"
+            aria-label="Mostrar painel de classificação"
+            className="fixed right-0 top-1/2 z-40 flex h-14 w-8 -translate-y-1/2 items-center justify-center rounded-l-lg border border-[#262D3D] bg-[#161A23]/95 text-[#9CA3AF] shadow-lg backdrop-blur transition hover:text-[#F68B1F]"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
         )}
       </div>
     </div>
