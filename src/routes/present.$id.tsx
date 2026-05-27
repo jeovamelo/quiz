@@ -297,7 +297,6 @@ function Present() {
   // === TELA DE PÓDIO ===
   if (isEnded) {
     const top3 = ranking.slice(0, 3);
-    const rest = ranking.slice(3, 10);
     // [place index 0..2 = posição real, participant]
     const slots: Array<{ place: 1 | 2 | 3; p: ParticipantRow }> = [];
     if (top3[1]) slots.push({ place: 2, p: top3[1] });
@@ -334,26 +333,6 @@ function Present() {
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {rest.length > 0 && (
-          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Classificação geral</h3>
-            <ol className="space-y-1">
-              {rest.map((p, idx) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between rounded border border-border bg-background/40 px-3 py-2 text-sm"
-                >
-                  <span>
-                    <span className="mr-2 inline-block w-6 text-right text-muted-foreground">{idx + 4}.</span>
-                    {p.name}
-                  </span>
-                  <span className="font-semibold text-primary">{p.score} pts</span>
-                </li>
-              ))}
-            </ol>
           </div>
         )}
 
