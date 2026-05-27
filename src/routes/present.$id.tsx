@@ -546,6 +546,26 @@ function Present() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
+      {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
+      {laserCoords && (
+        <div
+          className="pointer-events-none fixed inset-0 z-[60]"
+          aria-hidden="true"
+        >
+          <div
+            className="absolute h-4 w-4 rounded-full bg-red-500 transition-all duration-75 ease-out"
+            style={{
+              left: `${laserCoords.x}%`,
+              top: `${laserCoords.y}%`,
+              transform: "translate(-50%, -50%)",
+              boxShadow: "0 0 15px 4px rgba(239, 68, 68, 0.85)",
+              border: "1px solid rgba(255,255,255,0.95)",
+            }}
+          >
+            <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
+          </div>
+        </div>
+      )}
       {!projectorActivated && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm p-6">
           <div className="max-w-md rounded-2xl border border-[#262D3D] bg-[#131722] p-6 text-center shadow-2xl">
