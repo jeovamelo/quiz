@@ -179,13 +179,6 @@ function RemoteHub() {
                 <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[#FFCB05]">
                   <Calendar className="h-4 w-4" /> {ev.title}
                 </h2>
-                <Link
-                  to="/event/$id/lobby"
-                  params={{ id: ev.id }}
-                  className="rounded-full border border-[#262D3D] bg-[#161A23] px-3 py-1 text-[11px] font-medium text-[#9CA3AF] hover:text-white"
-                >
-                  Abrir lobby do projetor
-                </Link>
               </div>
 
               {list.length === 0 ? (
