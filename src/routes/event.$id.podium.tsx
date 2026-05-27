@@ -109,22 +109,37 @@ function EventPodium() {
         </div>
       )}
 
-      {rest.length > 0 && (
-        <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Classificação geral</h3>
+      {ranking.length > 0 && (
+        <div className="w-full max-w-2xl rounded-xl border border-[#262D3D] bg-[#161A23] p-4">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">
+            Classificação geral ({ranking.length} {ranking.length === 1 ? "participante" : "participantes"})
+          </h3>
           <ol className="space-y-1">
-            {rest.map((p, idx) => (
-              <li
-                key={p.id}
-                className="flex items-center justify-between rounded border border-border bg-background/40 px-3 py-2 text-sm"
-              >
-                <span>
-                  <span className="mr-2 inline-block w-6 text-right text-muted-foreground">{idx + 4}.</span>
-                  {p.name}
-                </span>
-                <span className="font-semibold text-primary">{p.score} pts</span>
-              </li>
-            ))}
+            {ranking.map((p, idx) => {
+              const pos = idx + 1;
+              const medal = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : null;
+              return (
+                <li
+                  key={p.id}
+                  className={`flex items-center justify-between rounded border px-3 py-2 text-sm ${
+                    pos <= 3
+                      ? "border-[#F68B1F]/40 bg-[#F68B1F]/5"
+                      : "border-[#262D3D] bg-[#0E1015]/60"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex w-8 justify-end text-right font-bold text-muted-foreground">
+                      {medal ?? `${pos}º`}
+                    </span>
+                    <span className="font-medium text-white">{p.name}</span>
+                  </span>
+                  <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{p.correct_count}/{p.answer_count} acertos</span>
+                    <span className="text-base font-bold text-[#F68B1F]">{p.score} pts</span>
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         </div>
       )}
