@@ -49,7 +49,7 @@ function EventLobby() {
       .channel(`event-lobby-${id}`)
       .on("broadcast", { event: "launch" }, ({ payload }) => {
         if (payload?.session_id) {
-          navigate({ to: "/present/$id", params: { id: payload.session_id } });
+          navigate({ to: "/present/$id/pair", params: { id: payload.session_id } });
         }
       })
       .subscribe();
