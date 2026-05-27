@@ -612,6 +612,13 @@ export function Present() {
       .eq("id", id)
       .single();
     if (!fresh || (fresh as any).status === "ended") return;
+    // ETAPA 3 — primeira ação de avançar durante o lobby promove a
+    // sessão para 'live', encerrando os QRs de abertura e levando o
+    // projetor ao foco absoluto no Slide 1 (modo cinema).
+    if ((fresh as any).status === "lobby") {
+      await supabase.from("sessions").update({ status: "live" }).eq("id", id);
+      return;
+    }
     const liveSlide: number = (fresh as any).current_slide ?? 1;
     const fired: string[] = ((fresh as any).fired_question_ids as string[]) ?? [];
     const activeId: string | null = (fresh as any).active_question_id ?? null;
