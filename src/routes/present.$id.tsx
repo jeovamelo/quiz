@@ -60,6 +60,10 @@ function Present() {
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
+  // === APONTADOR LASER recebido do celular ===
+  const [laserCoords, setLaserCoords] = useState<{ x: number; y: number } | null>(null);
+  const laserTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
     setJoinUrl(`${window.location.origin}/join?session=${id}`);
   }, [id]);
@@ -68,7 +72,27 @@ function Present() {
   const bridge = useRemoteBridge({
     sessionId: id,
     role: "projector",
-    onAction: async (action) => {
+    onAction: async (action, payload) => {
+      // === LASER: mais frequente — trate antes do fetch ao banco. ===
+      if (action === "LASER") {
+        const x = Number(payload?.x);
+        const y = Number(payload?.y);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          setLaserCoords({ x, y });
+          if (laserTimerRef.current) window.clearTimeout(laserTimerRef.current);
+          // Fadeout suave: some após 1.5s sem novas coordenadas.
+          laserTimerRef.current = window.setTimeout(() => {
+            setLaserCoords(null);
+          }, 1500);
+        }
+        return;
+      }
+      if (action === "LASER_OFF") {
+        if (laserTimerRef.current) window.clearTimeout(laserTimerRef.current);
+        setLaserCoords(null);
+        return;
+      }
+
       // Re-busca o estado mais recente para evitar usar React state desatualizado.
       const { data: fresh } = await supabase
         .from("sessions")
