@@ -187,8 +187,7 @@ function DramaticReveal({
   // step: 0 = nada revelado, 1 = bronze, 2 = prata, 3 = ouro
   const [step, setStep] = useState(0);
   const [flash, setFlash] = useState(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const heartbeatTimerRef = useRef<number | null>(null);
+  const audio = useAudioSynthesizer();
 
   const top3 = useMemo(() => ranking.slice(0, 3), [ranking]);
   const third = top3[2];
@@ -198,141 +197,24 @@ function DramaticReveal({
   // Tempo entre batidas do coração (acelera conforme a revelação avança)
   const beatInterval = step >= 3 ? 380 : step === 2 ? 520 : step === 1 ? 700 : 900;
 
-  // Web Audio: batida grave sintetizada
+  // Inicia loops de fundo (coração + tambor baixo) assim que o áudio é ativado
   useEffect(() => {
-    function getCtx() {
-      if (!audioCtxRef.current) {
-        try {
-          const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-          if (Ctx) audioCtxRef.current = new Ctx();
-        } catch {
-          /* sem áudio */
-        }
-      }
-      return audioCtxRef.current;
-    }
-    function boom(freq = 55, dur = 0.18, gain = 0.35) {
-      const ctx = getCtx();
-      if (!ctx) return;
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "sine";
-      o.frequency.setValueAtTime(freq, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * 0.4), ctx.currentTime + dur);
-      g.gain.setValueAtTime(gain, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-      o.connect(g).connect(ctx.destination);
-      o.start();
-      o.stop(ctx.currentTime + dur);
-    }
-    function doubleBeat() {
-      boom(60, 0.16, 0.32);
-      window.setTimeout(() => boom(48, 0.18, 0.28), 140);
-    }
-    const tick = () => {
-      doubleBeat();
-    };
-    // primeiro toque imediato
-    tick();
-    heartbeatTimerRef.current = window.setInterval(tick, beatInterval) as unknown as number;
+    if (!audio.enabled) return;
+    audio.setSuspenseLevel(0);
+    audio.startDrumLoop(0.3);
     return () => {
-      if (heartbeatTimerRef.current) window.clearInterval(heartbeatTimerRef.current);
+      audio.stopHeartbeat();
+      audio.stopDrumLoop();
     };
-  }, [beatInterval]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audio.enabled]);
 
+  // Atualiza nível de suspense conforme avança a revelação
   useEffect(() => {
-    return () => {
-      try {
-        audioCtxRef.current?.close();
-      } catch {
-        /* noop */
-      }
-    };
-  }, []);
-
-  function getCtxSafe(): AudioContext | null {
-    if (!audioCtxRef.current) {
-      try {
-        const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-        if (Ctx) audioCtxRef.current = new Ctx();
-      } catch {
-        return null;
-      }
-    }
-    return audioCtxRef.current;
-  }
-
-  // Ruído branco filtrado simulando tambores rufando
-  function playDrumRoll(durationMs: number, intensity: number) {
-    const ctx = getCtxSafe();
-    if (!ctx) return;
-    const seconds = durationMs / 1000;
-    const bufferSize = Math.floor(ctx.sampleRate * seconds);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      // Tremor: amplitude modulada para parecer um rufar
-      const tremor = 0.6 + 0.4 * Math.sin((i / ctx.sampleRate) * 2 * Math.PI * 22);
-      data[i] = (Math.random() * 2 - 1) * tremor;
-    }
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 380;
-    const gain = ctx.createGain();
-    const peak = Math.min(0.45, 0.18 + intensity * 0.12);
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + seconds * 0.6);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + seconds);
-    src.connect(filter).connect(gain).connect(ctx.destination);
-    src.start();
-    src.stop(ctx.currentTime + seconds);
-  }
-
-  // Acorde triunfal ascendente (fanfarra sintetizada)
-  function playVictoryChord() {
-    const ctx = getCtxSafe();
-    if (!ctx) return;
-    // Notas ascendentes: C5, E5, G5, C6 e acorde maior final
-    const sequence: Array<{ freq: number; offset: number; dur: number }> = [
-      { freq: 523.25, offset: 0.0, dur: 0.22 },
-      { freq: 659.25, offset: 0.18, dur: 0.22 },
-      { freq: 783.99, offset: 0.36, dur: 0.24 },
-      { freq: 1046.5, offset: 0.55, dur: 1.4 },
-    ];
-    const chord = [523.25, 659.25, 783.99, 1046.5];
-    sequence.forEach(({ freq, offset, dur }) => {
-      ["triangle", "sawtooth"].forEach((type, idx) => {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = type as OscillatorType;
-        o.frequency.value = freq;
-        const t0 = ctx.currentTime + offset;
-        const amp = idx === 0 ? 0.18 : 0.07;
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(amp, t0 + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-        o.connect(g).connect(ctx.destination);
-        o.start(t0);
-        o.stop(t0 + dur + 0.05);
-      });
-    });
-    // Acorde sustentado no clímax final
-    const t0 = ctx.currentTime + 0.55;
-    chord.forEach((freq) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "triangle";
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.13, t0 + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
-      o.connect(g).connect(ctx.destination);
-      o.start(t0);
-      o.stop(t0 + 1.9);
-    });
-  }
+    if (!audio.enabled) return;
+    audio.setSuspenseLevel(Math.min(3, step) as 0 | 1 | 2 | 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, audio.enabled]);
 
   async function broadcastWinner(place: 1 | 2 | 3, p?: RankItem) {
     if (!p?.device_token) return;
@@ -393,21 +275,30 @@ function DramaticReveal({
   async function revealNext() {
     if (step >= 3) return;
     if (step === 0) {
-      playDrumRoll(1600, 1);
+      audio.playDrumRoll(2000, 1.4);
       fireConfetti(false);
+      window.setTimeout(() => audio.playFireworks(), 1900);
       await broadcastWinner(3, third);
       setStep(1);
     } else if (step === 1) {
-      playDrumRoll(2000, 2);
+      audio.playDrumRoll(2200, 2);
       fireConfetti(false);
+      window.setTimeout(() => audio.playFireworks(), 2050);
       await broadcastWinner(2, second);
       setStep(2);
     } else if (step === 2) {
-      playDrumRoll(2400, 3);
+      audio.playDrumRoll(2600, 3);
       setFlash(true);
       window.setTimeout(() => setFlash(false), 320);
       fireConfetti(true);
-      window.setTimeout(() => playVictoryChord(), 280);
+      window.setTimeout(() => {
+        audio.playFireworks();
+      }, 2300);
+      window.setTimeout(() => {
+        audio.stopDrumLoop();
+        audio.stopHeartbeat();
+        audio.startFanfareLoop();
+      }, 2900);
       await broadcastWinner(1, first);
       setStep(3);
     }
