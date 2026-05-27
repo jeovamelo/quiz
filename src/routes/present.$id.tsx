@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, Copy, Loader2, LogOut, Trophy } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, LogOut, Maximize, Tv, Trophy } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,10 +53,58 @@ function Present() {
   const [joinUrl, setJoinUrl] = useState("");
   const [showRanking, setShowRanking] = useState(false);
   const confettiFiredRef = useRef(false);
+  const [projectorActivated, setProjectorActivated] = useState(false);
+  const fullscreenAppliedRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     setJoinUrl(`${window.location.origin}/join?session=${id}`);
   }, [id]);
+
+  // Sincroniza o pedido remoto de tela cheia (vindo do celular do palestrante)
+  useEffect(() => {
+    if (!projectorActivated) return;
+    const wants = !!session?.is_fullscreen;
+    if (fullscreenAppliedRef.current === wants) return;
+    try {
+      if (wants) {
+        const el = document.documentElement as any;
+        const req =
+          el.requestFullscreen ||
+          el.webkitRequestFullscreen ||
+          el.msRequestFullscreen;
+        if (req && !document.fullscreenElement) {
+          req.call(el)?.catch?.(() => {
+            /* navegador pode bloquear sem gesto recente */
+          });
+        }
+      } else {
+        const doc = document as any;
+        const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+        if (exit && document.fullscreenElement) {
+          exit.call(doc)?.catch?.(() => {});
+        }
+      }
+      fullscreenAppliedRef.current = wants;
+    } catch {
+      /* ignora */
+    }
+  }, [session?.is_fullscreen, projectorActivated]);
+
+  // Mantém o estado sincronizado se o usuário sair da tela cheia pelo ESC
+  useEffect(() => {
+    function onChange() {
+      const isFs = !!document.fullscreenElement;
+      fullscreenAppliedRef.current = isFs;
+      if (!isFs && session?.is_fullscreen) {
+        // Usuário saiu manualmente — espelha no banco
+        (supabase.from("sessions") as any)
+          .update({ is_fullscreen: false })
+          .eq("id", id);
+      }
+    }
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, [id, session?.is_fullscreen]);
 
   // tick
   useEffect(() => {
