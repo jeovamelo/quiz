@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import { QRCodeSVG } from "qrcode.react";
