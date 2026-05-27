@@ -53,9 +53,14 @@ export function Present() {
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
-  // Frames flutuantes centralizados (acionados pelo celular do palestrante)
-  const [giantQrOpen, setGiantQrOpen] = useState(false);
-  const [rankingOpen, setRankingOpen] = useState(false);
+  // Frames flutuantes — agora sincronizados pelas colunas booleanas da
+  // sessão (show_join_qr, show_ranking, show_pair_qr). Isso garante
+  // sincronia bidirecional automática entre celular, projetor e Console
+  // do Operador no desktop.
+  const giantQrOpen = !!session?.show_join_qr;
+  const rankingOpen = !!session?.show_ranking;
+  const pairQrOpen = !!(session as any)?.show_pair_qr;
+  const pairUrl = typeof window !== "undefined" ? `${window.location.origin}/remote-setup/${id}` : "";
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
