@@ -389,15 +389,19 @@ function RemoteControl() {
 
   if (isEnded) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0E1015] p-6 text-center text-white">
-        <Trophy className="h-12 w-12 text-[#FFCB05]" />
-        <h1 className="text-2xl font-bold">Apresentação encerrada</h1>
-        <p className="text-sm text-[#9CA3AF]">Escolha a próxima apresentação para continuar.</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-gradient-to-br from-[#0E1015] via-[#1a0f1f] to-[#0E1015] p-6 text-center text-white">
+        <Trophy className="h-16 w-16 animate-bounce text-[#FFCB05] drop-shadow-[0_0_24px_rgba(255,203,5,0.6)]" />
+        <h1 className="text-2xl font-black uppercase tracking-wide">
+          Pódio ativo na tela principal!
+        </h1>
+        <p className="text-sm text-[#9CA3AF]">
+          Os campeões estão sendo revelados no projetor. Quando terminar, escolha a próxima apresentação.
+        </p>
         <Link
           to="/remote"
           className="rounded-xl bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-6 py-3 text-sm font-bold text-white shadow-lg"
         >
-          Voltar à seleção
+          Voltar ao painel
         </Link>
       </div>
     );
