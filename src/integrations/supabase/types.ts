@@ -343,6 +343,7 @@ export type Database = {
           question_revealed: boolean
           question_started_at: string | null
           show_join_qr: boolean
+          show_pair_qr: boolean
           show_ranking: boolean
           show_sidebar: boolean
           status: string
@@ -360,6 +361,7 @@ export type Database = {
           question_revealed?: boolean
           question_started_at?: string | null
           show_join_qr?: boolean
+          show_pair_qr?: boolean
           show_ranking?: boolean
           show_sidebar?: boolean
           status?: string
@@ -377,6 +379,7 @@ export type Database = {
           question_revealed?: boolean
           question_started_at?: string | null
           show_join_qr?: boolean
+          show_pair_qr?: boolean
           show_ranking?: boolean
           show_sidebar?: boolean
           status?: string
