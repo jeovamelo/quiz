@@ -20,7 +20,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Maximize,
   QrCode,
   Trophy,
   PanelRightClose,
@@ -36,8 +35,6 @@ type Props = {
   showRanking: boolean;
   showSidebar: boolean;
   showPairQr: boolean;
-  isFullscreen: boolean;
-  onToggleFullscreen: () => void;
   onToggleJoinQr: () => void;
   onToggleRanking: () => void;
   onToggleSidebar: () => void;
@@ -51,8 +48,6 @@ export function RemoteDrawer({
   showRanking,
   showSidebar,
   showPairQr,
-  isFullscreen,
-  onToggleFullscreen,
   onToggleJoinQr,
   onToggleRanking,
   onToggleSidebar,
@@ -86,13 +81,6 @@ export function RemoteDrawer({
           </DrawerHeader>
 
           <div className="space-y-2 px-4 pb-2">
-            <ToggleRow
-              icon={<Maximize className="h-5 w-5" />}
-              label="Tela Cheia (F11)"
-              hint="Alterna o modo de tela cheia no projetor"
-              active={isFullscreen}
-              onToggle={onToggleFullscreen}
-            />
             <ToggleRow
               icon={<QrCode className="h-5 w-5" />}
               label="Exibir QR Code"
