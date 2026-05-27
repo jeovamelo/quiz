@@ -28,7 +28,10 @@ import { toast } from "sonner";
  */
 function openPresentationPopup(sessionId: string) {
   if (typeof window === "undefined") return;
-  const url = `/present/${sessionId}/pair`;
+  // Abre diretamente a janela do projetor — a máquina de estados
+  // interna controla o lobby (QR do Controle Remoto → QR dos
+  // Participantes → Slides) sem rotas intermediárias.
+  const url = `/present/${sessionId}`;
   const scr: any = window.screen || {};
   const width = scr.width || 1280;
   const height = scr.height || 800;
