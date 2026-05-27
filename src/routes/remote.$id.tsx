@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { haptic } from "@/hooks/use-haptic";
+import { useRemoteBridge } from "@/hooks/use-remote-bridge";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/remote/$id")({
@@ -62,6 +63,9 @@ function RemoteControl() {
   const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [synced, setSynced] = useState(false);
+
+  // Ponte de tempo real (Broadcast) entre celular e projetor.
+  const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
 
   // Carrega sessão, apresentação, perguntas e contagem de participantes
   useEffect(() => {
@@ -228,8 +232,24 @@ function RemoteControl() {
   async function nextSlide() {
     haptic(45);
     await withBusy(async () => {
+      // Envia comando imediato via Broadcast (sem delay de banco).
+      bridge.send("NEXT");
+
+      // Re-busca o estado mais recente da sessão para evitar pular slides
+      // ao tocar rápido (state guard contra estado React desatualizado).
+      const { data: fresh } = await supabase
+        .from("sessions")
+        .select("current_slide, active_question_id, question_revealed")
+        .eq("id", id)
+        .single();
+      const liveSlide: number = fresh?.current_slide ?? currentSlide;
+      const liveActiveQid: string | null = fresh?.active_question_id ?? null;
+      const liveRevealed: boolean = !!fresh?.question_revealed;
+      const liveActive = questions.find((q) => q.id === liveActiveQid) || null;
+      const liveSlideQ = questions.find((q) => q.slide_number === liveSlide) || null;
+
       // Se há pergunta ativa e ainda não foi revelada, "AVANÇAR" encerra o timer (revela)
-      if (activeQuestion && !session?.question_revealed) {
+      if (liveActive && !liveRevealed) {
         const { error } = await supabase
           .from("sessions")
           .update({ question_revealed: true })
@@ -238,11 +258,11 @@ function RemoteControl() {
         return;
       }
       // Se o slide atual tem pergunta e ela ainda não foi lançada, lança em vez de avançar
-      if (slideQuestion && !activeQuestion) {
+      if (liveSlideQ && !liveActive) {
         const { error } = await supabase
           .from("sessions")
           .update({
-            active_question_id: slideQuestion.id,
+            active_question_id: liveSlideQ.id,
             question_started_at: new Date().toISOString(),
             question_revealed: false,
           })
@@ -250,7 +270,7 @@ function RemoteControl() {
         if (error) toast.error("Erro ao lançar a pergunta.");
         return;
       }
-      const next = currentSlide + 1;
+      const next = liveSlide + 1;
       const q = questions.find((qq) => qq.slide_number === next) || null;
       const patch: any = {
         current_slide: next,
@@ -270,7 +290,14 @@ function RemoteControl() {
   async function prevSlide() {
     haptic(25);
     await withBusy(async () => {
-      const prev = Math.max(1, currentSlide - 1);
+      bridge.send("PREV");
+      const { data: fresh } = await supabase
+        .from("sessions")
+        .select("current_slide")
+        .eq("id", id)
+        .single();
+      const liveSlide: number = fresh?.current_slide ?? currentSlide;
+      const prev = Math.max(1, liveSlide - 1);
       const { error } = await supabase
         .from("sessions")
         .update({
@@ -287,6 +314,8 @@ function RemoteControl() {
   async function showPodium() {
     haptic(50);
     try {
+      // Comando instantâneo via ponte.
+      bridge.send("SHOW_PODIUM");
       const ch = supabase.channel(`present-remote-${id}`);
       await new Promise<void>((resolve) => {
         ch.subscribe((status) => {
@@ -333,6 +362,7 @@ function RemoteControl() {
   async function toggleFullscreen() {
     haptic(30);
     const next = !session?.is_fullscreen;
+    bridge.send("TOGGLE_FULLSCREEN", { value: next });
     const { error } = await (supabase.from("sessions") as any)
       .update({ is_fullscreen: next })
       .eq("id", id);
@@ -413,6 +443,11 @@ function RemoteControl() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#0E1015] text-white">
+      {bridge.status !== "connected" && (
+        <div className="shrink-0 bg-[#F68B1F] px-3 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-black animate-pulse">
+          Reconectando ao projetor...
+        </div>
+      )}
       {/* Cabeçalho de status */}
       <header className="sticky top-0 z-10 shrink-0 border-b border-[#262D3D] bg-[#131722]/95 px-3 py-2 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
@@ -461,19 +496,35 @@ function RemoteControl() {
 
           <div
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${
-              synced
+              bridge.status === "connected" && bridge.partnerOnline
                 ? "border-[#07A684]/40 bg-[#07A684]/10 text-[#07A684]"
+                : bridge.status === "connected"
+                ? "border-[#FFCB05]/40 bg-[#FFCB05]/10 text-[#FFCB05]"
                 : "border-[#A6193C]/40 bg-[#A6193C]/10 text-[#F68B1F]"
             }`}
             aria-live="polite"
-            aria-label={synced ? "Sincronizado" : "Conectando"}
+            aria-label={
+              bridge.partnerOnline
+                ? "Conectado ao projetor"
+                : bridge.status === "connected"
+                ? "Aguardando projetor"
+                : "Sem sinal do projetor"
+            }
           >
             <span
               className={`inline-block h-2 w-2 rounded-full ${
-                synced ? "bg-[#07A684] animate-pulse" : "bg-[#F68B1F]"
+                bridge.partnerOnline
+                  ? "bg-[#07A684] animate-pulse"
+                  : bridge.status === "connected"
+                  ? "bg-[#FFCB05]"
+                  : "bg-[#A6193C]"
               }`}
             />
-            {synced ? "Ao vivo" : "..."}
+            {bridge.partnerOnline
+              ? "Conectado"
+              : bridge.status === "connected"
+              ? "Aguardando"
+              : "Sem sinal"}
           </div>
         </div>
         <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#9CA3AF]">
