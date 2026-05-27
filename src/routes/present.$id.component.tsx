@@ -37,9 +37,9 @@ type Question = {
   prize_multiplier?: number;
 };
 
-function Present() {
+export function Present() {
   const { user } = useRequireSpeaker();
-  const { id } = Route.useParams();
+  const { id } = useParams({ from: "/present/$id" });
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
   const [presentation, setPresentation] = useState<{ file_url: string; title: string; event_id: string | null; default_time_limit: number } | null>(null);
