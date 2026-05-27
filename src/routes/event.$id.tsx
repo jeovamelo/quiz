@@ -9,21 +9,31 @@ import {
   AlertTriangle,
   BarChart3,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
   FileText,
+  Gamepad2,
   GripVertical,
   Link2,
   Loader2,
+  PanelRight,
   Pencil,
   Play,
   Plus,
   PowerOff,
+  Presentation,
+  QrCode,
   RotateCcw,
+  Smartphone,
   Sparkles,
   Trash2,
   Trophy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,6 +121,32 @@ function EventManage() {
       return (data ?? []) as Pres[];
     },
   });
+
+  // Sessão ativa dentro deste evento (para a aba "Central de Controle")
+  const presentationIds = (presentations ?? []).map((p) => p.id);
+  const { data: activeSession } = useQuery({
+    queryKey: ["event-active-session", id, presentationIds.join("|")],
+    enabled: presentationIds.length > 0,
+    refetchInterval: 4000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sessions")
+        .select("id, presentation_id, status")
+        .in("presentation_id", presentationIds)
+        .neq("status", "ended")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const row = (data ?? [])[0] as
+        | { id: string; presentation_id: string; status: string }
+        | undefined;
+      return row ?? null;
+    },
+  });
+  const activePresentationTitle =
+    activeSession && presentations
+      ? presentations.find((p) => p.id === activeSession.presentation_id)?.title ?? null
+      : null;
 
   // Mapa: presentation_id → último sessionId encerrado (para o botão "Ver Resultados")
   const { data: endedSessions } = useQuery({
@@ -496,7 +532,30 @@ function EventManage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-8">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <Tabs defaultValue="apresentacoes" className="w-full">
+          <TabsList className="mb-6 grid w-full grid-cols-3 gap-1 bg-[#161A23] p-1">
+            <TabsTrigger
+              value="apresentacoes"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Presentation className="mr-2 h-4 w-4" /> Apresentações
+            </TabsTrigger>
+            <TabsTrigger
+              value="central"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Gamepad2 className="mr-2 h-4 w-4" /> Central de Controle
+            </TabsTrigger>
+            <TabsTrigger
+              value="classificacao"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Trophy className="mr-2 h-4 w-4" /> Classificação
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="apresentacoes" className="mt-0">
+            <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             Arraste os cards pela alça à esquerda para reordenar a sequência. Elas serão executadas na ordem listada.
           </p>
@@ -707,6 +766,19 @@ function EventManage() {
             })}
           </ol>
         )}
+          </TabsContent>
+
+          <TabsContent value="central" className="mt-0">
+            <EventCentralControle
+              activeSession={activeSession ?? null}
+              activePresentationTitle={activePresentationTitle}
+            />
+          </TabsContent>
+
+          <TabsContent value="classificacao" className="mt-0">
+            <EventClassificacao eventId={id} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
@@ -996,6 +1068,415 @@ function EventManage() {
           )}
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+// =============================================================
+// CENTRAL DE CONTROLE — escopo do evento (sessão ao vivo deste evento)
+// =============================================================
+type EventActiveSession = { id: string; presentation_id: string; status: string } | null;
+
+function EventCentralControle({
+  activeSession,
+  activePresentationTitle,
+}: {
+  activeSession: EventActiveSession;
+  activePresentationTitle: string | null;
+}) {
+  const [session, setSession] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!activeSession?.id) {
+      setSession(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("*")
+        .eq("id", activeSession.id)
+        .single();
+      if (!cancelled) setSession(data);
+    })();
+    const ch = supabase
+      .channel(`event-central-${activeSession.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sessions", filter: `id=eq.${activeSession.id}` },
+        (payload) => setSession(payload.new),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [activeSession?.id]);
+
+  if (!activeSession) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[#262D3D] bg-[#161A23] p-12 text-center">
+        <Gamepad2 className="mx-auto h-12 w-12 text-[#9CA3AF]" />
+        <h2 className="mt-4 text-lg font-semibold">Nenhuma apresentação ao vivo neste evento</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Inicie uma apresentação na aba <span className="font-semibold text-[#F68B1F]">Apresentações</span> para
+          operar o palco a partir desta tela.
+        </p>
+      </div>
+    );
+  }
+
+  async function patch(p: Record<string, any>) {
+    if (!activeSession) return;
+    setBusy(true);
+    try {
+      const { error } = await (supabase.from("sessions") as any).update(p).eq("id", activeSession.id);
+      if (error) {
+        toast.error("Falha ao atualizar a sessão.");
+      } else {
+        toast.success("Comando enviado com sucesso");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function nextSlide() {
+    if (!session) return;
+    await patch({
+      current_slide: (session.current_slide ?? 1) + 1,
+      question_revealed: false,
+      active_question_id: null,
+      question_started_at: null,
+    });
+  }
+
+  async function prevSlide() {
+    if (!session) return;
+    await patch({
+      current_slide: Math.max(1, (session.current_slide ?? 1) - 1),
+      question_revealed: false,
+      active_question_id: null,
+      question_started_at: null,
+    });
+  }
+
+  async function endSession() {
+    await patch({
+      status: "ended",
+      active_question_id: null,
+      question_started_at: null,
+      question_revealed: false,
+    });
+  }
+
+  const showRanking = !!session?.show_ranking;
+  const showJoinQr = !!session?.show_join_qr;
+  const showPairQr = !!session?.show_pair_qr;
+  const showSidebar = !!session?.show_sidebar;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#262D3D] bg-[#161A23] p-4">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#07A684]">
+            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-[#07A684]" /> Sessão ao vivo
+          </p>
+          <h2 className="mt-1 truncate text-lg font-bold text-white">
+            {activePresentationTitle || "Apresentação em andamento"}
+          </h2>
+          <p className="mt-0.5 text-xs text-[#9CA3AF]">
+            Slide atual: <span className="font-semibold text-white">{session?.current_slide ?? "—"}</span>
+            {" · "}Status: <span className="font-semibold text-[#FFCB05]">{session?.status ?? "—"}</span>
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/remote/$id" params={{ id: activeSession.id }}>
+            <Smartphone className="mr-2 h-4 w-4" /> Abrir no celular
+          </Link>
+        </Button>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Button
+          size="lg"
+          variant="outline"
+          disabled={busy || (session?.current_slide ?? 1) <= 1}
+          onClick={prevSlide}
+          className="h-20 rounded-2xl border-[#262D3D] bg-[#1E2235] text-base font-bold uppercase tracking-wide text-gray-200 hover:bg-[#262D3D]"
+        >
+          <ChevronLeft className="mr-2 h-6 w-6" /> Voltar
+        </Button>
+        <Button
+          size="lg"
+          disabled={busy}
+          onClick={nextSlide}
+          className="h-20 rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-base font-black uppercase tracking-wide text-white shadow-lg shadow-orange-500/20 hover:opacity-95"
+        >
+          Avançar <ChevronRight className="ml-2 h-6 w-6" />
+        </Button>
+      </div>
+
+      <div className="rounded-2xl border border-[#262D3D] bg-[#161A23] p-4">
+        <h3 className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+          Overlays na tela do projetor
+        </h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <CtrlToggle
+            active={showRanking}
+            onClick={() => patch({ show_ranking: !showRanking })}
+            icon={<BarChart3 className="h-5 w-5" />}
+            labelOn="Ocultar Classificação"
+            labelOff="Mostrar Classificação"
+            disabled={busy}
+          />
+          <CtrlToggle
+            active={showJoinQr}
+            onClick={() => patch({ show_join_qr: !showJoinQr })}
+            icon={<QrCode className="h-5 w-5" />}
+            labelOn="Ocultar QR de Participantes"
+            labelOff="Mostrar QR de Participantes"
+            disabled={busy}
+          />
+          <CtrlToggle
+            active={showPairQr}
+            onClick={() => patch({ show_pair_qr: !showPairQr })}
+            icon={<Smartphone className="h-5 w-5" />}
+            labelOn="Ocultar QR de Controle"
+            labelOff="Mostrar QR de Controle"
+            disabled={busy}
+          />
+          <CtrlToggle
+            active={showSidebar}
+            onClick={() => patch({ show_sidebar: !showSidebar })}
+            icon={<PanelRight className="h-5 w-5" />}
+            labelOn="Ocultar Barra Lateral"
+            labelOff="Mostrar Barra Lateral"
+            disabled={busy}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={endSession}
+          disabled={busy}
+          className="border-[#A6193C]/40 text-[#F68B1F] hover:bg-[#A6193C]/10 hover:text-white"
+        >
+          <PowerOff className="mr-2 h-4 w-4" /> Encerrar apresentação
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CtrlToggle({
+  active,
+  onClick,
+  icon,
+  labelOn,
+  labelOff,
+  disabled,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  labelOn: string;
+  labelOff: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex h-14 w-full items-center justify-between gap-3 rounded-xl border px-4 text-left text-sm font-bold transition-all duration-100 active:scale-[0.98] disabled:opacity-50 ${
+        active
+          ? "border-[#A6193C] bg-[#A6193C]/15 text-white shadow-[0_0_18px_-6px_rgba(166,25,60,0.6)]"
+          : "border-[#262D3D] bg-[#1E2235] text-gray-200 hover:border-[#3A4255]"
+      }`}
+    >
+      <span className="flex items-center gap-3">
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+            active ? "bg-[#A6193C]/30 text-white" : "bg-[#0E1015] text-[#F68B1F]"
+          }`}
+        >
+          {icon}
+        </span>
+        <span>{active ? labelOn : labelOff}</span>
+      </span>
+      <span className="shrink-0">
+        {active ? (
+          <Eye className="h-4 w-4 text-[#07A684]" />
+        ) : (
+          <EyeOff className="h-4 w-4 text-[#9CA3AF]" />
+        )}
+      </span>
+    </button>
+  );
+}
+
+// =============================================================
+// CLASSIFICAÇÃO — ranking consolidado deste evento (todas as apresentações)
+// =============================================================
+function EventClassificacao({ eventId }: { eventId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["event-tab-classificacao", eventId],
+    refetchInterval: 5000,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("participant_scores") as any)
+        .select(
+          "device_token, participant_name, birth_date, score, correct_count, answer_count, total_response_ms, presentation_id",
+        )
+        .eq("event_id", eventId);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{
+        device_token: string | null;
+        participant_name: string;
+        birth_date: string | null;
+        score: number;
+        correct_count: number;
+        answer_count: number;
+        total_response_ms: number;
+        presentation_id: string;
+      }>;
+      const map = new Map<
+        string,
+        {
+          key: string;
+          name: string;
+          score: number;
+          correct_count: number;
+          answer_count: number;
+          total_response_ms: number;
+          birth_date: string;
+          presIds: Set<string>;
+        }
+      >();
+      for (const r of rows) {
+        const key =
+          r.device_token ||
+          `anon:${r.participant_name ?? ""}:${r.birth_date ?? ""}:${r.presentation_id ?? ""}`;
+        const cur = map.get(key);
+        if (cur) {
+          cur.score += r.score ?? 0;
+          cur.correct_count += r.correct_count ?? 0;
+          cur.answer_count += r.answer_count ?? 0;
+          cur.total_response_ms += r.total_response_ms ?? 0;
+          if (r.presentation_id) cur.presIds.add(r.presentation_id);
+        } else {
+          map.set(key, {
+            key,
+            name: r.participant_name || "Participante",
+            score: r.score ?? 0,
+            correct_count: r.correct_count ?? 0,
+            answer_count: r.answer_count ?? 0,
+            total_response_ms: r.total_response_ms ?? 0,
+            birth_date: r.birth_date ?? "9999-12-31",
+            presIds: new Set(r.presentation_id ? [r.presentation_id] : []),
+          });
+        }
+      }
+      return Array.from(map.values())
+        .map((r) => ({
+          key: r.key,
+          name: r.name,
+          score: r.score,
+          correct_count: r.correct_count,
+          answer_count: r.answer_count,
+          total_response_ms: r.total_response_ms,
+          birth_date: r.birth_date,
+          presentations_participated: r.presIds.size,
+        }))
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          if (b.correct_count !== a.correct_count) return b.correct_count - a.correct_count;
+          const avgA = a.answer_count ? a.total_response_ms / a.answer_count : Number.MAX_SAFE_INTEGER;
+          const avgB = b.answer_count ? b.total_response_ms / b.answer_count : Number.MAX_SAFE_INTEGER;
+          if (avgA !== avgB) return avgA - avgB;
+          return a.birth_date.localeCompare(b.birth_date);
+        });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Calculando classificação do evento...
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[#262D3D] bg-[#161A23] p-12 text-center">
+        <Trophy className="mx-auto h-12 w-12 text-[#9CA3AF]" />
+        <h2 className="mt-4 text-lg font-semibold text-white">
+          Ainda não há participantes pontuados neste evento
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Assim que as apresentações começarem, a classificação aparecerá aqui em tempo real.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#262D3D] bg-[#161A23]">
+      <table className="w-full text-sm">
+        <thead className="bg-[#131722] text-[11px] uppercase tracking-wider text-[#9CA3AF]">
+          <tr>
+            <th className="px-4 py-3 text-left">Colocação</th>
+            <th className="px-4 py-3 text-left">Nome</th>
+            <th className="px-4 py-3 text-right">Pontuação Acumulada</th>
+            <th className="px-4 py-3 text-right">Tempo Médio</th>
+            <th className="px-4 py-3 text-right">Apresentações</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#262D3D]">
+          {data.map((p, idx) => {
+            const pos = idx + 1;
+            const avg = p.answer_count ? p.total_response_ms / p.answer_count : 0;
+            const badge =
+              pos === 1
+                ? "bg-[#FFCB05] text-black"
+                : pos === 2
+                  ? "bg-[#C0C0C0] text-black"
+                  : pos === 3
+                    ? "bg-[#FFE6CB] text-[#A6193C]"
+                    : "bg-[#262D3D] text-[#9CA3AF]";
+            return (
+              <tr
+                key={p.key}
+                className={pos <= 3 ? "bg-[#FFCB05]/[0.03]" : "hover:bg-white/5"}
+              >
+                <td className="px-4 py-3">
+                  <span
+                    className={`inline-flex h-9 min-w-[3rem] items-center justify-center rounded-full px-3 text-sm font-extrabold ${badge}`}
+                  >
+                    {pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : `${pos}º`}
+                  </span>
+                </td>
+                <td className="px-4 py-3 font-medium text-white">{p.name}</td>
+                <td className="px-4 py-3 text-right text-base font-bold text-[#F68B1F]">
+                  {p.score} pts
+                </td>
+                <td className="px-4 py-3 text-right text-[#9CA3AF]">
+                  {avg ? `${(avg / 1000).toFixed(1)}s` : "—"}
+                </td>
+                <td className="px-4 py-3 text-right text-[#9CA3AF]">
+                  {p.presentations_participated}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
