@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PairingStatusBadge } from "@/components/pairing-status-badge";
-import { useEffect } from "react";
+import { haptic } from "@/hooks/use-haptic";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -30,13 +30,6 @@ function Dashboard() {
   const { user } = useRequireSpeaker();
   const userId = user?.id;
   const isMobile = useIsMobile();
-
-  // Em celular, palestrante logado vai direto ao controle remoto
-  useEffect(() => {
-    if (isMobile && userId) {
-      navigate({ to: "/remote", replace: true });
-    }
-  }, [isMobile, userId, navigate]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["presentations", userId],
@@ -120,6 +113,177 @@ function Dashboard() {
     }
     toast.success("Quiz excluído");
     refetch();
+  }
+
+  // === LAYOUT MÓVEL: foco absoluto no Controle Remoto ===
+  if (isMobile) {
+    const heroTitle = activeSession ? "Apresentação Pronta" : "Gerenciamento Ativo";
+    const heroSubtitle = activeSession
+      ? activePresentationTitle || "Sessão em andamento — assuma o controle agora."
+      : "Toque para parear seu celular com a tela do projetor.";
+    return (
+      <div className="min-h-[100dvh] bg-[#0E1015] text-white">
+        <header className="sticky top-0 z-10 border-b border-[#262D3D] bg-[#131722]/95 px-4 py-3 backdrop-blur">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#F68B1F]">
+                <Smartphone className="h-3 w-3" /> Painel do Palestrante
+              </p>
+              <h1 className="mt-0.5 truncate text-base font-bold">
+                {user?.user_metadata?.full_name || user?.email || "Palestrante"}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <PairingStatusBadge userId={userId} variant="mobile" compact />
+              <button
+                type="button"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  toast.success("Você saiu da sua conta.");
+                  navigate({ to: "/", replace: true });
+                }}
+                className="rounded-lg p-2 text-[#9CA3AF] hover:bg-[#1E2235] hover:text-[#F68B1F]"
+                aria-label="Sair"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="space-y-5 p-4 pb-12">
+          {/* HERO — Iniciar Controle Remoto */}
+          <section className="rounded-3xl border border-[#A6193C]/40 bg-gradient-to-br from-[#1A0E14] via-[#131722] to-[#1A140E] p-5 shadow-2xl shadow-[#A6193C]/20">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-[#07A684]" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#FFCB05]">
+                {heroTitle}
+              </p>
+            </div>
+            <h2 className="mt-2 text-2xl font-black leading-tight text-white">
+              Comande sua apresentação ao vivo
+            </h2>
+            <p className="mt-1.5 line-clamp-2 text-xs text-[#9CA3AF]">
+              {heroSubtitle}
+            </p>
+
+            {activeSession ? (
+              <Link
+                to="/remote/$id"
+                params={{ id: activeSession.id }}
+                onClick={() => haptic(40)}
+                className="mt-4 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-4 text-base font-black uppercase tracking-wide text-white shadow-xl shadow-[#A6193C]/40 transition-all duration-100 active:scale-[0.97] active:from-[#8E1432] active:to-[#D87412]"
+              >
+                <Zap className="h-6 w-6 drop-shadow" strokeWidth={2.5} />
+                <span className="leading-tight">Iniciar Controle Remoto</span>
+                <Smartphone className="h-5 w-5 opacity-90" />
+              </Link>
+            ) : (
+              <Link
+                to="/remote"
+                onClick={() => haptic(40)}
+                className="mt-4 flex min-h-[64px] w-full items-center justify-center gap-3 rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-4 text-base font-black uppercase tracking-wide text-white shadow-xl shadow-[#A6193C]/40 transition-all duration-100 active:scale-[0.97] active:from-[#8E1432] active:to-[#D87412]"
+              >
+                <Zap className="h-6 w-6 drop-shadow" strokeWidth={2.5} />
+                <span className="leading-tight">Iniciar Controle Remoto</span>
+                <Smartphone className="h-5 w-5 opacity-90" />
+              </Link>
+            )}
+
+            {activeSession && (
+              <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-wider text-[#07A684]">
+                🟢 Sessão ativa detectada — entrada direta
+              </p>
+            )}
+          </section>
+
+          {/* EVENTOS — compacto */}
+          {events && events.length > 0 && (
+            <section>
+              <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+                Eventos
+              </h3>
+              <div className="space-y-2">
+                {events.map((ev) => (
+                  <Link
+                    key={ev.id}
+                    to="/event/$id"
+                    params={{ id: ev.id }}
+                    className="flex items-center justify-between rounded-xl border border-[#262D3D] bg-[#161A23] p-3 active:scale-[0.98]"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Calendar className="h-4 w-4 shrink-0 text-[#F68B1F]" />
+                      <span className="truncate text-sm font-semibold">{ev.title}</span>
+                    </div>
+                    <Trophy className="h-4 w-4 text-[#FFCB05]" />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* APRESENTAÇÕES — compacto */}
+          <section>
+            <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">
+              Apresentações
+            </h3>
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-xs text-[#9CA3AF]">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+              </div>
+            ) : !data || data.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#262D3D] bg-[#131722] p-6 text-center">
+                <FileText className="mx-auto h-8 w-8 text-[#9CA3AF]" />
+                <p className="mt-2 text-xs text-[#9CA3AF]">
+                  Nenhum quiz criado ainda. Use o computador para enviar arquivos PDF.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {data.map((p) => {
+                  const isActive = activeSession?.presentation_id === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between rounded-xl border border-[#262D3D] bg-[#161A23] p-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{p.title}</p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#9CA3AF]">
+                          <Radio className="h-3 w-3" />
+                          {isActive ? (
+                            <span className="text-[#07A684]">🟢 ao vivo</span>
+                          ) : (
+                            <span>pronta para iniciar</span>
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptic(30);
+                          startSession(p.id);
+                        }}
+                        className="ml-2 flex h-10 shrink-0 items-center gap-1 rounded-lg bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-3 text-xs font-bold text-white active:scale-95"
+                      >
+                        <Play className="h-4 w-4" /> Iniciar
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* RODAPÉ — dica de uso */}
+          <p className="rounded-xl border border-[#262D3D] bg-[#131722] p-3 text-center text-[11px] leading-relaxed text-[#9CA3AF]">
+            💡 <span className="font-semibold text-[#FFCB05]">Dica:</span> Para criar novos
+            Quizzes com Inteligência Artificial ou editar perguntas detalhadamente,
+            recomendamos utilizar a tela do seu computador.
+          </p>
+        </main>
+      </div>
+    );
   }
 
   return (
