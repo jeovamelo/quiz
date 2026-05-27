@@ -5,6 +5,8 @@ import {
   ChevronRight,
   Home,
   Loader2,
+  Maximize,
+  Minimize,
   Power,
   Sparkles,
   Timer,
@@ -328,6 +330,19 @@ function RemoteControl() {
     toast.success(next ? "Pergunta Prêmio ATIVADA!" : "Pergunta Prêmio desativada.");
   }
 
+  async function toggleFullscreen() {
+    haptic(30);
+    const next = !session?.is_fullscreen;
+    const { error } = await (supabase.from("sessions") as any)
+      .update({ is_fullscreen: next })
+      .eq("id", id);
+    if (error) {
+      toast.error("Falha ao alternar tela cheia.");
+    } else {
+      toast.success(next ? "Tela cheia ativada no projetor." : "Saindo da tela cheia.");
+    }
+  }
+
   async function exitToHub() {
     await withBusy(async () => {
       // 1. Marca sessão como encerrada
@@ -469,6 +484,26 @@ function RemoteControl() {
             <Users className="h-3.5 w-3.5 text-[#07A684]" />
             <span className="font-semibold text-white">{participantsCount}</span> usuários
           </span>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={session?.is_fullscreen ? "Sair da tela cheia" : "Ativar tela cheia"}
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wide transition-all duration-100 active:scale-95 ${
+              session?.is_fullscreen
+                ? "border-[#FFCB05]/60 bg-[#FFCB05]/15 text-[#FFCB05]"
+                : "border-[#262D3D] bg-[#1E2235] text-[#9CA3AF]"
+            }`}
+          >
+            {session?.is_fullscreen ? (
+              <>
+                <Minimize className="h-3 w-3" /> Sair
+              </>
+            ) : (
+              <>
+                <Maximize className="h-3 w-3" /> Tela Cheia
+              </>
+            )}
+          </button>
         </div>
       </header>
 
