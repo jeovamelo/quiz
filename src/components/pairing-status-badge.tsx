@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCcw, Smartphone, SmartphoneCharging } from "lucide-react";
+import { Smartphone, SmartphoneCharging } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePresenceMonitor } from "@/hooks/use-presence-monitor";
-import { toast } from "sonner";
 
 type Props = {
   userId: string | undefined;
@@ -25,10 +23,7 @@ type Props = {
  * botão de "Forçar Conexão" + QR Code (no desktop) para reparear.
  */
 export function PairingStatusBadge({ userId, variant, compact }: Props) {
-  const { isConnected, isReconnecting, forceConnection } = usePresenceMonitor(
-    userId,
-    variant,
-  );
+  const { isConnected } = usePresenceMonitor(userId, variant);
   const [pairOpen, setPairOpen] = useState(false);
   const [pairUrl, setPairUrl] = useState("");
 
@@ -44,16 +39,6 @@ export function PairingStatusBadge({ userId, variant, compact }: Props) {
       return () => window.clearTimeout(t);
     }
   }, [isConnected, pairOpen]);
-
-  function handleForce() {
-    forceConnection();
-    toast.message(
-      variant === "desktop"
-        ? "Forçando conexão com o celular..."
-        : "Localizando tela do computador...",
-      { duration: 2500 },
-    );
-  }
 
   if (variant === "mobile") {
     return (
@@ -73,20 +58,6 @@ export function PairingStatusBadge({ userId, variant, compact }: Props) {
           />
           {isConnected ? "🟢 Sincronizado" : "⚠️ Sem conexão"}
         </span>
-        {!isConnected && !compact && (
-          <button
-            type="button"
-            onClick={handleForce}
-            className="flex items-center gap-1 rounded-full border border-[#F68B1F]/60 bg-[#F68B1F]/10 px-2 py-1 text-[10px] font-bold text-[#F68B1F]"
-          >
-            {isReconnecting ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <RefreshCcw className="h-3 w-3" />
-            )}
-            Forçar
-          </button>
-        )}
       </div>
     );
   }
@@ -112,21 +83,6 @@ export function PairingStatusBadge({ userId, variant, compact }: Props) {
           {isConnected ? "🟢 Celular Conectado" : "🔴 Celular Desconectado"}
           <Smartphone className="ml-1 h-3.5 w-3.5" />
         </button>
-        {!isConnected && !compact && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleForce}
-            className="border-[#F68B1F]/50 text-[#F68B1F] hover:bg-[#F68B1F]/10 hover:text-[#F68B1F]"
-          >
-            {isReconnecting ? (
-              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCcw className="mr-1.5 h-4 w-4" />
-            )}
-            Forçar Conexão
-          </Button>
-        )}
       </div>
 
       <Dialog open={pairOpen} onOpenChange={setPairOpen}>
@@ -162,19 +118,6 @@ export function PairingStatusBadge({ userId, variant, compact }: Props) {
                 </>
               )}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleForce}
-              className="border-[#F68B1F]/50 text-[#F68B1F] hover:bg-[#F68B1F]/10 hover:text-[#F68B1F]"
-            >
-              {isReconnecting ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCcw className="mr-1.5 h-4 w-4" />
-              )}
-              Forçar Conexão Agora
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
