@@ -55,7 +55,8 @@ function Present() {
   const [now, setNow] = useState(Date.now());
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [joinUrl, setJoinUrl] = useState("");
-  const [showRanking, setShowRanking] = useState(false);
+  // showRanking agora é controlado pela sessão (session.show_ranking),
+  // permitindo que ambos os controles remotos alternem em sincronia.
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
@@ -145,7 +146,9 @@ function Present() {
           .update({ is_fullscreen: nextVal })
           .eq("id", id);
       } else if (action === "SHOW_PODIUM") {
-        setShowRanking(true);
+        await (supabase.from("sessions") as any)
+          .update({ show_ranking: true })
+          .eq("id", id);
         const liveActive = questionsRef.current.find((q) => q.id === fresh?.active_question_id) || null;
         const liveRevealed: boolean = !!fresh?.question_revealed;
         if (liveActive && !liveRevealed) {
@@ -259,17 +262,6 @@ function Present() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "participants", filter: `session_id=eq.${id}` }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "answers", filter: `session_id=eq.${id}` }, load)
-      .subscribe();
-    // Canal de broadcast do controle remoto do celular (alternar painel de classificação)
-    const remoteCh = supabase
-      .channel(`present-remote-${id}`)
-      .on("broadcast", { event: "toggle_ranking" }, ({ payload }) => {
-        if (payload && typeof payload.show === "boolean") {
-          setShowRanking(payload.show);
-        } else {
-          setShowRanking((v) => !v);
-        }
-      })
       .subscribe();
     // Canal do evento — recebe "return_to_lobby" do celular do palestrante
     let lobbyCh: ReturnType<typeof supabase.channel> | null = null;
