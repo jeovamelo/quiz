@@ -93,7 +93,7 @@ function Dashboard() {
       toast.error("Não foi possível iniciar a sessão");
       return;
     }
-    navigate({ to: "/lobby/$id", params: { id: session.id } });
+    navigate({ to: "/present/$id/pair", params: { id: session.id } });
   }
 
   async function deletePresentation(presentationId: string) {
