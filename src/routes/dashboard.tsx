@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PairingStatusBadge } from "@/components/pairing-status-badge";
-import { useEffect } from "react";
+import { haptic } from "@/hooks/use-haptic";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -30,13 +30,6 @@ function Dashboard() {
   const { user } = useRequireSpeaker();
   const userId = user?.id;
   const isMobile = useIsMobile();
-
-  // Em celular, palestrante logado vai direto ao controle remoto
-  useEffect(() => {
-    if (isMobile && userId) {
-      navigate({ to: "/remote", replace: true });
-    }
-  }, [isMobile, userId, navigate]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["presentations", userId],
