@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useRequireSpeaker } from "@/hooks/use-auth";
 import { ArrowLeft, BarChart3, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ function pointsFor(a: Answer, q: Question) {
 }
 
 function ReviewPresentation() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [presentation, setPresentation] = useState<{ file_url: string; title: string; event_id: string | null } | null>(null);

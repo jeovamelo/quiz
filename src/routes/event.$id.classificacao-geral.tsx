@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useRequireSpeaker } from "@/hooks/use-auth";
 import { ArrowLeft, Trophy, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ function formatAvgMs(ms: number) {
 }
 
 function ClassificacaoGeral() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
 

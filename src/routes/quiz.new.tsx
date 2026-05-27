@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2, Shield, Zap, Clock, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { GLOBAL_USER_ID } from "@/lib/constants";
+import { useRequireSpeaker } from "@/hooks/use-auth";
 import { extractPdfText } from "@/lib/pdf-extract";
 import { generateQuestions } from "@/lib/ai.functions";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,8 @@ function Stepper({ step }: { step: number }) {
 
 function NewQuiz() {
   const navigate = useNavigate();
+  const { user } = useRequireSpeaker();
+  const userId = user?.id;
   const { eventId } = Route.useSearch();
   const [step, setStep] = useState(1);
 
@@ -178,7 +180,7 @@ function NewQuiz() {
         }
       }
       const insertPayload: Record<string, unknown> = {
-        user_id: GLOBAL_USER_ID,
+        user_id: userId,
         title,
         file_url: fileUrl,
         ai_context: aiContext || null,

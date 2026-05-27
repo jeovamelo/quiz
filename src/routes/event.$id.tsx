@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, createFileRoute, useChildMatches, useNavigate } from "@tanstack/react-router";
+import { useRequireSpeaker } from "@/hooks/use-auth";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -71,6 +72,7 @@ type AvailablePres = {
 };
 
 function EventManage() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

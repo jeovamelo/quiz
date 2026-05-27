@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useRequireSpeaker } from "@/hooks/use-auth";
 import { AlertTriangle, ChevronLeft, Loader2, Trash2, X, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ type EditableQuestion = {
 };
 
 function EditQuizPage() {
+  useRequireSpeaker();
   const { id } = Route.useParams();
   const { redirect_to_event } = Route.useSearch();
   const navigate = useNavigate();
