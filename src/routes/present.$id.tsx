@@ -19,6 +19,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 import { toast } from "sonner";
+import { useRemoteBridge } from "@/hooks/use-remote-bridge";
+import { Smartphone } from "lucide-react";
 
 export const Route = createFileRoute("/present/$id")({
   head: () => ({ meta: [{ title: "Apresentação ao vivo — QuizPulse" }] }),
@@ -55,10 +57,60 @@ function Present() {
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
+  const questionsRef = useRef<Question[]>([]);
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
 
   useEffect(() => {
     setJoinUrl(`${window.location.origin}/join?session=${id}`);
   }, [id]);
+
+  // === Ponte de tempo real com o celular (Broadcast com heartbeat) ===
+  const bridge = useRemoteBridge({
+    sessionId: id,
+    role: "projector",
+    onAction: async (action) => {
+      // Re-busca o estado mais recente para evitar usar React state desatualizado.
+      const { data: fresh } = await supabase
+        .from("sessions")
+        .select("current_slide, active_question_id, question_revealed, is_fullscreen")
+        .eq("id", id)
+        .single();
+      const liveSlide: number = fresh?.current_slide ?? 1;
+      const liveActiveQid: string | null = fresh?.active_question_id ?? null;
+      const liveRevealed: boolean = !!fresh?.question_revealed;
+      const qs = questionsRef.current;
+      const liveActive = qs.find((q) => q.id === liveActiveQid) || null;
+      const liveSlideQ = qs.find((q) => q.slide_number === liveSlide) || null;
+
+      if (action === "NEXT") {
+        if (liveActive && !liveRevealed) {
+          await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
+          return;
+        }
+        if (liveSlideQ && !liveActive) {
+          await supabase.from("sessions").update({
+            active_question_id: liveSlideQ.id,
+            question_started_at: new Date().toISOString(),
+            question_revealed: false,
+          }).eq("id", id);
+          return;
+        }
+        await setSlide(liveSlide + 1);
+      } else if (action === "PREV") {
+        await setSlide(Math.max(1, liveSlide - 1));
+      } else if (action === "TOGGLE_FULLSCREEN") {
+        const nextVal = !fresh?.is_fullscreen;
+        await (supabase.from("sessions") as any)
+          .update({ is_fullscreen: nextVal })
+          .eq("id", id);
+      } else if (action === "SHOW_PODIUM") {
+        setShowRanking(true);
+        if (liveActive && !liveRevealed) {
+          await supabase.from("sessions").update({ question_revealed: true }).eq("id", id);
+        }
+      }
+    },
+  });
 
   // Sincroniza o pedido remoto de tela cheia (vindo do celular do palestrante)
   useEffect(() => {
