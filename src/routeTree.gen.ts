@@ -24,6 +24,8 @@ import { Route as PresentIdReviewRouteImport } from './routes/present.$id.review
 import { Route as EventIdPodiumRouteImport } from './routes/event.$id.podium'
 import { Route as EventIdLobbyRouteImport } from './routes/event.$id.lobby'
 import { Route as EventIdClassificacaoGeralRouteImport } from './routes/event.$id.classificacao-geral'
+import { Route as RemoteIndexRouteImport } from './routes/remote.index'
+import { Route as EventIdLobbyRouteImport } from './routes/event.$id.lobby'
 
 const JoinRoute = JoinRouteImport.update({
   id: '/join',
@@ -48,6 +50,11 @@ const RemoteIndexRoute = RemoteIndexRouteImport.update({
 const RemoteIdRoute = RemoteIdRouteImport.update({
   id: '/remote/$id',
   path: '/remote/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RemoteIndexRoute = RemoteIndexRouteImport.update({
+  id: '/remote/',
+  path: '/remote/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuizNewRoute = QuizNewRouteImport.update({
@@ -88,6 +95,11 @@ const PresentIdReviewRoute = PresentIdReviewRouteImport.update({
 const EventIdPodiumRoute = EventIdPodiumRouteImport.update({
   id: '/podium',
   path: '/podium',
+  getParentRoute: () => EventIdRoute,
+} as any)
+const EventIdLobbyRoute = EventIdLobbyRouteImport.update({
+  id: '/lobby',
+  path: '/lobby',
   getParentRoute: () => EventIdRoute,
 } as any)
 const EventIdLobbyRoute = EventIdLobbyRouteImport.update({
@@ -259,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RemoteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/remote/': {
+      id: '/remote/'
+      path: '/remote'
+      fullPath: '/remote'
+      preLoaderRoute: typeof RemoteIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/quiz/new': {
       id: '/quiz/new'
       path: '/quiz/new'
@@ -313,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/podium'
       fullPath: '/event/$id/podium'
       preLoaderRoute: typeof EventIdPodiumRouteImport
+      parentRoute: typeof EventIdRoute
+    }
+    '/event/$id/lobby': {
+      id: '/event/$id/lobby'
+      path: '/lobby'
+      fullPath: '/event/$id/lobby'
+      preLoaderRoute: typeof EventIdLobbyRouteImport
       parentRoute: typeof EventIdRoute
     }
     '/event/$id/lobby': {
