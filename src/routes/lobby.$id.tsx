@@ -141,11 +141,35 @@ function Lobby() {
         </div>
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6 text-center">
-          <h2 className="mb-4 text-lg font-semibold">Escaneie para entrar</h2>
-          <div className="mx-auto inline-block rounded-xl bg-white p-4">
-            {joinUrl && <QRCodeSVG value={joinUrl} size={240} />}
+        <div className="rounded-xl border-2 border-[#07A684]/40 bg-card p-6 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#07A684]">
+            Entre a qualquer momento!
+          </p>
+          <h2 className="mb-2 mt-1 text-2xl font-black">👥 Entrar na Apresentação</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Aponte a câmera do seu celular para o código abaixo para participar em tempo real!
+          </p>
+          <div className="relative mx-auto inline-block">
+            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#07A684] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-lg">
+              👥 ENTRAR NO JOGO
+            </div>
+            <div
+              className="rounded-xl bg-white p-4"
+              style={{ boxShadow: "0 0 0 4px #07A684" }}
+            >
+              {joinUrl && (
+                <div className="relative">
+                  <QRCodeSVG value={joinUrl} size={240} level="H" />
+                  <div className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#07A684] text-white shadow-xl">
+                    <Users className="h-5 w-5" />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+          <p className="mt-4 text-xs font-semibold text-muted-foreground">
+            Sem senhas ou cadastros complexos! Digite seu nome e data de nascimento no celular para acumular pontos no ranking.
+          </p>
           <div className="mt-6 flex items-center gap-2">
             <code className="flex-1 truncate rounded bg-background/60 px-3 py-2 text-xs text-muted-foreground">
               {joinUrl}
