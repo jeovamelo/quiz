@@ -152,6 +152,34 @@ function Dashboard() {
             <p className="text-sm text-muted-foreground">{user?.user_metadata?.full_name || user?.email || "Palestrante"}</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Selo de pareamento do celular */}
+            <button
+              type="button"
+              onClick={() => setPairOpen(true)}
+              title={phonePaired ? "Celular pareado" : "Conectar ao celular"}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                phonePaired
+                  ? "border-[#07A684]/50 bg-[#07A684]/10 text-[#07A684]"
+                  : "border-[#3A4255] bg-[#1E2235] text-[#9CA3AF] hover:border-[#F68B1F]/60 hover:text-[#F68B1F]"
+              }`}
+            >
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${
+                  phonePaired ? "bg-[#07A684] animate-pulse" : "bg-[#6B7280]"
+                }`}
+              />
+              {phonePaired ? "🟢 Celular Pareado e Pronto!" : "📱 Celular Desconectado"}
+            </button>
+            {!phonePaired && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPairOpen(true)}
+                className="border-[#F68B1F]/50 text-[#F68B1F] hover:bg-[#F68B1F]/10 hover:text-[#F68B1F]"
+              >
+                <SmartphoneCharging className="mr-1.5 h-4 w-4" /> Conectar ao Celular
+              </Button>
+            )}
             <Button
               asChild
               variant="ghost"
