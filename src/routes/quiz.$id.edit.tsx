@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, ChevronLeft, Loader2, Trash2, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Loader2, Trash2, X, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/quiz/$id/edit")({
@@ -26,6 +27,9 @@ type EditableQuestion = {
   display_mode: "simultaneous" | "after_slide";
   time_limit: number;
   position: number;
+  is_prize_question: boolean;
+  prize_multiplier: number;
+  difficulty: "easy" | "medium" | "hard" | "extreme";
 };
 
 function EditQuizPage() {
@@ -35,6 +39,7 @@ function EditQuizPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
+  const [defaultTimeLimit, setDefaultTimeLimit] = useState<number>(30);
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
 
   useEffect(() => {
@@ -42,10 +47,13 @@ function EditQuizPage() {
       setLoading(true);
       const { data: pres } = await supabase
         .from("presentations")
-        .select("title")
+        .select("title, default_time_limit")
         .eq("id", id)
         .maybeSingle();
-      if (pres) setTitle(pres.title);
+      if (pres) {
+        setTitle(pres.title);
+        setDefaultTimeLimit((pres as any).default_time_limit ?? 30);
+      }
       const { data: qs } = await supabase
         .from("questions")
         .select("*")
@@ -84,6 +92,9 @@ function EditQuizPage() {
         display_mode: q.display_mode,
         time_limit: q.time_limit,
         position: q.position,
+        is_prize_question: !!q.is_prize_question,
+        prize_multiplier: q.prize_multiplier ?? 5,
+        difficulty: (q.difficulty as any) ?? "medium",
         };
       });
       setQuestions(normalized);
@@ -164,6 +175,12 @@ function EditQuizPage() {
 
     setSaving(true);
     try {
+      // Atualiza nome da apresentação e tempo geral
+      const { error: presErr } = await supabase
+        .from("presentations")
+        .update({ title: title.trim() || "Sem título", default_time_limit: defaultTimeLimit })
+        .eq("id", id);
+      if (presErr) throw presErr;
       for (const q of questions) {
         // Limpeza: remove opções em branco
         // Limpeza: envia somente alternativas com texto e reordena letras
@@ -193,6 +210,9 @@ function EditQuizPage() {
             slide_number: q.slide_number,
             display_mode: q.display_mode,
             time_limit: q.time_limit,
+            is_prize_question: q.is_prize_question,
+            prize_multiplier: q.prize_multiplier,
+            difficulty: q.is_prize_question ? "extreme" : q.difficulty,
           })
           .eq("id", q.id);
         if (error) throw error;
@@ -252,6 +272,36 @@ function EditQuizPage() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-4 px-6 py-8">
+        {/* Cabeçalho: nome + tempo geral */}
+        <div className="grid gap-4 rounded-xl border border-[#262D3D] bg-[#161A23] p-5 md:grid-cols-[1fr_220px]">
+          <div>
+            <Label className="text-xs">Nome da Apresentação</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex: Estratégia Comercial 2026"
+              className="bg-[#0E1015]"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Tempo Geral de Resposta (Padrão)</Label>
+            <select
+              value={defaultTimeLimit}
+              onChange={(e) => setDefaultTimeLimit(Number(e.target.value))}
+              className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
+            >
+              <option value={15}>15 segundos</option>
+              <option value={30}>30 segundos</option>
+              <option value={45}>45 segundos</option>
+              <option value={60}>60 segundos</option>
+              <option value={90}>90 segundos</option>
+            </select>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Usado quando a pergunta não define um tempo próprio.
+            </p>
+          </div>
+        </div>
+
         {questions.length === 0 && (
           <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-6 text-center text-sm text-muted-foreground">
             Este quiz ainda não tem perguntas.
@@ -260,12 +310,23 @@ function EditQuizPage() {
         {questions.map((q, i) => (
           <div
             key={q.id}
-            className="space-y-4 rounded-xl border border-[#262D3D] bg-[#161A23] p-5"
+            className={`space-y-4 rounded-xl border p-5 transition-all ${
+              q.is_prize_question
+                ? "border-[#FFCB05] bg-[#1F1E24] shadow-[0_0_24px_-6px_#FFCB05]"
+                : "border-[#262D3D] bg-[#161A23]"
+            }`}
           >
             <div className="flex items-center justify-between">
-              <span className="rounded bg-primary/20 px-2 py-1 text-xs font-semibold text-primary">
-                Pergunta {i + 1}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-primary/20 px-2 py-1 text-xs font-semibold text-primary">
+                  Pergunta {i + 1}
+                </span>
+                {q.is_prize_question && (
+                  <span className="flex items-center gap-1 rounded-full border border-[#FFCB05] bg-[#FFCB05]/10 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#FFCB05] animate-pulse">
+                    <Zap className="h-3 w-3" /> PERGUNTA PRÊMIO
+                  </span>
+                )}
+              </div>
               <Button
                 size="sm"
                 variant="ghost"
@@ -274,6 +335,27 @@ function EditQuizPage() {
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
+            </div>
+
+            {/* Switch Pergunta Prêmio */}
+            <div className="flex items-center justify-between rounded-lg border border-[#262D3D] bg-[#0E1015]/60 p-3">
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  Definir como Pergunta Prêmio 🏆
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Dificuldade trava em <span className="text-[#FFCB05]">Extremo</span> e pontuação é multiplicada.
+                </p>
+              </div>
+              <Switch
+                checked={q.is_prize_question}
+                onCheckedChange={(v) =>
+                  updateQ(i, {
+                    is_prize_question: v,
+                    difficulty: v ? "extreme" : q.difficulty === "extreme" ? "hard" : q.difficulty,
+                  })
+                }
+              />
             </div>
 
             <div>
@@ -412,15 +494,19 @@ function EditQuizPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Tempo limite (s)</Label>
+                <Label className="text-xs">Tempo de Resposta para esta pergunta (s)</Label>
                 <Input
                   type="number"
-                  min={5}
+                  min={0}
                   max={120}
                   value={q.time_limit}
                   onChange={(e) => updateQ(i, { time_limit: Number(e.target.value) })}
                   className="bg-[#0E1015]"
+                  placeholder={`Padrão: ${defaultTimeLimit}s`}
                 />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  0 = usa o tempo geral ({defaultTimeLimit}s).
+                </p>
               </div>
               <div>
                 <Label className="text-xs">Dinâmica de exibição</Label>
@@ -437,6 +523,38 @@ function EditQuizPage() {
                   <option value="after_slide">Pós-Slide (após a explicação)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Dificuldade + multiplicador */}
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <Label className="text-xs">Dificuldade</Label>
+                <select
+                  value={q.is_prize_question ? "extreme" : q.difficulty}
+                  disabled={q.is_prize_question}
+                  onChange={(e) => updateQ(i, { difficulty: e.target.value as any })}
+                  className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm disabled:opacity-70"
+                >
+                  <option value="easy">Fácil</option>
+                  <option value="medium">Média</option>
+                  <option value="hard">Difícil</option>
+                  <option value="extreme">Extremo (Prêmio)</option>
+                </select>
+              </div>
+              {q.is_prize_question && (
+                <div>
+                  <Label className="text-xs text-[#FFCB05]">Multiplicador de Pontuação</Label>
+                  <select
+                    value={q.prize_multiplier}
+                    onChange={(e) => updateQ(i, { prize_multiplier: Number(e.target.value) })}
+                    className="mt-1 w-full rounded-md border border-[#FFCB05]/60 bg-[#0E1015] px-3 py-2 text-sm font-semibold text-[#FFCB05]"
+                  >
+                    <option value={3}>3x (até 3.000 pts)</option>
+                    <option value={4}>4x (até 4.000 pts)</option>
+                    <option value={5}>5x (até 5.000 pts)</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         ))}

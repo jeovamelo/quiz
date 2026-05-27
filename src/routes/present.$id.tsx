@@ -33,13 +33,15 @@ type Question = {
   slide_number: number;
   display_mode: string;
   time_limit: number;
+  is_prize_question?: boolean;
+  prize_multiplier?: number;
 };
 
 function Present() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
-  const [presentation, setPresentation] = useState<{ file_url: string; title: string; event_id: string | null } | null>(null);
+  const [presentation, setPresentation] = useState<{ file_url: string; title: string; event_id: string | null; default_time_limit: number } | null>(null);
   const [nextPresentationId, setNextPresentationId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
@@ -68,11 +70,16 @@ function Present() {
       if (s) {
         const { data: p } = await supabase
           .from("presentations")
-          .select("file_url, title, event_id, sort_order")
+          .select("file_url, title, event_id, sort_order, default_time_limit")
           .eq("id", s.presentation_id)
           .single();
         if (p) {
-          setPresentation({ file_url: p.file_url, title: p.title, event_id: (p as any).event_id ?? null });
+          setPresentation({
+            file_url: p.file_url,
+            title: p.title,
+            event_id: (p as any).event_id ?? null,
+            default_time_limit: (p as any).default_time_limit ?? 30,
+          });
           // Buscar próxima apresentação do mesmo evento (sort_order > atual)
           if ((p as any).event_id) {
             const { data: nextList } = await (supabase.from("presentations") as any)
@@ -146,14 +153,20 @@ function Present() {
   const remaining = useMemo(() => {
     if (!activeQuestion || !session?.question_started_at || session.question_revealed) return 0;
     const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
-    return Math.max(0, Math.ceil(activeQuestion.time_limit - elapsed));
+    const effectiveLimit = activeQuestion.time_limit && activeQuestion.time_limit > 0
+      ? activeQuestion.time_limit
+      : presentation?.default_time_limit ?? 30;
+    return Math.max(0, Math.ceil(effectiveLimit - elapsed));
   }, [activeQuestion, session, now]);
 
   // auto reveal when time hits 0
   useEffect(() => {
     if (activeQuestion && session?.question_started_at && !session.question_revealed) {
       const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
-      if (elapsed >= activeQuestion.time_limit) {
+      const effectiveLimit = activeQuestion.time_limit && activeQuestion.time_limit > 0
+        ? activeQuestion.time_limit
+        : presentation?.default_time_limit ?? 30;
+      if (elapsed >= effectiveLimit) {
         revealResults();
       }
     }
@@ -549,11 +562,30 @@ function Present() {
           )}
 
           {activeQuestion && (
-            <div className="space-y-3 rounded-lg border border-primary/40 bg-primary/5 p-3">
+            <div
+              className={`space-y-3 rounded-lg border p-3 ${
+                activeQuestion.is_prize_question
+                  ? "border-[#FFCB05] bg-[#FFCB05]/10 shadow-[0_0_24px_-4px_#FFCB05]"
+                  : "border-primary/40 bg-primary/5"
+              }`}
+            >
+              {activeQuestion.is_prize_question && (
+                <div className="rounded-md border border-[#FFCB05] bg-gradient-to-r from-[#FFCB05] to-[#F68B1F] px-3 py-2 text-center text-xs font-extrabold uppercase tracking-wider text-black animate-pulse">
+                  ⚡ ATENÇÃO: PERGUNTA PRÊMIO VALENDO {activeQuestion.prize_multiplier ?? 5}X MAIS PONTOS!
+                </div>
+              )}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-primary">Pergunta ativa</span>
+                <span className={`text-xs font-semibold uppercase ${activeQuestion.is_prize_question ? "text-[#FFCB05]" : "text-primary"}`}>
+                  {activeQuestion.is_prize_question ? "⚡ Pergunta Prêmio" : "Pergunta ativa"}
+                </span>
                 {!session?.question_revealed ? (
-                  <span className="rounded bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+                  <span
+                    className={`rounded px-2 py-1 text-xs font-bold ${
+                      activeQuestion.is_prize_question
+                        ? "bg-[#FFCB05] text-black animate-pulse"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                  >
                     {remaining}s
                   </span>
                 ) : (

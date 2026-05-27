@@ -24,6 +24,8 @@ type Q = {
   options: Record<string, string>;
   correct_option: string;
   time_limit: number;
+  is_prize_question?: boolean;
+  prize_multiplier?: number;
 };
 
 const DEVICE_TOKEN_KEY = "qp:device_token";
@@ -67,6 +69,8 @@ function Join() {
   const [submitting, setSubmitting] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [question, setQuestion] = useState<Q | null>(null);
+  const [defaultTimeLimit, setDefaultTimeLimit] = useState<number>(30);
+  const [showPrizeIntro, setShowPrizeIntro] = useState(false);
   const [myAnswer, setMyAnswer] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -123,11 +127,14 @@ function Join() {
       if (!cancelled) setPresentationId(presId);
 
       const { data: presRow } = await (supabase.from("presentations") as any)
-        .select("event_id")
+        .select("event_id, default_time_limit")
         .eq("id", presId)
         .maybeSingle();
       const evId = (presRow?.event_id as string | null) ?? null;
-      if (!cancelled) setEventId(evId);
+      if (!cancelled) {
+        setEventId(evId);
+        setDefaultTimeLimit((presRow as any)?.default_time_limit ?? 30);
+      }
 
       // 2. Já existe participante desta sessão com este device token?
       const { data: existingThisSession } = await (supabase.from("participants") as any)
@@ -247,7 +254,16 @@ function Join() {
   // reset answer when question changes
   useEffect(() => {
     setMyAnswer(null);
-  }, [question?.id]);
+    // Pergunta prêmio: vibração intensa + overlay de suspense
+    if (question?.is_prize_question) {
+      setShowPrizeIntro(true);
+      try {
+        (navigator as any)?.vibrate?.([300, 100, 300, 100, 300, 100, 500]);
+      } catch {}
+      const t = setTimeout(() => setShowPrizeIntro(false), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [question?.id, question?.is_prize_question]);
 
   // fetch existing answer for current question
   useEffect(() => {
@@ -282,8 +298,9 @@ function Join() {
   const remaining = useMemo(() => {
     if (!question || !session?.question_started_at || session.question_revealed) return 0;
     const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
-    return Math.max(0, Math.ceil(question.time_limit - elapsed));
-  }, [question, session, now]);
+    const limit = question.time_limit && question.time_limit > 0 ? question.time_limit : defaultTimeLimit;
+    return Math.max(0, Math.ceil(limit - elapsed));
+  }, [question, session, now, defaultTimeLimit]);
 
   async function join() {
     if (!sessionId) return;
@@ -322,11 +339,14 @@ function Join() {
     const elapsedMs = now - new Date(session.question_started_at).getTime();
     const isCorrect = option === question.correct_option;
     // Novo cálculo: Base 500 + bônus proporcional ao tempo restante
-    const totalMs = (question.time_limit || 10) * 1000;
+    const effectiveLimitSec = question.time_limit && question.time_limit > 0 ? question.time_limit : defaultTimeLimit;
+    const totalMs = effectiveLimitSec * 1000;
     const remainingMs = Math.max(0, totalMs - elapsedMs);
     const BASE = 500;
     const BONUS = 500;
-    const points = isCorrect ? BASE + Math.round((remainingMs / totalMs) * BONUS) : 0;
+    const rawPoints = isCorrect ? BASE + Math.round((remainingMs / totalMs) * BONUS) : 0;
+    const multiplier = question.is_prize_question ? (question.prize_multiplier ?? 5) : 1;
+    const points = rawPoints * multiplier;
     const { error } = await supabase.from("answers").insert({
       session_id: sessionId,
       question_id: question.id,
@@ -518,13 +538,38 @@ function Join() {
 
   return (
     <div className="flex h-[100dvh] flex-col justify-between bg-background p-3">
+      {/* Overlay dramático de Pergunta Prêmio */}
+      {showPrizeIntro && question?.is_prize_question && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-[#FFCB05] via-[#F68B1F] to-[#A6193C] p-6 text-center animate-fade-in">
+          <div className="text-7xl animate-pulse">⚡</div>
+          <h1 className="text-3xl font-extrabold text-white drop-shadow-lg">
+            HORA DA VIRADA!
+          </h1>
+          <p className="text-xl font-bold text-white drop-shadow">
+            Pergunta Prêmio Ativa!
+          </p>
+          <p className="rounded-full bg-black/30 px-5 py-2 text-base font-extrabold text-white">
+            Vale até {1000 * (question.prize_multiplier ?? 5)} pontos!
+          </p>
+          <p className="mt-2 text-xs uppercase tracking-widest text-white/80">
+            Prepare-se...
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">
           Pontuação: <span className="font-semibold text-foreground">{score}</span>
         </span>
         <div className="flex items-center gap-2">
           {!revealed && (
-            <span className="rounded bg-primary px-2 py-1 text-sm font-bold text-primary-foreground">
+            <span
+              className={`rounded px-2 py-1 text-sm font-bold ${
+                question.is_prize_question
+                  ? "bg-[#FFCB05] text-black animate-pulse"
+                  : "bg-primary text-primary-foreground"
+              }`}
+            >
               {remaining}s
             </span>
           )}
@@ -563,6 +608,12 @@ function Join() {
           </button>
         </div>
       </div>
+
+      {question.is_prize_question && (
+        <div className="mt-2 flex items-center justify-center gap-1 rounded-md border border-[#FFCB05] bg-gradient-to-r from-[#FFCB05] to-[#F68B1F] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-black animate-pulse">
+          ⚡ PERGUNTA PRÊMIO · {question.prize_multiplier ?? 5}X PONTOS
+        </div>
+      )}
 
       <h2 className={`my-4 font-semibold leading-snug ${scale.question}`}>
         {question.question_text}
