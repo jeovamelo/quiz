@@ -578,6 +578,7 @@ function RemoteControl() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#0E1015] text-white">
+      <NetworkFallbackBanner transport={tunnel.transport} />
       {bridge.status !== "connected" && (
         <div className="shrink-0 bg-[#F68B1F] px-3 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-black animate-pulse">
           Reconectando ao projetor...
@@ -594,7 +595,9 @@ function RemoteControl() {
               {stored?.name ?? "—"} · {presentation.title}
             </h1>
           </div>
-          <div
+          <div className="flex shrink-0 items-center gap-1.5">
+            <NetworkStatusBadge transport={tunnel.transport} compact />
+            <div
             className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${
               bridge.status === "connected" && bridge.partnerOnline
                 ? "border-[#07A684]/40 bg-[#07A684]/10 text-[#07A684]"
@@ -618,6 +621,7 @@ function RemoteControl() {
               : bridge.status === "connected"
               ? "Aguardando"
               : "Sem sinal"}
+            </div>
           </div>
         </div>
         <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#9CA3AF]">
