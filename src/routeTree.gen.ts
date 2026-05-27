@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RemoteIndexRouteImport } from './routes/remote.index'
 import { Route as RemoteIdRouteImport } from './routes/remote.$id'
+import { Route as RemoteSetupIdRouteImport } from './routes/remote-setup.$id'
 import { Route as QuizNewRouteImport } from './routes/quiz.new'
 import { Route as PresentIdRouteImport } from './routes/present.$id'
 import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
@@ -50,6 +51,11 @@ const RemoteIndexRoute = RemoteIndexRouteImport.update({
 const RemoteIdRoute = RemoteIdRouteImport.update({
   id: '/remote/$id',
   path: '/remote/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RemoteSetupIdRoute = RemoteSetupIdRouteImport.update({
+  id: '/remote-setup/$id',
+  path: '/remote-setup/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuizNewRoute = QuizNewRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
+  '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
   '/remote/': typeof RemoteIndexRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
+  '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
   '/remote': typeof RemoteIndexRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
+  '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
   '/remote/': typeof RemoteIndexRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/present/$id'
     | '/quiz/new'
+    | '/remote-setup/$id'
     | '/remote/$id'
     | '/remote/'
     | '/event/$id/classificacao-geral'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/present/$id'
     | '/quiz/new'
+    | '/remote-setup/$id'
     | '/remote/$id'
     | '/remote'
     | '/event/$id/classificacao-geral'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/present/$id'
     | '/quiz/new'
+    | '/remote-setup/$id'
     | '/remote/$id'
     | '/remote/'
     | '/event/$id/classificacao-geral'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   LobbyIdRoute: typeof LobbyIdRoute
   PresentIdRoute: typeof PresentIdRouteWithChildren
   QuizNewRoute: typeof QuizNewRoute
+  RemoteSetupIdRoute: typeof RemoteSetupIdRoute
   RemoteIdRoute: typeof RemoteIdRouteWithChildren
   RemoteIndexRoute: typeof RemoteIndexRoute
   QuizIdEditRoute: typeof QuizIdEditRoute
@@ -281,6 +294,13 @@ declare module '@tanstack/react-router' {
       path: '/remote/$id'
       fullPath: '/remote/$id'
       preLoaderRoute: typeof RemoteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/remote-setup/$id': {
+      id: '/remote-setup/$id'
+      path: '/remote-setup/$id'
+      fullPath: '/remote-setup/$id'
+      preLoaderRoute: typeof RemoteSetupIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/quiz/new': {
@@ -420,6 +440,7 @@ const rootRouteChildren: RootRouteChildren = {
   LobbyIdRoute: LobbyIdRoute,
   PresentIdRoute: PresentIdRouteWithChildren,
   QuizNewRoute: QuizNewRoute,
+  RemoteSetupIdRoute: RemoteSetupIdRoute,
   RemoteIdRoute: RemoteIdRouteWithChildren,
   RemoteIndexRoute: RemoteIndexRoute,
   QuizIdEditRoute: QuizIdEditRoute,
@@ -427,13 +448,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
