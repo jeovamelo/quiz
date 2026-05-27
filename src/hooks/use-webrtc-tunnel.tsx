@@ -33,6 +33,41 @@ const ICE_SERVERS: RTCIceServer[] = [
   { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
 ];
 
+type NetworkAudit = "lan" | "wan" | "unknown";
+
+/**
+ * Inspeciona o par de candidatos ICE nomeado pela RTCPeerConnection.
+ * Se ambos os lados (local e remoto) forem do tipo `host`, a conexão
+ * está acontecendo na mesma sub-rede privada (LAN/mesmo Wi-Fi).
+ * Qualquer combinação envolvendo `srflx`/`prflx`/`relay` indica
+ * tráfego atravessando NAT/Internet (WAN / contingência em nuvem).
+ */
+async function inspectSelectedCandidatePair(pc: RTCPeerConnection): Promise<NetworkAudit> {
+  try {
+    const stats = await pc.getStats();
+    let selectedPairId: string | undefined;
+    const candidates = new Map<string, any>();
+    stats.forEach((report: any) => {
+      if (report.type === "candidate-pair" && (report.nominated || report.selected) && report.state === "succeeded") {
+        selectedPairId = report.id;
+      }
+      if (report.type === "local-candidate" || report.type === "remote-candidate") {
+        candidates.set(report.id, report);
+      }
+    });
+    if (!selectedPairId) return "unknown";
+    const pair: any = (stats as any).get?.(selectedPairId);
+    if (!pair) return "unknown";
+    const local = candidates.get(pair.localCandidateId);
+    const remote = candidates.get(pair.remoteCandidateId);
+    if (!local || !remote) return "unknown";
+    if (local.candidateType === "host" && remote.candidateType === "host") return "lan";
+    return "wan";
+  } catch {
+    return "unknown";
+  }
+}
+
 export function useWebRTCTunnel({ sessionId, slot, role, onMessage, enabled = true }: Options) {
   const [transport, setTransport] = useState<TunnelTransport>("connecting");
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -130,7 +165,7 @@ export function useWebRTCTunnel({ sessionId, slot, role, onMessage, enabled = tr
         // Pequeno atraso para o par candidato nomeado aparecer nas stats.
         window.setTimeout(() => {
           if (cancelledRef.current) return;
-          inspectSelectedCandidatePair(pc).then((result) => {
+          inspectSelectedCandidatePair(pc).then((result: NetworkAudit) => {
             if (cancelledRef.current) return;
             if (result === "lan") {
               lanConfirmed = true;
