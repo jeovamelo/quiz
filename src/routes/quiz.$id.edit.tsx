@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Loader2, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,24 +51,41 @@ function EditQuizPage() {
         .select("*")
         .eq("presentation_id", id)
         .order("position");
-      const normalized: EditableQuestion[] = ((qs as any[]) || []).map((q) => ({
+      const normalized: EditableQuestion[] = ((qs as any[]) || []).map((q) => {
+        let options: Record<string, string>;
+        if (q.question_type === "true_false") {
+          options = { A: "Verdadeiro", B: "Falso" };
+        } else {
+          // Manter apenas alternativas existentes (com chave presente no banco),
+          // re-sequenciando as letras A, B, C... sem lacunas.
+          const incoming = (q.options || {}) as Record<string, string>;
+          const orderedKeys = ["A", "B", "C", "D", "E", "F"].filter((k) =>
+            Object.prototype.hasOwnProperty.call(incoming, k),
+          );
+          const filled = orderedKeys.length >= 2 ? orderedKeys : ["A", "B"];
+          options = {};
+          filled.forEach((k, idx) => {
+            const newKey = String.fromCharCode(65 + idx);
+            options[newKey] = incoming[k] ?? "";
+          });
+        }
+        // Reposicionar gabarito caso a letra antiga não exista mais
+        let correct = q.correct_option as string;
+        if (q.question_type !== "true_false" && !options[correct]) {
+          correct = "";
+        }
+        return {
         id: q.id,
         question_text: q.question_text,
         question_type: q.question_type,
-        options: (q.question_type === "true_false"
-          ? { A: "Verdadeiro", B: "Falso" }
-          : {
-              A: q.options?.A ?? "",
-              B: q.options?.B ?? "",
-              C: q.options?.C ?? "",
-              D: q.options?.D ?? "",
-            }) as Record<string, string>,
-        correct_option: q.correct_option,
+        options,
+        correct_option: correct,
         slide_number: q.slide_number,
         display_mode: q.display_mode,
         time_limit: q.time_limit,
         position: q.position,
-      }));
+        };
+      });
       setQuestions(normalized);
       setLoading(false);
     })();
@@ -76,6 +93,45 @@ function EditQuizPage() {
 
   function updateQ(i: number, patch: Partial<EditableQuestion>) {
     setQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
+  }
+
+  function removeOption(i: number, key: string) {
+    setQuestions((qs) =>
+      qs.map((q, idx) => {
+        if (idx !== i) return q;
+        if (q.question_type !== "multiple_choice") return q;
+        const keys = Object.keys(q.options).sort();
+        if (keys.length <= 2) return q;
+        const remaining = keys.filter((k) => k !== key);
+        const newOptions: Record<string, string> = {};
+        remaining.forEach((oldK, idx2) => {
+          const newK = String.fromCharCode(65 + idx2);
+          newOptions[newK] = q.options[oldK];
+        });
+        // Recalcular gabarito
+        let newCorrect = q.correct_option;
+        if (q.correct_option === key) {
+          newCorrect = "";
+        } else if (q.correct_option && q.correct_option > key) {
+          // letra deslocada uma posição para trás
+          newCorrect = String.fromCharCode(q.correct_option.charCodeAt(0) - 1);
+        }
+        return { ...q, options: newOptions, correct_option: newCorrect };
+      }),
+    );
+  }
+
+  function addOption(i: number) {
+    setQuestions((qs) =>
+      qs.map((q, idx) => {
+        if (idx !== i) return q;
+        if (q.question_type !== "multiple_choice") return q;
+        const keys = Object.keys(q.options).sort();
+        if (keys.length >= 6) return q;
+        const newKey = String.fromCharCode(65 + keys.length);
+        return { ...q, options: { ...q.options, [newKey]: "" } };
+      }),
+    );
   }
 
   function backToOrigin() {
@@ -87,14 +143,20 @@ function EditQuizPage() {
   }
 
   async function handleSave() {
-    // Validação: alternativa correta não pode estar vazia (em múltipla escolha)
+    // Validação: gabarito precisa existir e ter texto
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (q.question_type !== "multiple_choice") continue;
-      const correctText = (q.options?.[q.correct_option] ?? "").trim();
+      if (!q.correct_option || !q.options[q.correct_option]) {
+        toast.error(
+          `Pergunta ${i + 1}: selecione a nova resposta correta antes de salvar.`,
+        );
+        return;
+      }
+      const correctText = (q.options[q.correct_option] ?? "").trim();
       if (!correctText) {
         toast.error(
-          `Pergunta ${i + 1}: você não pode apagar o texto da alternativa que foi marcada como correta!`,
+          `Pergunta ${i + 1}: a alternativa marcada como correta está em branco.`,
         );
         return;
       }
@@ -104,21 +166,30 @@ function EditQuizPage() {
     try {
       for (const q of questions) {
         // Limpeza: remove opções em branco
-        const filteredOptions =
-          q.question_type === "true_false"
-            ? { A: "Verdadeiro", B: "Falso" }
-            : Object.fromEntries(
-                Object.entries(q.options).filter(
-                  ([, v]) => typeof v === "string" && v.trim() !== "",
-                ),
-              );
+        // Limpeza: envia somente alternativas com texto e reordena letras
+        let filteredOptions: Record<string, string>;
+        let savedCorrect = q.correct_option;
+        if (q.question_type === "true_false") {
+          filteredOptions = { A: "Verdadeiro", B: "Falso" };
+        } else {
+          const keys = Object.keys(q.options).sort();
+          const kept = keys.filter(
+            (k) => typeof q.options[k] === "string" && q.options[k].trim() !== "",
+          );
+          filteredOptions = {};
+          kept.forEach((oldK, idx) => {
+            const newK = String.fromCharCode(65 + idx);
+            filteredOptions[newK] = q.options[oldK].trim();
+            if (oldK === q.correct_option) savedCorrect = newK;
+          });
+        }
         const { error } = await supabase
           .from("questions")
           .update({
             question_text: q.question_text,
             question_type: q.question_type,
             options: filteredOptions,
-            correct_option: q.correct_option,
+            correct_option: savedCorrect,
             slide_number: q.slide_number,
             display_mode: q.display_mode,
             time_limit: q.time_limit,
@@ -222,12 +293,12 @@ function EditQuizPage() {
                 onClick={() =>
                   updateQ(i, {
                     question_type: "multiple_choice",
-                    options: {
-                      A: q.options.A || "",
-                      B: q.options.B || "",
-                      C: q.options.C || "",
-                      D: q.options.D || "",
-                    },
+                    options:
+                      q.question_type === "multiple_choice"
+                        ? q.options
+                        : { A: "", B: "" },
+                    correct_option:
+                      q.question_type === "multiple_choice" ? q.correct_option : "",
                   })
                 }
               >
@@ -250,7 +321,14 @@ function EditQuizPage() {
             </div>
 
             <div className="grid gap-2">
-              {(q.question_type === "true_false" ? ["A", "B"] : ["A", "B", "C", "D"]).map((k) => (
+              {(q.question_type === "true_false"
+                ? ["A", "B"]
+                : Object.keys(q.options).sort()
+              ).map((k) => {
+                const mcKeys = Object.keys(q.options);
+                const canRemove =
+                  q.question_type === "multiple_choice" && mcKeys.length > 2;
+                return (
                 <label
                   key={k}
                   className="flex items-center gap-2 rounded-lg border border-[#262D3D] bg-[#0E1015] p-2"
@@ -271,19 +349,53 @@ function EditQuizPage() {
                     disabled={q.question_type === "true_false"}
                     placeholder={
                       q.question_type === "multiple_choice"
-                        ? "Deixe em branco para ocultar esta alternativa"
+                        ? `Texto da alternativa ${k}`
                         : undefined
                     }
                     className="bg-[#161A23]"
                   />
+                  {canRemove && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeOption(i, k);
+                      }}
+                      title="Excluir alternativa"
+                      aria-label={`Excluir alternativa ${k}`}
+                      className="rounded p-1 text-gray-400 transition-colors hover:text-[#A6193C] hover:bg-[#1E2235]"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </label>
-              ))}
+                );
+              })}
               {q.question_type === "multiple_choice" && (
-                <p className="text-xs text-muted-foreground">
-                  Alternativas em branco serão ocultadas no celular dos participantes e nos
-                  gráficos.
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Alternativas em branco serão ocultadas no celular dos participantes.
+                  </p>
+                  {Object.keys(q.options).length < 6 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addOption(i)}
+                      className="border-[#262D3D] text-xs"
+                    >
+                      + Adicionar alternativa
+                    </Button>
+                  )}
+                </div>
               )}
+              {q.question_type === "multiple_choice" &&
+                (!q.correct_option || !q.options[q.correct_option]) && (
+                  <div className="flex items-center gap-2 rounded-md border border-[#A6193C]/40 bg-[#A6193C]/10 px-3 py-2 text-xs text-[#F68B1F]">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Selecione a nova resposta correta para esta questão antes de salvar.
+                  </div>
+                )}
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
