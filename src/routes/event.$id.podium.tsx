@@ -67,7 +67,6 @@ function EventPodium() {
   }
 
   const top3 = ranking.slice(0, 3);
-  const rest = ranking.slice(3, 20);
   const slots: Array<{ place: 1 | 2 | 3; p: (typeof ranking)[number] }> = [];
   if (top3[1]) slots.push({ place: 2, p: top3[1] });
   if (top3[0]) slots.push({ place: 1, p: top3[0] });
