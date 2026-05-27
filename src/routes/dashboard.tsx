@@ -389,127 +389,183 @@ function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        {events && events.length > 0 && (
-          <section className="mb-10">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Eventos
-            </h2>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {events.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Calendar className="h-5 w-5 shrink-0 text-primary" />
-                      <div className="min-w-0">
-                        <h3 className="truncate font-semibold">{ev.title}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(ev.created_at).toLocaleDateString("pt-BR")}
-                        </p>
+      <main className="mx-auto max-w-6xl px-6 py-6">
+        <Tabs defaultValue="apresentacoes" className="w-full">
+          <TabsList className="mb-6 grid w-full grid-cols-2 gap-1 bg-[#161A23] p-1 md:grid-cols-4">
+            <TabsTrigger
+              value="apresentacoes"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Presentation className="mr-2 h-4 w-4" /> Apresentações
+            </TabsTrigger>
+            <TabsTrigger
+              value="eventos"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Calendar className="mr-2 h-4 w-4" /> Eventos
+            </TabsTrigger>
+            <TabsTrigger
+              value="central"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Gamepad2 className="mr-2 h-4 w-4" /> Central de Controle
+            </TabsTrigger>
+            <TabsTrigger
+              value="classificacao"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <Trophy className="mr-2 h-4 w-4" /> Classificação
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ABA 1 — APRESENTAÇÕES */}
+          <TabsContent value="apresentacoes" className="mt-0">
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+              </div>
+            ) : !data || data.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-card/30 p-12 text-center">
+                <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h2 className="mt-4 text-lg font-semibold">Nenhum quiz criado ainda</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Crie seu primeiro quiz para começar.
+                </p>
+                <Button asChild className="mt-6">
+                  <Link to="/quiz/new">
+                    <Plus className="mr-2 h-4 w-4" /> Criar primeiro quiz
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {data.map((p) => (
+                  <div
+                    key={p.id}
+                    className="overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/60"
+                  >
+                    <div className="aspect-video bg-black">
+                      <iframe
+                        title={p.title}
+                        src={`${p.file_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                        className="pointer-events-none h-full w-full"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="line-clamp-1 font-semibold">{p.title}</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                      </p>
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => startSession(p.id)}
+                        >
+                          <Play className="mr-1 h-4 w-4" /> Iniciar
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <Link to="/quiz/$id/edit" params={{ id: p.id }}>
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir quiz?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. O quiz "{p.title}", suas perguntas
+                                e sessões associadas serão removidos permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deletePresentation(p.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button asChild size="sm" variant="ghost" title="Grande Pódio">
-                        <Link to="/event/$id/podium" params={{ id: ev.id }}>
-                          <Trophy className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button asChild size="sm" variant="outline">
-                        <Link to="/event/$id" params={{ id: ev.id }}>
-                          Gerenciar
-                        </Link>
-                      </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ABA 2 — EVENTOS */}
+          <TabsContent value="eventos" className="mt-0">
+            {!events || events.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-card/30 p-12 text-center">
+                <Calendar className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h2 className="mt-4 text-lg font-semibold">Nenhum evento ainda</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Agrupe múltiplas apresentações em um evento.
+                </p>
+                <Button asChild className="mt-6">
+                  <Link to="/event/new">
+                    <CalendarPlus className="mr-2 h-4 w-4" /> Criar primeiro evento
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {events.map((ev) => (
+                  <div
+                    key={ev.id}
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Calendar className="h-5 w-5 shrink-0 text-primary" />
+                        <div className="min-w-0">
+                          <h3 className="truncate font-semibold">{ev.title}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(ev.created_at).toLocaleDateString("pt-BR")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button asChild size="sm" variant="ghost" title="Grande Pódio">
+                          <Link to="/event/$id/podium" params={{ id: ev.id }}>
+                            <Trophy className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <Link to="/event/$id" params={{ id: ev.id }}>
+                            Gerenciar
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
-          </div>
-        ) : !data || data.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-card/30 p-12 text-center">
-            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h2 className="mt-4 text-lg font-semibold">Nenhum quiz criado ainda</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Crie seu primeiro quiz para começar.
-            </p>
-            <Button asChild className="mt-6">
-              <Link to="/quiz/new">
-                <Plus className="mr-2 h-4 w-4" /> Criar primeiro quiz
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {data.map((p) => (
-              <div
-                key={p.id}
-                className="overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/60"
-              >
-                <div className="aspect-video bg-black">
-                  <iframe
-                    title={p.title}
-                    src={`${p.file_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                    className="pointer-events-none h-full w-full"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="line-clamp-1 font-semibold">{p.title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Criado em {new Date(p.created_at).toLocaleDateString("pt-BR")}
-                  </p>
-                  <div className="mt-4 flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => startSession(p.id)}
-                    >
-                      <Play className="mr-1 h-4 w-4" /> Iniciar
-                    </Button>
-                    <Button asChild size="sm" variant="outline">
-                      <Link to="/quiz/$id/edit" params={{ id: p.id }}>
-                        <Pencil className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir quiz?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. O quiz "{p.title}", suas perguntas
-                            e sessões associadas serão removidos permanentemente.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deletePresentation(p.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </TabsContent>
+
+          {/* ABA 3 — CENTRAL DE CONTROLE (PRO) */}
+          <TabsContent value="central" className="mt-0">
+            <CentralDeControle
+              activeSession={activeSession}
+              activePresentationTitle={activePresentationTitle ?? null}
+            />
+          </TabsContent>
+
+          {/* ABA 4 — CLASSIFICAÇÃO GLOBAL */}
+          <TabsContent value="classificacao" className="mt-0">
+            <ClassificacaoGlobal presentationIds={(data ?? []).map((p) => p.id)} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {activeSession && (
