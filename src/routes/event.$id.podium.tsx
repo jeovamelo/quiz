@@ -3,10 +3,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import confetti from "canvas-confetti";
-import { Loader2, Zap, ArrowLeft, Trophy } from "lucide-react";
+import { Loader2, Zap, ArrowLeft, Trophy, Volume2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { aggregateEventRanking, type ScoreRow } from "@/lib/ranking";
+import { useAudioSynthesizer } from "@/hooks/use-audio-synthesizer";
 
 export const Route = createFileRoute("/event/$id/podium")({
   head: () => ({ meta: [{ title: "Grande Pódio do Evento — QuizPulse" }] }),
