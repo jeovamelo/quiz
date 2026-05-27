@@ -9,21 +9,31 @@ import {
   AlertTriangle,
   BarChart3,
   Check,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
   FileText,
+  Gamepad2,
   GripVertical,
   Link2,
   Loader2,
+  PanelRight,
   Pencil,
   Play,
   Plus,
   PowerOff,
+  Presentation,
+  QrCode,
   RotateCcw,
+  Smartphone,
   Sparkles,
   Trash2,
   Trophy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
