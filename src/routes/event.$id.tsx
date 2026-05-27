@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  AlertTriangle,
   BarChart3,
   Check,
   FileText,
@@ -12,12 +13,23 @@ import {
   Pencil,
   Play,
   Plus,
+  RotateCcw,
   Sparkles,
   Trash2,
   Trophy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +70,8 @@ function EventManage() {
   const [mode, setMode] = useState<"choose" | "link">("choose");
   const [linking, setLinking] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [resetTarget, setResetTarget] = useState<Pres | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   const { data: event } = useQuery({
     queryKey: ["event", id],
@@ -201,6 +215,66 @@ function EventManage() {
       .eq("id", presentationId);
     toast.success("Apresentação desvinculada");
     refetch();
+  }
+
+  async function resetPresentation(presentationId: string) {
+    setResetting(true);
+    try {
+      // 1. Buscar sessões dessa apresentação
+      const { data: sess } = await supabase
+        .from("sessions")
+        .select("id")
+        .eq("presentation_id", presentationId);
+      const sessionIds = ((sess ?? []) as Array<{ id: string }>).map((s) => s.id);
+
+      // 2. Sinalizar celulares conectados (status -> ended) antes de apagar
+      if (sessionIds.length > 0) {
+        await (supabase.from("sessions") as any)
+          .update({ status: "ended", active_question_id: null, question_revealed: false })
+          .in("id", sessionIds);
+
+        // Broadcast adicional para forçar saída imediata
+        try {
+          for (const sid of sessionIds) {
+            const ch = supabase.channel(`reset-${sid}`);
+            await new Promise<void>((resolve) => {
+              ch.subscribe((status) => {
+                if (status === "SUBSCRIBED") resolve();
+              });
+              window.setTimeout(() => resolve(), 400);
+            });
+            await ch.send({ type: "broadcast", event: "presentation_reset", payload: { presentation_id: presentationId } });
+            window.setTimeout(() => supabase.removeChannel(ch), 300);
+          }
+        } catch {
+          /* ignora erros de realtime */
+        }
+
+        // 3. Limpar respostas, pontuações, participantes e sessões
+        await supabase.from("answers").delete().in("session_id", sessionIds);
+        await supabase.from("participants").delete().in("session_id", sessionIds);
+        await supabase.from("participant_scores").delete().in("session_id", sessionIds);
+        await supabase.from("sessions").delete().in("id", sessionIds);
+      }
+
+      // 4. Resetar metadados da apresentação
+      const { error } = await (supabase.from("presentations") as any)
+        .update({
+          execution_status: "pending",
+          presented_at: null,
+          chronological_index: null,
+        })
+        .eq("id", presentationId);
+      if (error) throw error;
+
+      toast.success("Apresentação reiniciada. Status limpo com sucesso!");
+      setResetTarget(null);
+      refetch();
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao reiniciar apresentação");
+    } finally {
+      setResetting(false);
+    }
   }
 
   function openAddModal() {
@@ -506,6 +580,15 @@ function EventManage() {
                   >
                     <Pencil className="mr-1 h-4 w-4" /> Editar
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setResetTarget(p)}
+                    className="border-[#262D3D] text-[#9CA3AF] hover:border-[#A6193C] hover:text-[#A6193C]"
+                    title="Reiniciar apresentação (apaga histórico e pontuação)"
+                  >
+                    <RotateCcw className="mr-1 h-4 w-4" /> Reiniciar
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => detach(p.id)} title="Desvincular do evento">
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -627,6 +710,52 @@ function EventManage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!resetTarget} onOpenChange={(o) => !o && !resetting && setResetTarget(null)}>
+        <AlertDialogContent className="border-[#A6193C]/40 bg-[#161A23] text-foreground">
+          <AlertDialogHeader>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#A6193C]/15 ring-2 ring-[#A6193C]/40">
+              <AlertTriangle className="h-8 w-8 text-[#FFCB05]" />
+            </div>
+            <AlertDialogTitle className="text-center text-xl">
+              Deseja realmente reiniciar esta apresentação?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-sm text-[#9CA3AF]">
+              <span className="block font-semibold text-[#F68B1F]">Atenção:</span>
+              Ao reiniciar, todo o histórico de respostas dos participantes e a pontuação obtida
+              por eles nesta palestra específica
+              {resetTarget ? ` (${resetTarget.title})` : ""} serão permanentemente apagados. Esta
+              ação não poderá ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel
+              disabled={resetting}
+              className="border-[#262D3D] bg-transparent text-[#9CA3AF] hover:bg-[#1E2235] hover:text-foreground"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (resetTarget) void resetPresentation(resetTarget.id);
+              }}
+              className="bg-[#A6193C] text-white hover:bg-[#8a1432]"
+            >
+              {resetting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reiniciando...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="mr-2 h-4 w-4" /> Sim, reiniciar e apagar pontos
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
