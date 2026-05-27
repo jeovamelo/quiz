@@ -122,6 +122,32 @@ function EventManage() {
     },
   });
 
+  // Sessão ativa dentro deste evento (para a aba "Central de Controle")
+  const presentationIds = (presentations ?? []).map((p) => p.id);
+  const { data: activeSession } = useQuery({
+    queryKey: ["event-active-session", id, presentationIds.join("|")],
+    enabled: presentationIds.length > 0,
+    refetchInterval: 4000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sessions")
+        .select("id, presentation_id, status")
+        .in("presentation_id", presentationIds)
+        .neq("status", "ended")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const row = (data ?? [])[0] as
+        | { id: string; presentation_id: string; status: string }
+        | undefined;
+      return row ?? null;
+    },
+  });
+  const activePresentationTitle =
+    activeSession && presentations
+      ? presentations.find((p) => p.id === activeSession.presentation_id)?.title ?? null
+      : null;
+
   // Mapa: presentation_id → último sessionId encerrado (para o botão "Ver Resultados")
   const { data: endedSessions } = useQuery({
     queryKey: [
