@@ -62,6 +62,10 @@ function Present() {
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
+  // Ref para a função mestre de avanço — garante uso de estado fresco em
+  // qualquer gatilho (clique no slide, teclado, broadcast do celular).
+  const handleMasterAdvanceRef = useRef<() => Promise<void>>(async () => {});
+
   // === APONTADOR LASER recebido do celular ===
   const [laserCoords, setLaserCoords] = useState<{ x: number; y: number } | null>(null);
   const laserTimerRef = useRef<number | null>(null);
@@ -129,7 +133,10 @@ function Present() {
       const liveSlide: number = fresh?.current_slide ?? 1;
 
       if (action === "NEXT") {
-        await setSlide(liveSlide + 1, { direction: "next", fired: (fresh as any)?.fired_question_ids ?? [] });
+        // Clique virtual do celular = mesmo comportamento do clique do mouse
+        // no slide. Toda a lógica vive em handleMasterAdvance no computador.
+        console.log("Clique remoto recebido do celular. Avançando apresentação...");
+        await handleMasterAdvanceRef.current();
       } else if (action === "PREV") {
         await setSlide(Math.max(1, liveSlide - 1), { direction: "prev" });
       } else if (action === "TOGGLE_FULLSCREEN") {
