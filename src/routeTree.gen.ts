@@ -25,7 +25,6 @@ import { Route as QuizIdEditRouteImport } from './routes/quiz.$id.edit'
 import { Route as PresentIdReviewRouteImport } from './routes/present.$id.review'
 import { Route as PresentIdPairRouteImport } from './routes/present.$id.pair'
 import { Route as EventIdPodiumRouteImport } from './routes/event.$id.podium'
-import { Route as EventIdLobbyRouteImport } from './routes/event.$id.lobby'
 import { Route as EventIdClassificacaoGeralRouteImport } from './routes/event.$id.classificacao-geral'
 
 const JoinRoute = JoinRouteImport.update({
@@ -108,11 +107,6 @@ const EventIdPodiumRoute = EventIdPodiumRouteImport.update({
   path: '/podium',
   getParentRoute: () => EventIdRoute,
 } as any)
-const EventIdLobbyRoute = EventIdLobbyRouteImport.update({
-  id: '/lobby',
-  path: '/lobby',
-  getParentRoute: () => EventIdRoute,
-} as any)
 const EventIdClassificacaoGeralRoute =
   EventIdClassificacaoGeralRouteImport.update({
     id: '/classificacao-geral',
@@ -133,7 +127,6 @@ export interface FileRoutesByFullPath {
   '/remote/$id': typeof RemoteIdRouteWithChildren
   '/remote/': typeof RemoteIndexRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
-  '/event/$id/lobby': typeof EventIdLobbyRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/pair': typeof PresentIdPairRoute
   '/present/$id/review': typeof PresentIdReviewRoute
@@ -153,7 +146,6 @@ export interface FileRoutesByTo {
   '/remote/$id': typeof RemoteIdRouteWithChildren
   '/remote': typeof RemoteIndexRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
-  '/event/$id/lobby': typeof EventIdLobbyRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/pair': typeof PresentIdPairRoute
   '/present/$id/review': typeof PresentIdReviewRoute
@@ -174,7 +166,6 @@ export interface FileRoutesById {
   '/remote/$id': typeof RemoteIdRouteWithChildren
   '/remote/': typeof RemoteIndexRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
-  '/event/$id/lobby': typeof EventIdLobbyRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/pair': typeof PresentIdPairRoute
   '/present/$id/review': typeof PresentIdReviewRoute
@@ -196,7 +187,6 @@ export interface FileRouteTypes {
     | '/remote/$id'
     | '/remote/'
     | '/event/$id/classificacao-geral'
-    | '/event/$id/lobby'
     | '/event/$id/podium'
     | '/present/$id/pair'
     | '/present/$id/review'
@@ -216,7 +206,6 @@ export interface FileRouteTypes {
     | '/remote/$id'
     | '/remote'
     | '/event/$id/classificacao-geral'
-    | '/event/$id/lobby'
     | '/event/$id/podium'
     | '/present/$id/pair'
     | '/present/$id/review'
@@ -236,7 +225,6 @@ export interface FileRouteTypes {
     | '/remote/$id'
     | '/remote/'
     | '/event/$id/classificacao-geral'
-    | '/event/$id/lobby'
     | '/event/$id/podium'
     | '/present/$id/pair'
     | '/present/$id/review'
@@ -373,13 +361,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventIdPodiumRouteImport
       parentRoute: typeof EventIdRoute
     }
-    '/event/$id/lobby': {
-      id: '/event/$id/lobby'
-      path: '/lobby'
-      fullPath: '/event/$id/lobby'
-      preLoaderRoute: typeof EventIdLobbyRouteImport
-      parentRoute: typeof EventIdRoute
-    }
     '/event/$id/classificacao-geral': {
       id: '/event/$id/classificacao-geral'
       path: '/classificacao-geral'
@@ -392,13 +373,11 @@ declare module '@tanstack/react-router' {
 
 interface EventIdRouteChildren {
   EventIdClassificacaoGeralRoute: typeof EventIdClassificacaoGeralRoute
-  EventIdLobbyRoute: typeof EventIdLobbyRoute
   EventIdPodiumRoute: typeof EventIdPodiumRoute
 }
 
 const EventIdRouteChildren: EventIdRouteChildren = {
   EventIdClassificacaoGeralRoute: EventIdClassificacaoGeralRoute,
-  EventIdLobbyRoute: EventIdLobbyRoute,
   EventIdPodiumRoute: EventIdPodiumRoute,
 }
 
@@ -448,3 +427,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
