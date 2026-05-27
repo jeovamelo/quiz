@@ -3,31 +3,20 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
   ChevronRight,
-  Home,
   Loader2,
-  Maximize,
-  Minimize,
   Trophy,
   Users,
   Crosshair,
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useRequireSpeaker } from "@/hooks/use-auth";
 import { haptic } from "@/hooks/use-haptic";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
-import { usePairingPresence } from "@/hooks/use-pairing-presence";
-import { PairingStatusBadge } from "@/components/pairing-status-badge";
+import {
+  heartbeatRemote,
+  loadStoredRemote,
+  type StoredRemote,
+} from "@/lib/session-remotes";
+import { RemoteDrawer } from "@/components/remote-drawer";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/remote/$id")({
