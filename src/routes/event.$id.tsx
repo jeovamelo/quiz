@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, createFileRoute, useChildMatches, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -68,6 +68,10 @@ function EventManage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const childMatches = useChildMatches();
+  if (childMatches.length > 0) {
+    return <Outlet />;
+  }
   const [addOpen, setAddOpen] = useState(false);
   const [mode, setMode] = useState<"choose" | "link">("choose");
   const [linking, setLinking] = useState(false);
