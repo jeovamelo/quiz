@@ -277,7 +277,8 @@ function EventManage() {
 
       toast.success("Apresentação reiniciada. Status limpo com sucesso!");
       setResetTarget(null);
-      refetch();
+      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ["event-ended-sessions", id] });
     } catch (e: any) {
       toast.error(e?.message || "Falha ao reiniciar apresentação");
     } finally {
@@ -589,7 +590,7 @@ function EventManage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {endedSessions && endedSessions[p.id] ? (
+                  {(p.execution_status ?? "pending") !== "pending" && endedSessions && endedSessions[p.id] ? (
                     <Button
                       size="sm"
                       variant="secondary"
@@ -603,7 +604,11 @@ function EventManage() {
                       <BarChart3 className="mr-1 h-4 w-4" /> Ver Resultados
                     </Button>
                   ) : (
-                    <Button size="sm" onClick={() => startSession(p.id)}>
+                    <Button
+                      size="sm"
+                      onClick={() => startSession(p.id)}
+                      className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white hover:opacity-90"
+                    >
                       <Play className="mr-1 h-4 w-4" /> Iniciar
                     </Button>
                   )}
