@@ -5,6 +5,8 @@ import {
   ChevronRight,
   Home,
   Loader2,
+  Maximize,
+  Minimize,
   Power,
   Sparkles,
   Timer,
