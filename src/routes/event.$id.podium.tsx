@@ -9,14 +9,18 @@ import { aggregateEventRanking, type ScoreRow } from "@/lib/ranking";
 
 export const Route = createFileRoute("/event/$id/podium")({
   head: () => ({ meta: [{ title: "Grande Pódio do Evento — QuizPulse" }] }),
+  validateSearch: (s: Record<string, unknown>): { finale?: number } => ({
+    finale: s.finale === 1 || s.finale === "1" ? 1 : undefined,
+  }),
   component: EventPodium,
 });
 
 function EventPodium() {
   const { id } = Route.useParams();
+  const { finale } = Route.useSearch();
   const navigate = useNavigate();
   const confettiFired = useRef(false);
-  const [finaleMode, setFinaleMode] = useState(false);
+  const [finaleMode, setFinaleMode] = useState<boolean>(finale === 1);
 
   const { data: event } = useQuery({
     queryKey: ["event", id],
