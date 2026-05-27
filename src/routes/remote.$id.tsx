@@ -27,6 +27,7 @@ import { useRequireSpeaker } from "@/hooks/use-auth";
 import { haptic } from "@/hooks/use-haptic";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
 import { usePairingPresence } from "@/hooks/use-pairing-presence";
+import { PairingStatusBadge } from "@/components/pairing-status-badge";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/remote/$id")({
@@ -611,6 +612,7 @@ function RemoteControl() {
             <Users className="h-3.5 w-3.5 text-[#07A684]" />
             <span className="font-semibold text-white">{participantsCount}</span> usuários
           </span>
+          <PairingStatusBadge userId={user?.id} variant="mobile" />
           <button
             type="button"
             onClick={toggleFullscreen}
