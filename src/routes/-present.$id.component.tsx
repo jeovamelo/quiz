@@ -24,6 +24,7 @@ import { useRemoteBridge } from "@/hooks/use-remote-bridge";
 import { useWebRTCTunnel, type TunnelTransport } from "@/hooks/use-webrtc-tunnel";
 import { NetworkStatusBadge, NetworkFallbackBanner } from "@/components/network-status-badge";
 import { GiantQrOverlay } from "@/components/giant-qr-overlay";
+import { PairingFrameOverlay } from "@/components/pairing-frame-overlay";
 import { Smartphone } from "lucide-react";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
 
@@ -62,6 +63,11 @@ export function Present() {
   const [sidebarCollapsedLocal, setSidebarCollapsedLocal] = useState(false);
   // Sobreposição do QR Code gigante (acionada pelo controle remoto)
   const [giantQrOpen, setGiantQrOpen] = useState(false);
+  // Frame flutuante de cadastro de controles remotos. Abre automaticamente
+  // quando nenhum controle está pareado e pode ser alternado pelos remotos.
+  const [pairingFrameOpen, setPairingFrameOpen] = useState(true);
+  const [remotesCount, setRemotesCount] = useState<number | null>(null);
+  const pairingAutoHiddenRef = useRef(false);
   const questionsRef = useRef<Question[]>([]);
   useEffect(() => { questionsRef.current = questions; }, [questions]);
 
@@ -100,6 +106,40 @@ export function Present() {
     setJoinUrl(`${window.location.origin}/join?session=${id}`);
   }, [id]);
 
+  // Acompanha em tempo real o número de controles pareados para auto-mostrar
+  // o frame flutuante quando estiver vazio e auto-ocultar ao primeiro pareamento.
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchCount() {
+      const { data } = await supabase
+        .from("session_remotes")
+        .select("id")
+        .eq("session_id", id);
+      if (cancelled) return;
+      const count = (data ?? []).length;
+      setRemotesCount(count);
+      if (count === 0) {
+        setPairingFrameOpen(true);
+      } else if (!pairingAutoHiddenRef.current) {
+        pairingAutoHiddenRef.current = true;
+        setPairingFrameOpen(false);
+      }
+    }
+    fetchCount();
+    const ch = supabase
+      .channel(`present-remotes-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "session_remotes", filter: `session_id=eq.${id}` },
+        () => fetchCount(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [id]);
+
   // === Ponte de tempo real com o celular (Broadcast com heartbeat) ===
   const bridge = useRemoteBridge({
     sessionId: id,
@@ -134,6 +174,20 @@ export function Present() {
       }
       if (action === "HIDE_GIANT_QR") {
         setGiantQrOpen(false);
+        return;
+      }
+
+      // Frame flutuante de cadastro de controles — instantâneo.
+      if (action === "SHOW_PAIRING") {
+        setPairingFrameOpen(true);
+        return;
+      }
+      if (action === "HIDE_PAIRING") {
+        setPairingFrameOpen(false);
+        return;
+      }
+      if (action === "TOGGLE_PAIRING") {
+        setPairingFrameOpen((v) => !v);
         return;
       }
 
@@ -199,6 +253,9 @@ export function Present() {
       // Reaplica a mesma lógica do bridge.onAction.
       if (action === "SHOW_GIANT_QR") return setGiantQrOpen(true);
       if (action === "HIDE_GIANT_QR") return setGiantQrOpen(false);
+      if (action === "SHOW_PAIRING") return setPairingFrameOpen(true);
+      if (action === "HIDE_PAIRING") return setPairingFrameOpen(false);
+      if (action === "TOGGLE_PAIRING") return setPairingFrameOpen((v) => !v);
       if (action === "NEXT") {
         handleMasterAdvanceRef.current();
         return;
@@ -764,6 +821,11 @@ export function Present() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       <NetworkFallbackBanner transport={aggregateTransport} />
       <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setGiantQrOpen(false)} />
+      <PairingFrameOverlay
+        open={pairingFrameOpen}
+        sessionId={id}
+        onClose={() => setPairingFrameOpen(false)}
+      />
       {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
       {laserCoords && (
         <div
