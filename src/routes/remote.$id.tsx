@@ -34,9 +34,9 @@ type Question = {
 };
 
 function RemoteControl() {
-  const { user } = useRequireSpeaker();
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const [stored, setStored] = useState<StoredRemote | null>(null);
   const [session, setSession] = useState<any>(null);
   const [presentation, setPresentation] = useState<{
     title: string;
@@ -49,13 +49,28 @@ function RemoteControl() {
   const [answersCount, setAnswersCount] = useState(0);
   const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
-  const [synced, setSynced] = useState(false);
 
   // Ponte de tempo real (Broadcast) entre celular e projetor.
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
 
-  // Anuncia presença ao Dashboard do palestrante (pareamento global).
-  usePairingPresence(user?.id, "mobile");
+  // === Identidade do controle (slot 1 ou 2) — exige cadastro prévio em /join ===
+  useEffect(() => {
+    const s = loadStoredRemote(id);
+    if (!s) {
+      navigate({ to: "/remote/$id/join", params: { id }, replace: true });
+      return;
+    }
+    setStored(s);
+  }, [id, navigate]);
+
+  // Heartbeat para manter o slot vivo (20s).
+  useEffect(() => {
+    if (!stored?.remoteId) return;
+    const tick = () => heartbeatRemote(stored.remoteId).catch(() => {});
+    tick();
+    const t = window.setInterval(tick, 20000);
+    return () => window.clearInterval(t);
+  }, [stored?.remoteId]);
 
   // === PERSISTÊNCIA: salva a última sessão ativa para auto-reconectar ===
   useEffect(() => {
