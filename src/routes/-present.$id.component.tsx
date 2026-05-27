@@ -1154,6 +1154,17 @@ export function Present() {
           </AlertDialog>
         </aside>
         )}
+        {session?.show_ranking && rankingHiddenLocal && (
+          <button
+            type="button"
+            onClick={() => setRankingHiddenLocal(false)}
+            title="Mostrar classificação"
+            aria-label="Mostrar painel de classificação"
+            className="fixed right-0 top-1/2 z-40 flex h-14 w-8 -translate-y-1/2 items-center justify-center rounded-l-lg border border-[#262D3D] bg-[#161A23]/95 text-[#9CA3AF] shadow-lg backdrop-blur transition hover:text-[#F68B1F]"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </div>
   );
