@@ -766,6 +766,19 @@ function EventManage() {
             })}
           </ol>
         )}
+          </TabsContent>
+
+          <TabsContent value="central" className="mt-0">
+            <EventCentralControle
+              activeSession={activeSession ?? null}
+              activePresentationTitle={activePresentationTitle}
+            />
+          </TabsContent>
+
+          <TabsContent value="classificacao" className="mt-0">
+            <EventClassificacao eventId={id} />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
