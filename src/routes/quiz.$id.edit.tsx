@@ -293,12 +293,12 @@ function EditQuizPage() {
                 onClick={() =>
                   updateQ(i, {
                     question_type: "multiple_choice",
-                    options: {
-                      A: q.options.A || "",
-                      B: q.options.B || "",
-                      C: q.options.C || "",
-                      D: q.options.D || "",
-                    },
+                    options:
+                      q.question_type === "multiple_choice"
+                        ? q.options
+                        : { A: "", B: "" },
+                    correct_option:
+                      q.question_type === "multiple_choice" ? q.correct_option : "",
                   })
                 }
               >
@@ -321,7 +321,14 @@ function EditQuizPage() {
             </div>
 
             <div className="grid gap-2">
-              {(q.question_type === "true_false" ? ["A", "B"] : ["A", "B", "C", "D"]).map((k) => (
+              {(q.question_type === "true_false"
+                ? ["A", "B"]
+                : Object.keys(q.options).sort()
+              ).map((k) => {
+                const mcKeys = Object.keys(q.options);
+                const canRemove =
+                  q.question_type === "multiple_choice" && mcKeys.length > 2;
+                return (
                 <label
                   key={k}
                   className="flex items-center gap-2 rounded-lg border border-[#262D3D] bg-[#0E1015] p-2"
@@ -342,19 +349,53 @@ function EditQuizPage() {
                     disabled={q.question_type === "true_false"}
                     placeholder={
                       q.question_type === "multiple_choice"
-                        ? "Deixe em branco para ocultar esta alternativa"
+                        ? `Texto da alternativa ${k}`
                         : undefined
                     }
                     className="bg-[#161A23]"
                   />
+                  {canRemove && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeOption(i, k);
+                      }}
+                      title="Excluir alternativa"
+                      aria-label={`Excluir alternativa ${k}`}
+                      className="rounded p-1 text-gray-400 transition-colors hover:text-[#A6193C] hover:bg-[#1E2235]"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </label>
-              ))}
+                );
+              })}
               {q.question_type === "multiple_choice" && (
-                <p className="text-xs text-muted-foreground">
-                  Alternativas em branco serão ocultadas no celular dos participantes e nos
-                  gráficos.
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Alternativas em branco serão ocultadas no celular dos participantes.
+                  </p>
+                  {Object.keys(q.options).length < 6 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addOption(i)}
+                      className="border-[#262D3D] text-xs"
+                    >
+                      + Adicionar alternativa
+                    </Button>
+                  )}
+                </div>
               )}
+              {q.question_type === "multiple_choice" &&
+                (!q.correct_option || !q.options[q.correct_option]) && (
+                  <div className="flex items-center gap-2 rounded-md border border-[#A6193C]/40 bg-[#A6193C]/10 px-3 py-2 text-xs text-[#F68B1F]">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Selecione a nova resposta correta para esta questão antes de salvar.
+                  </div>
+                )}
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
