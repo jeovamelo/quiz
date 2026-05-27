@@ -542,8 +542,15 @@ function Present() {
   // keyboard nav
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight") setSlide(currentSlide + 1, { direction: "next" });
-      else if (e.key === "ArrowLeft") setSlide(currentSlide - 1, { direction: "prev" });
+      // Ignora quando o foco está em campos de digitação
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowRight" || e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        handleMasterAdvanceRef.current();
+      } else if (e.key === "ArrowLeft") {
+        setSlide(currentSlide - 1, { direction: "prev" });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -725,7 +732,7 @@ function Present() {
         {/* Coluna esquerda — PDF */}
         <div
           className="relative flex-[2] cursor-pointer bg-black"
-          onClick={() => setSlide(currentSlide + 1, { direction: "next" })}
+          onClick={() => handleMasterAdvanceRef.current()}
           title="Clique para avançar / use as setas do teclado"
         >
           <iframe
