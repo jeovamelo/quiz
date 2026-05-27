@@ -66,7 +66,10 @@ export function Present() {
   // sincronia bidirecional automática entre celular, projetor e Console
   // do Operador no desktop.
   const giantQrOpen = !!session?.show_join_qr;
-  const rankingOpen = !!session?.show_ranking;
+  // Regra rígida: a Classificação NUNCA aparece nas telas de abertura
+  // (status === "lobby"). Só liberamos o ranking quando a sessão entra
+  // no estado "live" (apresentando slides) ou "ended" (pódio).
+  const rankingOpen = !!session?.show_ranking && session?.status !== "lobby";
   const pairQrOpen = !!(session as any)?.show_pair_qr;
   const pairUrl = typeof window !== "undefined" ? `${window.location.origin}/remote-setup/${id}` : "";
   const questionsRef = useRef<Question[]>([]);
