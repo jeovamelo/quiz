@@ -462,6 +462,41 @@ function Present() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
+      {!projectorActivated && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm p-6">
+          <div className="max-w-md rounded-2xl border border-[#262D3D] bg-[#131722] p-6 text-center shadow-2xl">
+            <Tv className="mx-auto h-10 w-10 text-[#F68B1F]" />
+            <h2 className="mt-3 text-xl font-bold text-white">Ativar Modo Projetor</h2>
+            <p className="mt-2 text-sm text-[#9CA3AF]">
+              Clique para liberar o áudio e permitir que o controle remoto do celular
+              alterne a tela cheia (F11) deste computador.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                // Tentativa imediata: requisita tela cheia se já marcada (gesto do usuário)
+                try {
+                  if (session?.is_fullscreen) {
+                    const el = document.documentElement as any;
+                    const req =
+                      el.requestFullscreen ||
+                      el.webkitRequestFullscreen ||
+                      el.msRequestFullscreen;
+                    req?.call(el)?.catch?.(() => {});
+                    fullscreenAppliedRef.current = true;
+                  }
+                } catch {
+                  /* ignora */
+                }
+                setProjectorActivated(true);
+              }}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-6 py-3 text-sm font-extrabold uppercase tracking-wide text-white shadow-lg hover:opacity-95"
+            >
+              <Maximize className="h-5 w-5" /> Ativar Modo Projetor e Áudio
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-1 overflow-hidden">
         {/* Coluna esquerda — PDF */}
         <div
