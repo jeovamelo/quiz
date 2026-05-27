@@ -698,14 +698,14 @@ function Present() {
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{presentation.title}</p>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <Button size="sm" variant="outline" onClick={() => setSlide(currentSlide - 1)}>
+              <Button size="sm" variant="outline" onClick={() => setSlide(currentSlide - 1, { direction: "prev" })}>
                 ◀ Anterior
               </Button>
               <span className="text-sm font-semibold">
                 Slide {currentSlide}
                 {totalPages ? ` / ${totalPages}` : ""}
               </span>
-              <Button size="sm" variant="outline" onClick={() => setSlide(currentSlide + 1)}>
+              <Button size="sm" variant="outline" onClick={() => setSlide(currentSlide + 1, { direction: "next" })}>
                 Próximo ▶
               </Button>
             </div>
