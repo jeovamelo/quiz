@@ -538,13 +538,38 @@ function Join() {
 
   return (
     <div className="flex h-[100dvh] flex-col justify-between bg-background p-3">
+      {/* Overlay dramático de Pergunta Prêmio */}
+      {showPrizeIntro && question?.is_prize_question && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-[#FFCB05] via-[#F68B1F] to-[#A6193C] p-6 text-center animate-fade-in">
+          <div className="text-7xl animate-pulse">⚡</div>
+          <h1 className="text-3xl font-extrabold text-white drop-shadow-lg">
+            HORA DA VIRADA!
+          </h1>
+          <p className="text-xl font-bold text-white drop-shadow">
+            Pergunta Prêmio Ativa!
+          </p>
+          <p className="rounded-full bg-black/30 px-5 py-2 text-base font-extrabold text-white">
+            Vale até {1000 * (question.prize_multiplier ?? 5)} pontos!
+          </p>
+          <p className="mt-2 text-xs uppercase tracking-widest text-white/80">
+            Prepare-se...
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">
           Pontuação: <span className="font-semibold text-foreground">{score}</span>
         </span>
         <div className="flex items-center gap-2">
           {!revealed && (
-            <span className="rounded bg-primary px-2 py-1 text-sm font-bold text-primary-foreground">
+            <span
+              className={`rounded px-2 py-1 text-sm font-bold ${
+                question.is_prize_question
+                  ? "bg-[#FFCB05] text-black animate-pulse"
+                  : "bg-primary text-primary-foreground"
+              }`}
+            >
               {remaining}s
             </span>
           )}
@@ -583,6 +608,12 @@ function Join() {
           </button>
         </div>
       </div>
+
+      {question.is_prize_question && (
+        <div className="mt-2 flex items-center justify-center gap-1 rounded-md border border-[#FFCB05] bg-gradient-to-r from-[#FFCB05] to-[#F68B1F] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-black animate-pulse">
+          ⚡ PERGUNTA PRÊMIO · {question.prize_multiplier ?? 5}X PONTOS
+        </div>
+      )}
 
       <h2 className={`my-4 font-semibold leading-snug ${scale.question}`}>
         {question.question_text}
