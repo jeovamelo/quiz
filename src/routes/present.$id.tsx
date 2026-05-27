@@ -580,15 +580,18 @@ function Present() {
 
               {session?.question_revealed && (
                 <div className="space-y-1">
-                  {optionKeys.map((k) => {
+                  {optionKeys.map((k, index) => {
                     const count = questionAnswers.filter((a) => a.selected_option === k).length;
                     const pct = participants.length ? (count / participants.length) * 100 : 0;
                     const isCorrect = k === activeQuestion.correct_option;
+                    const letterLabel = activeQuestion.question_type === "true_false"
+                      ? k
+                      : String.fromCharCode(65 + index);
                     return (
                       <div key={k} className="text-xs">
                         <div className="flex justify-between">
                           <span className={isCorrect ? "font-semibold text-[oklch(0.66_0.14_165)]" : ""}>
-                            {k}. {activeQuestion.options[k]}
+                            {letterLabel}. {activeQuestion.options[k]}
                           </span>
                           <span>{count}</span>
                         </div>
