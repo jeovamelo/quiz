@@ -1,87 +1,49 @@
-# Plano: Módulo de Eventos + Persistência de Participante + Ranking Acumulativo
+## Plano: Edição Avançada de Apresentação + Pergunta Prêmio
 
-## 1. Banco de Dados (migration única)
+### 1. Banco de Dados (migration)
+Adicionar colunas:
+- `presentations.default_time_limit` (integer, default 30) — tempo geral padrão da apresentação
+- `questions.is_prize_question` (boolean, default false) — marca pergunta prêmio
+- `questions.prize_multiplier` (integer, default 5) — multiplicador 3/4/5x
+- `questions.difficulty` (text, default 'medium') — easy/medium/hard/extreme (se ainda não existir; verificar schema atual)
 
-**Nova tabela `events`:**
-- `id` (uuid, PK)
-- `user_id` (uuid, dono/palestrante — default `'00000000-...'` como em `presentations` para manter compatibilidade)
-- `title` (text)
-- `created_at` (timestamptz)
+Observação: `questions.time_limit` já existe. NULL/0 = usar padrão geral.
 
-**Alterações em `presentations`:**
-- Adicionar `event_id` (uuid, nullable, FK → `events.id` ON DELETE SET NULL)
-- Adicionar `sort_order` (int, default 0)
+### 2. Tela de Edição (`src/routes/quiz.$id.edit.tsx`)
 
-**Alterações em `participants`:**
-- Adicionar `device_token` (text, nullable, indexado)
-- Adicionar `event_id` (uuid, nullable) — para identificar o participante no escopo do evento
-- Índice único parcial `(event_id, device_token)` quando ambos não-nulos (mesmo device = mesmo participante dentro do evento)
+**Cabeçalho novo:**
+- Input "Nome da Apresentação" pré-preenchido com `presentations.title`
+- Seletor "Tempo Geral de Resposta (Padrão)" com opções 15s/30s/45s/60s/90s
 
-**Nova tabela `participant_scores`** (agregação por palestra):
-- `id` (uuid, PK)
-- `event_id` (uuid, nullable)
-- `presentation_id` (uuid)
-- `session_id` (uuid)
-- `participant_id` (uuid → participants.id)
-- `device_token` (text, nullable)
-- `score` (int default 0)
-- `correct_count` (int default 0)
-- `answer_count` (int default 0)
-- `total_response_ms` (bigint default 0)
-- `updated_at` (timestamptz)
-- Único `(presentation_id, participant_id)`
+**Card de cada pergunta:**
+- Campo numérico "Tempo de Resposta para esta pergunta" — placeholder mostra o tempo geral; se vazio, salva como `time_limit = 0` (usa padrão)
+- Switch "Definir como Pergunta Prêmio 🏆"
+- Quando ativo: dificuldade trava em "Extremo", seletor de multiplicador (3x/4x/5x), badge animado "⚡ PERGUNTA PRÊMIO", borda dourada `#FFCB05`, fundo `#1F1E24`
 
-Grants + RLS abertos (`open_all`) seguindo o padrão atual do projeto.
+**Save:**
+- UPDATE em `presentations` (title, default_time_limit)
+- UPSERT em `questions` com novos campos
 
-## 2. Rotas novas / alteradas
+### 3. Tela de Projeção (`src/routes/present.$id.tsx`)
+- Resolver tempo: `question.time_limit > 0 ? question.time_limit : presentation.default_time_limit`
+- Se `is_prize_question`: cronômetro amarelo `#FFCB05` com `animate-pulse`, badge gigante piscando "ATENÇÃO: PERGUNTA PRÊMIO VALENDO {multiplier}X MAIS PONTOS!"
+- Pontuação multiplicada por `prize_multiplier` ao gravar resposta correta
 
-**Novas rotas:**
-- `src/routes/event.new.tsx` — criar evento (título).
-- `src/routes/event.$id.tsx` — gerenciar evento: listar apresentações vinculadas, anexar PDFs existentes, criar nova apresentação dentro do evento, reordenar com botões ↑/↓ atualizando `sort_order`.
-- `src/routes/event.$id.podium.tsx` — Grande Pódio do Evento (soma de `participant_scores` agrupado por `device_token` dentro do `event_id`).
+### 4. Tela do Participante (`src/routes/join.tsx` ou rota de quiz ao vivo)
+- Quando pergunta ativa tem `is_prize_question`: overlay fullscreen dourado/laranja com faíscas, texto "⚡ HORA DA VIRADA! Pergunta Prêmio Ativa! Vale até {max} pontos!"
+- Disparar `navigator.vibrate([200,100,200,100,200])` em loop curto
 
-**Alterações:**
-- `src/routes/dashboard.tsx` — adicionar seção "Eventos" + botão "Novo Evento" ao lado de "Nova Apresentação".
-- `src/routes/quiz.new.tsx` — aceitar `?eventId=` opcional para já vincular ao evento.
-- `src/routes/join.tsx` — fluxo de device token (ver §3).
-- `src/routes/present.$id.tsx` — após terminar a palestra, se `event_id` existir, oferecer botão "Próxima Apresentação" (pega próxima por `sort_order`) e "Ver Grande Pódio do Evento".
-- `src/lib/ranking.ts` — adicionar helper `aggregateEventRanking(scores[])`.
+### 5. Cálculo de Pontos
+No handler de resposta (provavelmente no celular ou trigger de score), multiplicar pontos base pelo `prize_multiplier` quando `is_prize_question = true`.
 
-## 3. Persistência do participante (`/join`)
+### Arquivos a tocar
+- migration nova
+- `src/routes/quiz.$id.edit.tsx`
+- `src/routes/present.$id.tsx`
+- rota do participante ao vivo (preciso localizar — provavelmente `src/routes/play.$id.tsx` ou similar dentro de `join`)
 
-- Ao montar `/join`, ler `localStorage.getItem('quiz_device_token')`. Se não existir, gerar `crypto.randomUUID()` e salvar.
-- Resolver o `event_id` da sessão (via `presentation_id → event_id`).
-- Buscar `participants` por `(event_id, device_token)`:
-  - Se existir → reaproveitar (pular formulário), criar/atualizar registro vinculado à `session_id` atual via upsert se necessário.
-  - Se não existir → mostrar formulário Nome + Data de Nascimento; ao submeter, inserir com `device_token` e `event_id`.
-- O `participant_id` da sessão atual é derivado: se já existe participante para `(event_id, device_token)` mas em sessão diferente, criar novo registro de `participants` para esta sessão copiando nome/birth_date e mantendo o mesmo `device_token` (assim o histórico de answers da sessão continua coeso).
+### Perguntas antes de continuar
+1. Existe coluna `difficulty` em `questions` hoje? (não aparece no schema fornecido — vou adicionar)
+2. Qual o valor base de pontos por pergunta hoje? Há lógica de pontuação por dificuldade já implementada ou todos valem igual? Vou assumir que o `prize_multiplier` apenas multiplica o score atual calculado.
 
-## 4. Pontuação acumulativa
-
-- Toda vez que `participants` for atualizado (score/correct_count/etc.) após uma resposta em `/join`, fazer também um upsert em `participant_scores` com chave `(presentation_id, participant_id)` copiando os totais.
-- `event_id` e `device_token` são preenchidos para permitir agregação por evento.
-- Pódio da palestra: usa `participants` da `session_id` (comportamento atual mantido).
-- Pódio do evento: `SELECT device_token, SUM(score), SUM(correct_count), SUM(total_response_ms), SUM(answer_count) FROM participant_scores WHERE event_id = ? GROUP BY device_token` + ordenação via `sortRanking`.
-
-## 5. Arquivos a tocar
-
-```
-supabase migration (1 nova)
-src/routes/dashboard.tsx           (editar)
-src/routes/event.new.tsx           (novo)
-src/routes/event.$id.tsx           (novo)
-src/routes/event.$id.podium.tsx    (novo)
-src/routes/quiz.new.tsx            (editar — aceitar eventId)
-src/routes/join.tsx                (editar — device token + skip form)
-src/routes/present.$id.tsx         (editar — upsert em participant_scores, botão próxima/pódio)
-src/lib/ranking.ts                 (editar — helper de agregação)
-```
-
-## Notas técnicas
-
-- RLS segue o padrão `open_all` já usado no projeto (mesmo modelo de `presentations`).
-- Não mexer em `auth.users`, nem nos arquivos auto-gerados da Supabase.
-- IDs e regras de pontuação por tempo permanecem como já implementados em `ranking.ts`.
-- Idioma: toda UI em PT-BR ("evento", "apresentação", "celular", "usuário", "arquivo", "tela").
-
-Após sua aprovação, começo pela migration (que precisa rodar isolada) e depois implemento todo o código em lote.
+Confirma para eu prosseguir com a migration + implementação?

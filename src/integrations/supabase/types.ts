@@ -193,6 +193,7 @@ export type Database = {
           ai_context: string | null
           chronological_index: number | null
           created_at: string
+          default_time_limit: number
           event_id: string | null
           execution_status: string
           file_url: string
@@ -206,6 +207,7 @@ export type Database = {
           ai_context?: string | null
           chronological_index?: number | null
           created_at?: string
+          default_time_limit?: number
           event_id?: string | null
           execution_status?: string
           file_url: string
@@ -219,6 +221,7 @@ export type Database = {
           ai_context?: string | null
           chronological_index?: number | null
           created_at?: string
+          default_time_limit?: number
           event_id?: string | null
           execution_status?: string
           file_url?: string
@@ -242,11 +245,14 @@ export type Database = {
         Row: {
           correct_option: string
           created_at: string
+          difficulty: string
           display_mode: string
           id: string
+          is_prize_question: boolean
           options: Json
           position: number
           presentation_id: string
+          prize_multiplier: number
           question_text: string
           question_type: string
           slide_number: number
@@ -255,11 +261,14 @@ export type Database = {
         Insert: {
           correct_option: string
           created_at?: string
+          difficulty?: string
           display_mode?: string
           id?: string
+          is_prize_question?: boolean
           options: Json
           position?: number
           presentation_id: string
+          prize_multiplier?: number
           question_text: string
           question_type?: string
           slide_number: number
@@ -268,11 +277,14 @@ export type Database = {
         Update: {
           correct_option?: string
           created_at?: string
+          difficulty?: string
           display_mode?: string
           id?: string
+          is_prize_question?: boolean
           options?: Json
           position?: number
           presentation_id?: string
+          prize_multiplier?: number
           question_text?: string
           question_type?: string
           slide_number?: number
