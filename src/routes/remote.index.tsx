@@ -4,6 +4,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Calendar, Loader2, LogOut, Smartphone, Tv } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
+import { haptic } from "@/hooks/use-haptic";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/remote/")({
@@ -65,6 +66,7 @@ function RemoteHub() {
       toast.error("Vincule esta apresentação a um evento para usar o projetor.");
       return;
     }
+    haptic(60);
     const t = toast.loading("Disparando no projetor...");
     try {
       // 1. Cria a sessão
@@ -140,9 +142,16 @@ function RemoteHub() {
       </header>
 
       <main className="space-y-6 p-4 pb-12">
-        <p className="text-sm text-[#9CA3AF]">
-          Escolha uma apresentação para lançar imediatamente na tela do projetor.
-        </p>
+        <section className="rounded-2xl border border-[#262D3D] bg-[#131722] p-4">
+          <h2 className="text-base font-bold text-white">Eventos Ativos do Dia</h2>
+          <p className="mt-1 text-xs text-[#9CA3AF]">
+            Toque em <span className="font-semibold text-[#F68B1F]">Iniciar Transmissão</span> para lançar a apresentação na tela do projetor e comandá-la pelo celular.
+          </p>
+        </section>
+
+        <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-3 text-[11px] text-[#9CA3AF]">
+          💡 Para enviar novos arquivos PDF e criar quizzes com IA, use o seu computador. O celular é otimizado para comandar a apresentação ao vivo.
+        </div>
 
         {(events ?? []).length === 0 && (
           <div className="rounded-2xl border border-dashed border-[#262D3D] bg-[#131722] p-8 text-center">
@@ -188,9 +197,9 @@ function RemoteHub() {
                       <button
                         type="button"
                         onClick={() => launchOnProjector(p)}
-                        className="mt-3 flex min-h-[60px] w-full items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-sm font-extrabold uppercase tracking-wide text-white shadow-xl shadow-[#A6193C]/40 transition active:scale-[0.98]"
+                        className="mt-3 flex min-h-[64px] w-full items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-sm font-extrabold uppercase tracking-wide text-white shadow-xl shadow-[#A6193C]/40 transition-all duration-100 active:scale-95 active:bg-[#C21D43]"
                       >
-                        <Tv className="h-5 w-5" /> Apresentar no Projetor
+                        <Tv className="h-5 w-5" /> Iniciar Transmissão
                       </button>
                     </div>
                   ))}
