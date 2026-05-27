@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,29 @@ function Dashboard() {
       return (data ?? []) as Array<{ id: string; title: string; created_at: string }>;
     },
   });
+
+  // Sessões ativas das apresentações deste palestrante (para o Controle Remoto)
+  const { data: activeSessions } = useQuery({
+    queryKey: ["active-sessions", userId, (data ?? []).map((p) => p.id).join(",")],
+    enabled: !!userId && !!data && data.length > 0,
+    refetchInterval: 5000,
+    queryFn: async () => {
+      const ids = (data ?? []).map((p) => p.id);
+      if (ids.length === 0) return [] as Array<{ id: string; presentation_id: string; status: string }>;
+      const { data: rows, error } = await supabase
+        .from("sessions")
+        .select("id, presentation_id, status, updated_at")
+        .in("presentation_id", ids)
+        .neq("status", "ended")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (rows ?? []) as Array<{ id: string; presentation_id: string; status: string }>;
+    },
+  });
+  const activeSession = activeSessions && activeSessions.length > 0 ? activeSessions[0] : null;
+  const activePresentationTitle = activeSession
+    ? (data ?? []).find((p) => p.id === activeSession.presentation_id)?.title
+    : null;
 
   async function startSession(presentationId: string) {
     const { data: session, error } = await supabase
@@ -256,6 +279,25 @@ function Dashboard() {
           </div>
         )}
       </main>
+
+      {activeSession && (
+        <Link
+          to="/remote/$id"
+          params={{ id: activeSession.id }}
+          title="Abrir Controle Remoto da apresentação ativa"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-5 py-3 text-sm font-bold text-white shadow-2xl shadow-[#A6193C]/40 transition hover:scale-[1.03] active:scale-[0.98]"
+        >
+          <Smartphone className="h-5 w-5" />
+          <span className="flex flex-col items-start leading-tight">
+            <span>📱 Controle Remoto Ativo</span>
+            {activePresentationTitle && (
+              <span className="text-[10px] font-normal opacity-90">
+                {activePresentationTitle}
+              </span>
+            )}
+          </span>
+        </Link>
+      )}
     </div>
   );
 }

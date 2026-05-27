@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RemoteIdRouteImport } from './routes/remote.$id'
 import { Route as QuizNewRouteImport } from './routes/quiz.new'
 import { Route as PresentIdRouteImport } from './routes/present.$id'
 import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
@@ -35,6 +36,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RemoteIdRoute = RemoteIdRouteImport.update({
+  id: '/remote/$id',
+  path: '/remote/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuizNewRoute = QuizNewRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
+  '/remote/$id': typeof RemoteIdRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/review': typeof PresentIdReviewRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
+  '/remote/$id': typeof RemoteIdRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/review': typeof PresentIdReviewRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/lobby/$id': typeof LobbyIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
   '/quiz/new': typeof QuizNewRoute
+  '/remote/$id': typeof RemoteIdRoute
   '/event/$id/classificacao-geral': typeof EventIdClassificacaoGeralRoute
   '/event/$id/podium': typeof EventIdPodiumRoute
   '/present/$id/review': typeof PresentIdReviewRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/present/$id'
     | '/quiz/new'
+    | '/remote/$id'
     | '/event/$id/classificacao-geral'
     | '/event/$id/podium'
     | '/present/$id/review'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/present/$id'
     | '/quiz/new'
+    | '/remote/$id'
     | '/event/$id/classificacao-geral'
     | '/event/$id/podium'
     | '/present/$id/review'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/present/$id'
     | '/quiz/new'
+    | '/remote/$id'
     | '/event/$id/classificacao-geral'
     | '/event/$id/podium'
     | '/present/$id/review'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   LobbyIdRoute: typeof LobbyIdRoute
   PresentIdRoute: typeof PresentIdRouteWithChildren
   QuizNewRoute: typeof QuizNewRoute
+  RemoteIdRoute: typeof RemoteIdRoute
   QuizIdEditRoute: typeof QuizIdEditRoute
 }
 
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/remote/$id': {
+      id: '/remote/$id'
+      path: '/remote/$id'
+      fullPath: '/remote/$id'
+      preLoaderRoute: typeof RemoteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/quiz/new': {
@@ -307,6 +327,7 @@ const rootRouteChildren: RootRouteChildren = {
   LobbyIdRoute: LobbyIdRoute,
   PresentIdRoute: PresentIdRouteWithChildren,
   QuizNewRoute: QuizNewRoute,
+  RemoteIdRoute: RemoteIdRoute,
   QuizIdEditRoute: QuizIdEditRoute,
 }
 export const routeTree = rootRouteImport

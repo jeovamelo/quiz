@@ -117,8 +117,20 @@ function Present() {
       .on("postgres_changes", { event: "*", schema: "public", table: "participants", filter: `session_id=eq.${id}` }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "answers", filter: `session_id=eq.${id}` }, load)
       .subscribe();
+    // Canal de broadcast do controle remoto do celular (alternar painel de classificação)
+    const remoteCh = supabase
+      .channel(`present-remote-${id}`)
+      .on("broadcast", { event: "toggle_ranking" }, ({ payload }) => {
+        if (payload && typeof payload.show === "boolean") {
+          setShowRanking(payload.show);
+        } else {
+          setShowRanking((v) => !v);
+        }
+      })
+      .subscribe();
     return () => {
       supabase.removeChannel(ch);
+      supabase.removeChannel(remoteCh);
     };
   }, [id]);
 
