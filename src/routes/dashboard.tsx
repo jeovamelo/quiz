@@ -4,7 +4,7 @@ import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, 
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { PairingStatusBadge } from "@/components/pairing-status-badge";
+import { usePresenceMonitor } from "@/hooks/use-presence-monitor";
 import { haptic } from "@/hooks/use-haptic";
 import { rememberDashboardOrigin } from "@/lib/dashboard-origin";
 import { Button } from "@/components/ui/button";
