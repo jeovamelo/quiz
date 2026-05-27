@@ -33,6 +33,41 @@ const ICE_SERVERS: RTCIceServer[] = [
   { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
 ];
 
+type NetworkAudit = "lan" | "wan" | "unknown";
+
+/**
+ * Inspeciona o par de candidatos ICE nomeado pela RTCPeerConnection.
+ * Se ambos os lados (local e remoto) forem do tipo `host`, a conexão
+ * está acontecendo na mesma sub-rede privada (LAN/mesmo Wi-Fi).
+ * Qualquer combinação envolvendo `srflx`/`prflx`/`relay` indica
+ * tráfego atravessando NAT/Internet (WAN / contingência em nuvem).
+ */
+async function inspectSelectedCandidatePair(pc: RTCPeerConnection): Promise<NetworkAudit> {
+  try {
+    const stats = await pc.getStats();
+    let selectedPairId: string | undefined;
+    const candidates = new Map<string, any>();
+    stats.forEach((report: any) => {
+      if (report.type === "candidate-pair" && (report.nominated || report.selected) && report.state === "succeeded") {
+        selectedPairId = report.id;
+      }
+      if (report.type === "local-candidate" || report.type === "remote-candidate") {
+        candidates.set(report.id, report);
+      }
+    });
+    if (!selectedPairId) return "unknown";
+    const pair: any = (stats as any).get?.(selectedPairId);
+    if (!pair) return "unknown";
+    const local = candidates.get(pair.localCandidateId);
+    const remote = candidates.get(pair.remoteCandidateId);
+    if (!local || !remote) return "unknown";
+    if (local.candidateType === "host" && remote.candidateType === "host") return "lan";
+    return "wan";
+  } catch {
+    return "unknown";
+  }
+}
+
 export function useWebRTCTunnel({ sessionId, slot, role, onMessage, enabled = true }: Options) {
   const [transport, setTransport] = useState<TunnelTransport>("connecting");
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -57,6 +92,13 @@ export function useWebRTCTunnel({ sessionId, slot, role, onMessage, enabled = tr
     let timeoutId: number | null = null;
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pcRef.current = pc;
+
+    // Auditoria de candidatos ICE: se virmos pelo menos um par host<->host
+    // confirmado pela pc.getStats(), classificamos a conexão como LAN
+    // (mesmo roteador). Caso contrário, mesmo com DataChannel aberto via
+    // srflx/relay, consideramos modo de contingência (nuvem/WAN).
+    let sawLocalHostCandidate = false;
+    let lanConfirmed = false;
 
     const signalingTopic = `webrtc-${sessionId}-${slot}`;
     const channel = supabase.channel(signalingTopic, {
@@ -103,13 +145,44 @@ export function useWebRTCTunnel({ sessionId, slot, role, onMessage, enabled = tr
     }
 
     pc.onicecandidate = (e) => {
-      if (e.candidate) sendSignal("ice", { candidate: e.candidate.toJSON() });
+      if (e.candidate) {
+        const cand = e.candidate.candidate || "";
+        if (cand.includes("typ host")) {
+          sawLocalHostCandidate = true;
+          console.log(`[auditoria-rede:${role}:slot${slot}] candidato local 'typ host' gerado.`);
+        }
+        sendSignal("ice", { candidate: e.candidate.toJSON() });
+      }
     };
     pc.onconnectionstatechange = () => {
       const s = pc.connectionState;
       if (s === "failed" || s === "disconnected" || s === "closed") {
         if (cancelledRef.current) return;
         setTransport((prev) => (prev === "p2p" ? "fallback" : prev));
+        return;
+      }
+      if (s === "connected") {
+        // Pequeno atraso para o par candidato nomeado aparecer nas stats.
+        window.setTimeout(() => {
+          if (cancelledRef.current) return;
+          inspectSelectedCandidatePair(pc).then((result: NetworkAudit) => {
+            if (cancelledRef.current) return;
+            if (result === "lan") {
+              lanConfirmed = true;
+              console.log(
+                `[auditoria-rede:${role}:slot${slot}] Conexão local direta (LAN) confirmada — par host<->host.`,
+              );
+              setTransport("p2p");
+            } else if (result === "wan") {
+              console.log(
+                `[auditoria-rede:${role}:slot${slot}] Conexão externa/reflexiva detectada — operando via WAN (nuvem).`,
+              );
+              setTransport("fallback");
+            } else if (!lanConfirmed && !sawLocalHostCandidate) {
+              setTransport("fallback");
+            }
+          });
+        }, 600);
       }
     };
 
