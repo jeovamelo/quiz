@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, createFileRoute, useChildMatches, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -43,8 +43,14 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/event/$id")({
   head: () => ({ meta: [{ title: "Evento — QuizPulse" }] }),
-  component: EventManage,
+  component: EventRouteComponent,
 });
+
+function EventRouteComponent() {
+  const childMatches = useChildMatches();
+  if (childMatches.length > 0) return <Outlet />;
+  return <EventManage />;
+}
 
 type Pres = {
   id: string;
