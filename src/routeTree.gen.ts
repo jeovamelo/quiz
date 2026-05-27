@@ -79,9 +79,9 @@ const EventIdPodiumRoute = EventIdPodiumRouteImport.update({
 } as any)
 const EventIdClassificacaoGeralRoute =
   EventIdClassificacaoGeralRouteImport.update({
-    id: '/classificacao-geral',
-    path: '/classificacao-geral',
-    getParentRoute: () => EventIdRoute,
+    id: '/event/$id/classificacao-geral',
+    path: '/event/$id/classificacao-geral',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -180,6 +180,7 @@ export interface RootRouteChildren {
   LobbyIdRoute: typeof LobbyIdRoute
   PresentIdRoute: typeof PresentIdRouteWithChildren
   QuizNewRoute: typeof QuizNewRoute
+  EventIdClassificacaoGeralRoute: typeof EventIdClassificacaoGeralRoute
   EventIdPodiumRoute: typeof EventIdPodiumRoute
   QuizIdEditRoute: typeof QuizIdEditRoute
   EventIdIndexRoute: typeof EventIdIndexRoute
@@ -266,10 +267,10 @@ declare module '@tanstack/react-router' {
     }
     '/event/$id/classificacao-geral': {
       id: '/event/$id/classificacao-geral'
-      path: '/classificacao-geral'
+      path: '/event/$id/classificacao-geral'
       fullPath: '/event/$id/classificacao-geral'
       preLoaderRoute: typeof EventIdClassificacaoGeralRouteImport
-      parentRoute: typeof EventIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -294,6 +295,7 @@ const rootRouteChildren: RootRouteChildren = {
   LobbyIdRoute: LobbyIdRoute,
   PresentIdRoute: PresentIdRouteWithChildren,
   QuizNewRoute: QuizNewRoute,
+  EventIdClassificacaoGeralRoute: EventIdClassificacaoGeralRoute,
   EventIdPodiumRoute: EventIdPodiumRoute,
   QuizIdEditRoute: QuizIdEditRoute,
   EventIdIndexRoute: EventIdIndexRoute,
