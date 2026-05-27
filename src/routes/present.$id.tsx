@@ -287,7 +287,6 @@ function Present() {
     })();
     return () => {
       supabase.removeChannel(ch);
-      supabase.removeChannel(remoteCh);
       if (lobbyCh) supabase.removeChannel(lobbyCh);
     };
   }, [id]);
@@ -754,15 +753,17 @@ function Present() {
               <ArrowLeft className="h-6 w-6" />
             </button>
           )}
-          {/* Botão flutuante de Classificação */}
+          {/* Botão flutuante de Classificação — espelha session.show_ranking */}
           <button
             type="button"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
-              setShowRanking((v) => !v);
+              await (supabase.from("sessions") as any)
+                .update({ show_ranking: !session?.show_ranking })
+                .eq("id", id);
             }}
-            title={showRanking ? "Ocultar Classificação" : "Mostrar Classificação"}
-            aria-label={showRanking ? "Ocultar Classificação" : "Mostrar Classificação"}
+            title={session?.show_ranking ? "Ocultar Classificação" : "Mostrar Classificação"}
+            aria-label={session?.show_ranking ? "Ocultar Classificação" : "Mostrar Classificação"}
             className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-[#262D3D] bg-[#161A23]/90 text-[#FFCB05] shadow-lg backdrop-blur transition hover:scale-105 hover:bg-[#161A23]"
           >
             <Trophy className="h-6 w-6" />
@@ -776,9 +777,9 @@ function Present() {
         {/* Painel retrátil — Classificação em tempo real */}
         <div
           className={`overflow-hidden border-l border-[#262D3D] bg-[#161A23] transition-all duration-300 ease-in-out ${
-            showRanking ? "w-80" : "w-0"
+            session?.show_ranking ? "w-80" : "w-0"
           }`}
-          aria-hidden={!showRanking}
+          aria-hidden={!session?.show_ranking}
         >
           <div className="flex h-full w-80 flex-col">
             <div className="border-b border-[#262D3D] px-4 py-3">
