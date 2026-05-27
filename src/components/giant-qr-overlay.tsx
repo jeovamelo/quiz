@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { X, Smartphone, Users } from "lucide-react";
+import { Smartphone, Users } from "lucide-react";
+import { DraggableFrame } from "@/components/draggable-frame";
 
 type Variant = "remote" | "participant";
 
@@ -23,17 +23,6 @@ type Props = {
  *  - "remote":      para parear o controle do apresentador (Roxo BNB).
  */
 export function GiantQrOverlay({ open, joinUrl, onClose, variant = "participant" }: Props) {
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   const isRemote = variant === "remote";
   const accent = isRemote ? "#BA2172" : "#07A684"; // Roxo BNB | Verde BNB
   const headerLabel = isRemote
@@ -52,34 +41,16 @@ export function GiantQrOverlay({ open, joinUrl, onClose, variant = "participant"
   const CenterIcon = isRemote ? Smartphone : Users;
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md"
-      role="dialog"
-      aria-modal="true"
-      aria-label={isRemote ? "QR Code para parear o controle remoto" : "QR Code para entrar na sala"}
+    <DraggableFrame
+      open={open}
+      onClose={onClose}
+      storageKey={`qr-overlay-pos:${variant}`}
+      ariaLabel={isRemote ? "QR Code para parear o controle remoto" : "QR Code para entrar na sala"}
+      headerBg={accent}
+      borderColor={`${accent}99`}
+      header={<span>{headerLabel}</span>}
     >
-      <div
-        className="relative w-[min(92vw,540px)] overflow-hidden rounded-3xl border bg-[#161A23] text-center shadow-2xl shadow-black/60"
-        style={{ borderColor: `${accent}66` }}
-      >
-        {/* Faixa superior colorida — diferenciação imediata do público. */}
-        <div
-          className="flex items-center justify-center px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-white"
-          style={{ backgroundColor: accent }}
-        >
-          {headerLabel}
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-          aria-label="Fechar QR Code"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="px-8 pb-8 pt-6">
+      <div className="px-8 pb-8 pt-6 text-center">
           <p
             className="text-[10px] font-bold uppercase tracking-[0.3em]"
             style={{ color: accent }}
@@ -122,8 +93,7 @@ export function GiantQrOverlay({ open, joinUrl, onClose, variant = "participant"
           <code className="mx-auto mt-3 block max-w-full truncate rounded-lg bg-[#0E1015] px-3 py-2 text-[11px] font-mono text-[#9CA3AF]">
             {joinUrl}
           </code>
-        </div>
       </div>
-    </div>
+    </DraggableFrame>
   );
 }
