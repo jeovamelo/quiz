@@ -148,12 +148,6 @@ function RemoteControl() {
   const baseGammaRef = useRef<number | null>(null);
   const SENSITIVIDADE = 2.5;
 
-  const recalibrarMira = useCallback(() => {
-    baseBetaRef.current = null;
-    baseGammaRef.current = null;
-    console.log("[laser] Mira recentralizada — capturando nova referência.");
-  }, []);
-
   useEffect(() => {
     if (!laserOn) {
       // Avisa o projetor para apagar o ponto, se a ponte estiver conectada.
