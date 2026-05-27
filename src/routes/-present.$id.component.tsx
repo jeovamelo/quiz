@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
-import { Loader2, Maximize, Tv } from "lucide-react";
+import { Loader2, Maximize, Tv, Smartphone, QrCode } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
