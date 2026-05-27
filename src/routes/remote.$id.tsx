@@ -671,28 +671,26 @@ function RemoteControl() {
             </span>
           </button>
 
-          {/* PAR SIMÉTRICO — VOLTAR + AVANÇAR (ergonomia para uma mão) */}
-          <div className="flex w-full items-stretch gap-2.5">
-            <button
-              type="button"
-              onClick={prevSlide}
-              disabled={busy || currentSlide <= 1}
-              aria-label="Voltar"
-              style={{ flexBasis: "35%" }}
-              className="flex h-[78px] grow items-center justify-center gap-2 rounded-2xl border border-[#262D3D] bg-[#161A23] text-base font-bold text-gray-300 shadow-md transition-all duration-100 active:scale-[0.97] active:bg-[#1E2235] disabled:opacity-40"
-            >
-              <ChevronLeft className="h-6 w-6" strokeWidth={2.5} /> Voltar
-            </button>
+          {/* PILHA VERTICAL — AVANÇAR (topo) + VOLTAR (base) */}
+          <div className="flex w-full flex-col gap-2.5">
             <button
               type="button"
               onClick={nextSlide}
               disabled={busy}
               aria-label="Avançar"
-              style={{ flexBasis: "65%" }}
-              className="relative flex h-[78px] grow items-center justify-center gap-2 overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-lg font-black uppercase tracking-wide text-white shadow-lg shadow-orange-500/20 transition-all duration-100 active:scale-[0.97] active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
+              className="relative flex h-[72px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-lg font-black uppercase tracking-wide text-white shadow-lg shadow-orange-500/20 transition-all duration-100 active:scale-[0.98] active:from-[#8E1432] active:to-[#D87412] disabled:opacity-60"
             >
               AVANÇAR
               <ChevronRight className="h-7 w-7" strokeWidth={3} />
+            </button>
+            <button
+              type="button"
+              onClick={prevSlide}
+              disabled={busy || currentSlide <= 1}
+              aria-label="Voltar"
+              className="flex h-[64px] w-full items-center justify-center gap-2 rounded-2xl border border-[#262D3D] bg-[#1E2235] text-base font-bold uppercase tracking-wide text-gray-200 shadow-md transition-all duration-100 active:scale-[0.98] active:bg-[#161A23] disabled:opacity-40"
+            >
+              <ChevronLeft className="h-6 w-6" strokeWidth={2.5} /> VOLTAR
             </button>
           </div>
         </div>
