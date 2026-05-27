@@ -785,8 +785,9 @@ export function Present() {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <NetworkFallbackBanner transport={aggregateTransport} />
-      <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setGiantQrOpen(false)} />
-      <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setRankingOpen(false)} />
+      <GiantQrOverlay open={giantQrOpen} joinUrl={joinUrl} onClose={() => setOverlayFlag("show_join_qr", false)} />
+      <GiantQrOverlay open={pairQrOpen} joinUrl={pairUrl} onClose={() => setOverlayFlag("show_pair_qr", false)} />
+      <RankingOverlay open={rankingOpen} sessionId={id} onClose={() => setOverlayFlag("show_ranking", false)} />
       {/* === APONTADOR LASER VIRTUAL (sobreposição total) === */}
       {laserCoords && (
         <div
