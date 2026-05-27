@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { AlertTriangle, ChevronLeft, Loader2, Trash2, X, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ function EditQuizPage() {
   const { id } = Route.useParams();
   const { redirect_to_event } = Route.useSearch();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
@@ -244,6 +246,106 @@ function EditQuizPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0E1015] text-muted-foreground">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando quiz...
+      </div>
+    );
+  }
+
+  // ============= Versão simplificada para celular =============
+  if (isMobile) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-[#0E1015] text-foreground">
+        <header className="sticky top-0 z-10 border-b border-[#262D3D] bg-[#131722] px-3 py-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="ghost" size="sm" onClick={backToOrigin} className="px-2">
+              <ChevronLeft className="mr-1 h-4 w-4" /> Voltar
+            </Button>
+            <h1 className="truncate text-sm font-bold text-white">Edição rápida</h1>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              size="sm"
+              className="bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-white"
+            >
+              {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} Salvar
+            </Button>
+          </div>
+        </header>
+
+        <main className="flex-1 space-y-4 p-4">
+          <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-4">
+            <Label className="text-xs">Título da Palestra</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1 min-h-[48px] bg-[#0E1015]"
+            />
+          </div>
+
+          <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-4">
+            <Label className="text-xs">Tempo Geral de Resposta</Label>
+            <select
+              value={defaultTimeLimit}
+              onChange={(e) => setDefaultTimeLimit(Number(e.target.value))}
+              className="mt-1 min-h-[48px] w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 text-sm text-white"
+            >
+              <option value={15}>15 segundos</option>
+              <option value={30}>30 segundos</option>
+              <option value={45}>45 segundos</option>
+              <option value={60}>60 segundos</option>
+              <option value={90}>90 segundos</option>
+            </select>
+          </div>
+
+          <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-[#FFCB05]" />
+              <h2 className="text-sm font-bold text-white">Pergunta Prêmio</h2>
+            </div>
+            <p className="mb-3 text-[11px] text-muted-foreground">
+              Escolha quais perguntas valem multiplicador.
+            </p>
+            {questions.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhuma pergunta cadastrada.</p>
+            ) : (
+              <div className="space-y-2">
+                {questions.map((q, i) => (
+                  <div
+                    key={q.id}
+                    className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${
+                      q.is_prize_question
+                        ? "border-[#FFCB05] bg-[#FFCB05]/5"
+                        : "border-[#262D3D] bg-[#0E1015]"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
+                        Pergunta {i + 1} · Slide {q.slide_number}
+                      </p>
+                      <p className="line-clamp-2 text-xs text-white">{q.question_text}</p>
+                    </div>
+                    <Switch
+                      checked={q.is_prize_question}
+                      onCheckedChange={(v) =>
+                        updateQ(i, {
+                          is_prize_question: v,
+                          difficulty: v
+                            ? "extreme"
+                            : q.difficulty === "extreme"
+                            ? "hard"
+                            : q.difficulty,
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-[#262D3D] bg-[#131722] p-4 text-center text-[11px] text-[#9CA3AF]">
+            💡 Para reordenar perguntas, editar alternativas e ajustar a estrutura completa do quiz, abra no computador.
+          </div>
+        </main>
       </div>
     );
   }
