@@ -1020,6 +1020,7 @@ function Present() {
             </AlertDialogContent>
           </AlertDialog>
         </aside>
+        )}
       </div>
     </div>
   );
