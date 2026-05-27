@@ -458,6 +458,14 @@ function RemoteControl() {
     }
   }
 
+  async function toggleSessionFlag(field: "show_join_qr" | "show_ranking" | "show_sidebar") {
+    const next = !session?.[field];
+    const { error } = await (supabase.from("sessions") as any)
+      .update({ [field]: next })
+      .eq("id", id);
+    if (error) toast.error("Falha ao atualizar a projeção.");
+  }
+
   async function exitToHub() {
     await withBusy(async () => {
       try {
