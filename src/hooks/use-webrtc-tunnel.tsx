@@ -58,6 +58,13 @@ export function useWebRTCTunnel({ sessionId, slot, role, onMessage, enabled = tr
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pcRef.current = pc;
 
+    // Auditoria de candidatos ICE: se virmos pelo menos um par host<->host
+    // confirmado pela pc.getStats(), classificamos a conexão como LAN
+    // (mesmo roteador). Caso contrário, mesmo com DataChannel aberto via
+    // srflx/relay, consideramos modo de contingência (nuvem/WAN).
+    let sawLocalHostCandidate = false;
+    let lanConfirmed = false;
+
     const signalingTopic = `webrtc-${sessionId}-${slot}`;
     const channel = supabase.channel(signalingTopic, {
       config: { broadcast: { self: false, ack: false } },
@@ -103,13 +110,44 @@ export function useWebRTCTunnel({ sessionId, slot, role, onMessage, enabled = tr
     }
 
     pc.onicecandidate = (e) => {
-      if (e.candidate) sendSignal("ice", { candidate: e.candidate.toJSON() });
+      if (e.candidate) {
+        const cand = e.candidate.candidate || "";
+        if (cand.includes("typ host")) {
+          sawLocalHostCandidate = true;
+          console.log(`[auditoria-rede:${role}:slot${slot}] candidato local 'typ host' gerado.`);
+        }
+        sendSignal("ice", { candidate: e.candidate.toJSON() });
+      }
     };
     pc.onconnectionstatechange = () => {
       const s = pc.connectionState;
       if (s === "failed" || s === "disconnected" || s === "closed") {
         if (cancelledRef.current) return;
         setTransport((prev) => (prev === "p2p" ? "fallback" : prev));
+        return;
+      }
+      if (s === "connected") {
+        // Pequeno atraso para o par candidato nomeado aparecer nas stats.
+        window.setTimeout(() => {
+          if (cancelledRef.current) return;
+          inspectSelectedCandidatePair(pc).then((result) => {
+            if (cancelledRef.current) return;
+            if (result === "lan") {
+              lanConfirmed = true;
+              console.log(
+                `[auditoria-rede:${role}:slot${slot}] Conexão local direta (LAN) confirmada — par host<->host.`,
+              );
+              setTransport("p2p");
+            } else if (result === "wan") {
+              console.log(
+                `[auditoria-rede:${role}:slot${slot}] Conexão externa/reflexiva detectada — operando via WAN (nuvem).`,
+              );
+              setTransport("fallback");
+            } else if (!lanConfirmed && !sawLocalHostCandidate) {
+              setTransport("fallback");
+            }
+          });
+        }, 600);
       }
     };
 
