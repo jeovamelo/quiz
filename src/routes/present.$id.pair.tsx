@@ -29,6 +29,16 @@ function PairScreen() {
     }
   }, [id]);
 
+  // CORREÇÃO DE BUG: garante que nenhum overlay de classificação/ranking
+  // permaneça aberto ao abrir a tela de pareamento. Sessões reabertas
+  // podiam carregar com `show_ranking = true` e bloquear o QR Code.
+  useEffect(() => {
+    (supabase.from("sessions") as any)
+      .update({ show_ranking: false, show_join_qr: false, show_pair_qr: true })
+      .eq("id", id)
+      .then(() => {});
+  }, [id]);
+
   useEffect(() => {
     let cancelled = false;
     async function fetchOne() {
