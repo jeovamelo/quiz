@@ -443,6 +443,11 @@ function RemoteControl() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#0E1015] text-white">
+      {bridge.status !== "connected" && (
+        <div className="shrink-0 bg-[#F68B1F] px-3 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-black animate-pulse">
+          Reconectando ao projetor...
+        </div>
+      )}
       {/* Cabeçalho de status */}
       <header className="sticky top-0 z-10 shrink-0 border-b border-[#262D3D] bg-[#131722]/95 px-3 py-2 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
@@ -491,19 +496,35 @@ function RemoteControl() {
 
           <div
             className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold ${
-              synced
+              bridge.status === "connected" && bridge.partnerOnline
                 ? "border-[#07A684]/40 bg-[#07A684]/10 text-[#07A684]"
+                : bridge.status === "connected"
+                ? "border-[#FFCB05]/40 bg-[#FFCB05]/10 text-[#FFCB05]"
                 : "border-[#A6193C]/40 bg-[#A6193C]/10 text-[#F68B1F]"
             }`}
             aria-live="polite"
-            aria-label={synced ? "Sincronizado" : "Conectando"}
+            aria-label={
+              bridge.partnerOnline
+                ? "Conectado ao projetor"
+                : bridge.status === "connected"
+                ? "Aguardando projetor"
+                : "Sem sinal do projetor"
+            }
           >
             <span
               className={`inline-block h-2 w-2 rounded-full ${
-                synced ? "bg-[#07A684] animate-pulse" : "bg-[#F68B1F]"
+                bridge.partnerOnline
+                  ? "bg-[#07A684] animate-pulse"
+                  : bridge.status === "connected"
+                  ? "bg-[#FFCB05]"
+                  : "bg-[#A6193C]"
               }`}
             />
-            {synced ? "Ao vivo" : "..."}
+            {bridge.partnerOnline
+              ? "Conectado"
+              : bridge.status === "connected"
+              ? "Aguardando"
+              : "Sem sinal"}
           </div>
         </div>
         <div className="mt-1.5 flex items-center justify-between text-[11px] text-[#9CA3AF]">
