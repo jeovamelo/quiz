@@ -64,20 +64,35 @@ function PairScreen() {
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-[640px] w-[640px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-[#A6193C]/15 via-[#F68B1F]/10 to-transparent blur-3xl" />
 
       <div className="relative z-10 w-full max-w-3xl text-center">
-        <p className="text-[11px] font-bold uppercase tracking-[0.45em] text-[#F68B1F]">
-          Etapa 1 de 3
+        <p className="text-[11px] font-bold uppercase tracking-[0.45em] text-[#BA2172]">
+          Etapa 1 de 3 · Exclusivo do apresentador
         </p>
         <h1 className="mt-2 text-5xl font-black tracking-tight md:text-6xl">
-          Conectar Controle Remoto
+          📱 Ativar Controle do Palco
         </h1>
         <p className="mt-3 text-base text-[#9CA3AF] md:text-lg">
-          Escaneie o QR Code com seu celular para transformá-lo no controle
-          remoto desta apresentação.
+          Apenas para o apresentador ou assistentes. Escaneie para passar os
+          slides e liberar perguntas direto do seu celular.
         </p>
 
         <div className="mt-10 grid items-center gap-8 md:grid-cols-[auto,1fr]">
-          <div className="mx-auto inline-block rounded-3xl bg-white p-5 shadow-2xl shadow-[#A6193C]/30">
-            {pairUrl && <QRCodeSVG value={pairUrl} size={260} level="M" />}
+          <div className="relative mx-auto inline-block">
+            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#BA2172] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-lg">
+              📱 EXCLUSIVO DO APRESENTADOR
+            </div>
+            <div
+              className="rounded-3xl bg-white p-5 shadow-2xl shadow-[#BA2172]/40"
+              style={{ boxShadow: "0 0 0 4px #BA2172, 0 25px 50px -12px rgba(186,33,114,0.45)" }}
+            >
+              {pairUrl && (
+                <div className="relative">
+                  <QRCodeSVG value={pairUrl} size={260} level="H" />
+                  <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#BA2172] text-white shadow-xl">
+                    <Smartphone className="h-6 w-6" />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col items-stretch gap-4 text-left">
@@ -116,12 +131,15 @@ function PairScreen() {
             <code className="block truncate rounded-lg bg-[#131722] px-3 py-2 text-xs font-mono text-[#9CA3AF]">
               {pairUrl}
             </code>
+            <p className="text-xs font-semibold text-[#9CA3AF]">
+              Não requer login. Digite seu nome no celular para começar.
+            </p>
 
             <button
               type="button"
               disabled={!connected}
               onClick={() => navigate({ to: "/lobby/$id", params: { id } })}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-6 py-4 text-base font-extrabold uppercase tracking-wide text-white shadow-2xl shadow-[#A6193C]/40 transition-all duration-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#BA2172] to-[#F68B1F] px-6 py-4 text-base font-extrabold uppercase tracking-wide text-white shadow-2xl shadow-[#BA2172]/40 transition-all duration-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             >
               Avançar para o Lobby <ArrowRight className="h-5 w-5" />
             </button>
