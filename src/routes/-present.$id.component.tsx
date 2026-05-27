@@ -52,6 +52,15 @@ export function Present() {
   const confettiFiredRef = useRef(false);
   const [projectorActivated, setProjectorActivated] = useState(false);
   const fullscreenAppliedRef = useRef<boolean | null>(null);
+  // Máquina de estados de abertura do projetor:
+  //   esperando_controle   → mostra apenas o QR do Controle Remoto
+  //   esperando_participantes → mostra apenas o QR da plateia (Lobby)
+  //   apresentando_slides  → status === 'live'; nenhum overlay de lobby
+  // `pairFlowDone` marca que o palestrante já pareou OU fechou o QR
+  // do controle manualmente (X/Esc), liberando a transição para o
+  // QR de participantes.
+  const [pairFlowDone, setPairFlowDone] = useState(false);
+  const [remotesCount, setRemotesCount] = useState(0);
   // Frames flutuantes — agora sincronizados pelas colunas booleanas da
   // sessão (show_join_qr, show_ranking, show_pair_qr). Isso garante
   // sincronia bidirecional automática entre celular, projetor e Console
