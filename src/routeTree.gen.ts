@@ -18,6 +18,7 @@ import { Route as RemoteIndexRouteImport } from './routes/remote.index'
 import { Route as RemoteIdRouteImport } from './routes/remote.$id'
 import { Route as RemoteSetupIdRouteImport } from './routes/remote-setup.$id'
 import { Route as QuizNewRouteImport } from './routes/quiz.new'
+import { Route as QrAuthTokenRouteImport } from './routes/qr-auth.$token'
 import { Route as PresentIdRouteImport } from './routes/present.$id'
 import { Route as OperatorIdRouteImport } from './routes/operator.$id'
 import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
@@ -73,6 +74,11 @@ const RemoteSetupIdRoute = RemoteSetupIdRouteImport.update({
 const QuizNewRoute = QuizNewRouteImport.update({
   id: '/quiz/new',
   path: '/quiz/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrAuthTokenRoute = QrAuthTokenRouteImport.update({
+  id: '/qr-auth/$token',
+  path: '/qr-auth/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PresentIdRoute = PresentIdRouteImport.update({
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/lobby/$id': typeof LobbyIdRoute
   '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
+  '/qr-auth/$token': typeof QrAuthTokenRoute
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/lobby/$id': typeof LobbyIdRoute
   '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
+  '/qr-auth/$token': typeof QrAuthTokenRoute
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/lobby/$id': typeof LobbyIdRoute
   '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
+  '/qr-auth/$token': typeof QrAuthTokenRoute
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/operator/$id'
     | '/present/$id'
+    | '/qr-auth/$token'
     | '/quiz/new'
     | '/remote-setup/$id'
     | '/remote/$id'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/operator/$id'
     | '/present/$id'
+    | '/qr-auth/$token'
     | '/quiz/new'
     | '/remote-setup/$id'
     | '/remote/$id'
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/lobby/$id'
     | '/operator/$id'
     | '/present/$id'
+    | '/qr-auth/$token'
     | '/quiz/new'
     | '/remote-setup/$id'
     | '/remote/$id'
@@ -279,6 +291,7 @@ export interface RootRouteChildren {
   LobbyIdRoute: typeof LobbyIdRoute
   OperatorIdRoute: typeof OperatorIdRoute
   PresentIdRoute: typeof PresentIdRouteWithChildren
+  QrAuthTokenRoute: typeof QrAuthTokenRoute
   QuizNewRoute: typeof QuizNewRoute
   RemoteSetupIdRoute: typeof RemoteSetupIdRoute
   RemoteIdRoute: typeof RemoteIdRouteWithChildren
@@ -349,6 +362,13 @@ declare module '@tanstack/react-router' {
       path: '/quiz/new'
       fullPath: '/quiz/new'
       preLoaderRoute: typeof QuizNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr-auth/$token': {
+      id: '/qr-auth/$token'
+      path: '/qr-auth/$token'
+      fullPath: '/qr-auth/$token'
+      preLoaderRoute: typeof QrAuthTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/present/$id': {
@@ -481,6 +501,7 @@ const rootRouteChildren: RootRouteChildren = {
   LobbyIdRoute: LobbyIdRoute,
   OperatorIdRoute: OperatorIdRoute,
   PresentIdRoute: PresentIdRouteWithChildren,
+  QrAuthTokenRoute: QrAuthTokenRoute,
   QuizNewRoute: QuizNewRoute,
   RemoteSetupIdRoute: RemoteSetupIdRoute,
   RemoteIdRoute: RemoteIdRouteWithChildren,
@@ -490,3 +511,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
