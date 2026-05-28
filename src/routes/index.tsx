@@ -137,7 +137,7 @@ function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(246,139,31,0.15),_transparent_60%)]" />
         <div className="relative max-w-6xl mx-auto px-6 py-24 md:py-32 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#161A23] border border-[#262D3D] text-xs font-semibold text-[#FFCB05] mb-8">
-            <Sparkles className="w-3.5 h-3.5" /> Powered by IA — Banco do Nordeste
+            <Sparkles className="w-3.5 h-3.5" /> Powered by IA
           </div>
           <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight max-w-4xl mx-auto">
             Transforme suas palestras em{" "}
@@ -255,7 +255,7 @@ function Landing() {
       </section>
 
       <footer className="border-t border-[#262D3D] py-8 text-center text-xs text-[#6B7280]">
-        © {new Date().getFullYear()} QuizBini • Banco do Nordeste
+        © {new Date().getFullYear()} QuizBini
       </footer>
 
       <style>{`
