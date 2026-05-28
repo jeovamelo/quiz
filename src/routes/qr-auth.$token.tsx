@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Loader2, ShieldCheck, Monitor, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuthSession } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { authorizeQrLogin } from "@/lib/qr-login.functions";
 
 export const Route = createFileRoute("/qr-auth/$token")({
   head: () => ({ meta: [{ title: "Autorizar Login — QuizBini" }] }),
@@ -15,6 +17,7 @@ function QRAuth() {
   const { token } = Route.useParams();
   const { session, user, loading } = useAuthSession();
   const navigate = useNavigate();
+  const authorize = useServerFn(authorizeQrLogin);
 
   const [sessionState, setSessionState] = useState<"checking" | "valid" | "expired" | "consumed" | "notfound">("checking");
   const [authorizing, setAuthorizing] = useState(false);
@@ -60,31 +63,15 @@ function QRAuth() {
     if (!session || !user) return;
     setAuthorizing(true);
     try {
-      const { error } = await supabase
-        .from("qr_login_sessions")
-        .update({
-          status: "authorized",
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-          authorized_user_id: user.id,
-          user_email: user.email ?? null,
-          user_name:
-            (user.user_metadata?.full_name as string | undefined) ??
-            (user.user_metadata?.name as string | undefined) ??
-            user.email ??
-            null,
-          authorized_at: new Date().toISOString(),
-        })
-        .eq("id", token);
-
-      if (error) {
-        console.error("[qr-auth] authorize error", error);
-        toast.error("Não foi possível autorizar. O QR Code pode ter expirado.");
-        setSessionState("expired");
-        return;
-      }
+      await authorize({ data: { qrSessionId: token } });
       setDone(true);
       toast.success("Login autorizado no computador!");
+    } catch (err) {
+      console.error("[qr-auth] authorize error", err);
+      const msg = err instanceof Error ? err.message : "Não foi possível autorizar.";
+      toast.error(msg);
+      if (msg.toLowerCase().includes("expir")) setSessionState("expired");
+      else if (msg.toLowerCase().includes("utiliz")) setSessionState("consumed");
     } finally {
       setAuthorizing(false);
     }
