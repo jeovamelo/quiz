@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2, Shield, Zap, Clock, ArrowLeft } from "lucide-react";
+import { Upload, FileCheck2, Loader2, Sparkles, ChevronLeft, ChevronRight, Trash2, Shield, Zap, Clock, ArrowLeft, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/quiz/new")({
@@ -82,6 +83,7 @@ function NewQuiz() {
   const [aiContext, setAiContext] = useState("");
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [displayMode, setDisplayMode] = useState<"simultaneous" | "after_slide">("simultaneous");
+  const [allowDownload, setAllowDownload] = useState<boolean>(false);
   const [generating, setGenerating] = useState(false);
 
   // step 3
@@ -202,6 +204,7 @@ function NewQuiz() {
         title,
         file_url: fileUrl,
         ai_context: aiContext || null,
+        allow_download: allowDownload,
       };
       if (eventId) {
         insertPayload.event_id = eventId;
@@ -507,6 +510,23 @@ function NewQuiz() {
               <p className="text-sm text-muted-foreground">
                 Edite cada pergunta, marque a alternativa correta, vincule ao slide e escolha o modo de exibição.
               </p>
+            </div>
+
+            {/* Permissão de download do material original */}
+            <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-5">
+              <div className="flex items-start gap-3">
+                <Download className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">
+                    Permitir download do material após a apresentação
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Quando ativo, os usuários verão um botão para baixar o arquivo
+                    PDF original na tela de Currículo deles, após concluírem a palestra.
+                  </p>
+                </div>
+              </div>
+              <Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
             </div>
 
             {questions.map((q, i) => (

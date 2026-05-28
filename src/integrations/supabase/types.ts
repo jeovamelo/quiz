@@ -257,6 +257,7 @@ export type Database = {
       presentations: {
         Row: {
           ai_context: string | null
+          allow_download: boolean
           chronological_index: number | null
           created_at: string
           default_time_limit: number
@@ -271,6 +272,7 @@ export type Database = {
         }
         Insert: {
           ai_context?: string | null
+          allow_download?: boolean
           chronological_index?: number | null
           created_at?: string
           default_time_limit?: number
@@ -285,6 +287,7 @@ export type Database = {
         }
         Update: {
           ai_context?: string | null
+          allow_download?: boolean
           chronological_index?: number | null
           created_at?: string
           default_time_limit?: number

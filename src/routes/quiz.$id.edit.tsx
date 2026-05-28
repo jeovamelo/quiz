@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { AlertTriangle, ChevronLeft, Loader2, Trash2, X, Zap } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Download, Loader2, Trash2, X, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ function EditQuizPage() {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [defaultTimeLimit, setDefaultTimeLimit] = useState<number>(30);
+  const [allowDownload, setAllowDownload] = useState<boolean>(false);
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
 
   useEffect(() => {
@@ -51,12 +52,13 @@ function EditQuizPage() {
       setLoading(true);
       const { data: pres } = await supabase
         .from("presentations")
-        .select("title, default_time_limit")
+        .select("title, default_time_limit, allow_download")
         .eq("id", id)
         .maybeSingle();
       if (pres) {
         setTitle(pres.title);
         setDefaultTimeLimit((pres as any).default_time_limit ?? 30);
+        setAllowDownload(!!(pres as any).allow_download);
       }
       const { data: qs } = await supabase
         .from("questions")
@@ -196,7 +198,11 @@ function EditQuizPage() {
       // Atualiza nome da apresentação e tempo geral
       const { error: presErr } = await supabase
         .from("presentations")
-        .update({ title: title.trim() || "Sem título", default_time_limit: defaultTimeLimit })
+        .update({
+          title: title.trim() || "Sem título",
+          default_time_limit: defaultTimeLimit,
+          allow_download: allowDownload,
+        } as any)
         .eq("id", id);
       if (presErr) throw presErr;
       for (const q of questions) {
@@ -310,6 +316,18 @@ function EditQuizPage() {
             </select>
           </div>
 
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-[#262D3D] bg-[#161A23] p-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white">
+                Permitir download do material
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                Libera o PDF original aos usuários no Currículo após a palestra.
+              </p>
+            </div>
+            <Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
+          </div>
+
           <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-4">
             <div className="mb-3 flex items-center gap-2">
               <Zap className="h-4 w-4 text-[#FFCB05]" />
@@ -418,6 +436,23 @@ function EditQuizPage() {
               Usado quando a pergunta não define um tempo próprio.
             </p>
           </div>
+        </div>
+
+        {/* Permissão de download do material */}
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-[#262D3D] bg-[#161A23] p-5">
+          <div className="flex items-start gap-3">
+            <Download className="mt-0.5 h-5 w-5 text-[#F68B1F]" />
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Permitir download do material após a apresentação
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Quando ativo, os usuários poderão baixar o arquivo PDF original na
+                tela de Currículo deles, após concluírem a palestra.
+              </p>
+            </div>
+          </div>
+          <Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
         </div>
 
         {questions.length === 0 && (
