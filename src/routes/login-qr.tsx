@@ -115,6 +115,7 @@ function LoginQR() {
     return () => {
       void supabase.removeChannel(channel);
     };
+    // token is non-null in this branch
   }, [token, navigate]);
 
   const mins = Math.floor(secondsLeft / 60);
