@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { OnboardingModal } from "@/components/onboarding-modal";
 
 /**
  * Abre a apresentação ao vivo em uma janela popup independente — sem barra
@@ -343,6 +344,7 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      {user && <OnboardingModal user={user} />}
       <header className="border-b border-border bg-card/50">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div>
