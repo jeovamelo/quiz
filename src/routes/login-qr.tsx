@@ -67,6 +67,7 @@ function LoginQR() {
   // Realtime subscription + initial poll fallback
   useEffect(() => {
     if (!token) return;
+    const sessionId = token;
 
     async function handleRow(row: any) {
       if (!row) return;
@@ -87,7 +88,7 @@ function LoginQR() {
         await supabase
           .from("qr_login_sessions")
           .update({ access_token: null, refresh_token: null, status: "consumed" })
-          .eq("id", token);
+          .eq("id", sessionId);
         toast.success("Login confirmado!");
         setTimeout(() => navigate({ to: "/dashboard", replace: true }), 800);
       }
@@ -97,7 +98,7 @@ function LoginQR() {
       .channel(`qr-login-${token}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "qr_login_sessions", filter: `id=eq.${token}` },
+        { event: "UPDATE", schema: "public", table: "qr_login_sessions", filter: `id=eq.${sessionId}` },
         (payload) => handleRow(payload.new),
       )
       .subscribe();
@@ -107,7 +108,7 @@ function LoginQR() {
       const { data } = await supabase
         .from("qr_login_sessions")
         .select("*")
-        .eq("id", token)
+        .eq("id", sessionId)
         .maybeSingle();
       if (data?.status === "authorized") void handleRow(data);
     })();
