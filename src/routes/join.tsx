@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, AArrowDown, AArrowUp, LogOut } from "lucide-react";
+import { Loader2, AArrowDown, AArrowUp, LogOut, Download } from "lucide-react";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { useAuthSession } from "@/hooks/use-auth";
+import { downloadCertificate } from "@/lib/certificate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,10 +59,14 @@ function ensureDeviceToken(): string {
 
 function Join() {
   const { session: sessionId } = Route.useSearch();
+  const { user: authUser } = useAuthSession();
   const [deviceToken, setDeviceToken] = useState<string>("");
   const [fontIdx, setFontIdx] = useState<number>(0);
   const [presentationId, setPresentationId] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
+  const [eventTitle, setEventTitle] = useState<string>("");
+  const [presentationTitle, setPresentationTitle] = useState<string>("");
+  const [completionThreshold, setCompletionThreshold] = useState<number>(0.7);
   const [resolvingIdentity, setResolvingIdentity] = useState(true);
   const [winnerPlace, setWinnerPlace] = useState<1 | 2 | 3 | null>(null);
   const [finaleLocked, setFinaleLocked] = useState(false);
@@ -74,10 +81,44 @@ function Join() {
   const [myAnswer, setMyAnswer] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [answerCountState, setAnswerCountState] = useState(0);
   const [pName, setPName] = useState("");
   const [pBirth, setPBirth] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [finalRank, setFinalRank] = useState<{ position: number; total: number; score: number } | null>(null);
+
+  // Preenche nome com o do Google quando logado
+  useEffect(() => {
+    if (authUser && !name) {
+      const gName =
+        (authUser.user_metadata?.full_name as string | undefined) ||
+        (authUser.user_metadata?.name as string | undefined) ||
+        "";
+      if (gName) setName(gName);
+    }
+  }, [authUser, name]);
+
+  // Quando usuário loga depois de já estar como participante, vincula o histórico
+  useEffect(() => {
+    if (!authUser || !participantId) return;
+    (async () => {
+      await (supabase.from("participants") as any)
+        .update({ google_user_id: authUser.id, email: authUser.email ?? null })
+        .eq("id", participantId)
+        .is("google_user_id", null);
+      await (supabase.from("participant_scores") as any)
+        .update({ google_user_id: authUser.id, email: authUser.email ?? null })
+        .eq("participant_id", participantId)
+        .is("google_user_id", null);
+    })();
+  }, [authUser, participantId]);
+
+  async function loginWithGoogle() {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.href,
+    });
+    if (result.error) toast.error("Não foi possível iniciar o login com Google.");
+  }
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -127,13 +168,24 @@ function Join() {
       if (!cancelled) setPresentationId(presId);
 
       const { data: presRow } = await (supabase.from("presentations") as any)
-        .select("event_id, default_time_limit")
+        .select("event_id, default_time_limit, title")
         .eq("id", presId)
         .maybeSingle();
       const evId = (presRow?.event_id as string | null) ?? null;
       if (!cancelled) {
         setEventId(evId);
         setDefaultTimeLimit((presRow as any)?.default_time_limit ?? 30);
+        setPresentationTitle((presRow as any)?.title ?? "");
+      }
+      if (evId) {
+        const { data: evRow } = await (supabase.from("events") as any)
+          .select("title, completion_threshold")
+          .eq("id", evId)
+          .maybeSingle();
+        if (!cancelled && evRow) {
+          setEventTitle((evRow as any).title ?? "");
+          setCompletionThreshold(Number((evRow as any).completion_threshold ?? 0.7));
+        }
       }
 
       // 2. Já existe participante desta sessão com este device token?
@@ -296,13 +348,14 @@ function Join() {
     if (!participantId) return;
     supabase
       .from("participants")
-      .select("score, correct_count")
+      .select("score, correct_count, answer_count")
       .eq("id", participantId)
       .single()
       .then(({ data }) => {
         if (data) {
           setScore(data.score);
           setCorrectCount(data.correct_count);
+          setAnswerCountState((data as any).answer_count ?? 0);
         }
       });
   }, [participantId, session?.question_revealed]);
@@ -328,6 +381,8 @@ function Join() {
         birth_date: "2000-01-01",
         device_token: deviceToken,
         event_id: eventId,
+        google_user_id: authUser?.id ?? null,
+        email: authUser?.email ?? null,
       })
       .select("id, created_at")
       .single();
