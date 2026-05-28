@@ -53,6 +53,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { EventAnalytics } from "@/components/event-analytics";
 
 export const Route = createFileRoute("/event/$id")({
   head: () => ({ meta: [{ title: "Evento — QuizPulse" }] }),
@@ -520,7 +521,7 @@ function EventManage() {
 
       <main className="mx-auto max-w-5xl px-6 py-8">
         <Tabs defaultValue="apresentacoes" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-3 gap-1 bg-[#161A23] p-1">
+          <TabsList className="mb-6 grid w-full grid-cols-4 gap-1 bg-[#161A23] p-1">
             <TabsTrigger
               value="apresentacoes"
               className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
@@ -538,6 +539,12 @@ function EventManage() {
               className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
             >
               <Trophy className="mr-2 h-4 w-4" /> Classificação
+            </TabsTrigger>
+            <TabsTrigger
+              value="analitica"
+              className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white"
+            >
+              <BarChart3 className="mr-2 h-4 w-4" /> Analítica
             </TabsTrigger>
           </TabsList>
 
@@ -764,6 +771,10 @@ function EventManage() {
 
           <TabsContent value="classificacao" className="mt-0">
             <EventClassificacao eventId={id} />
+          </TabsContent>
+
+          <TabsContent value="analitica" className="mt-0">
+            <EventAnalytics eventId={id} />
           </TabsContent>
         </Tabs>
       </main>
