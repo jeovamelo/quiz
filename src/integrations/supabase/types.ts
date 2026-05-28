@@ -352,6 +352,45 @@ export type Database = {
         }
         Relationships: []
       }
+      qr_login_sessions: {
+        Row: {
+          access_token: string | null
+          authorized_at: string | null
+          authorized_user_id: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token: string | null
+          status: string
+          user_email: string | null
+          user_name: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          authorized_at?: string | null
+          authorized_user_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string | null
+          status?: string
+          user_email?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          authorized_at?: string | null
+          authorized_user_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string | null
+          status?: string
+          user_email?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           correct_option: string
