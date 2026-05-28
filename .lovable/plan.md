@@ -1,74 +1,62 @@
+## QuizHubine Pro — Plataforma de Eventos, Quiz e Certificação
 
-# Refator: Fluxo Sequencial, Controle Único e Overlays Centrais
+Refatoração grande que toca banco de dados, autenticação, telas do participante e do palestrante. Vou entregar em fases para conseguirmos validar cada etapa antes da próxima.
 
-Este é um refator amplo. Antes de implementar, confirme se a direção abaixo está correta — vários itens conflitam com o estado atual do projeto.
+### Fase 1 — Banco de dados e auth
 
-## Escopo
+**Migração SQL** (uma única migration, com GRANTs + RLS):
 
-### 1. Fluxo sequencial em 3 etapas no projetor
+- `events`: adicionar `description text`, `start_date timestamptz`, `completion_threshold numeric default 0.7`.
+- `presentations`: já existe com `status` (`execution_status`) e `sort_order`. Sem mudança estrutural.
+- `participants`: adicionar `email text`, `google_user_id uuid` (referência lógica a `auth.users.id`, sem FK para não acoplar ao schema auth), índice em `google_user_id` e em `device_token`.
+- `certificates` (nova): `id`, `participant_id`, `event_id`, `presentation_id` (nullable — null = certificado do evento inteiro), `google_user_id` (nullable, para lookup rápido do "meu histórico"), `participant_name`, `event_title`, `presentation_title` (nullable), `score`, `correct_count`, `answer_count`, `generated_at`.
+- Tabela `responses` do brief já é coberta por `answers` existente — vou reutilizar `answers` em vez de duplicar.
+- RLS: `certificates` legível por `auth.uid() = google_user_id` (logados) + insert anônimo aberto (a emissão acontece no momento que o participante clica). Demais tabelas mantêm policies atuais para não quebrar o quiz anônimo.
 
-**Etapa 1 — `/present/$id/pair` (volta a ser uma tela real, não redireciona)**
-- Tela escura centralizada: "Conectar Controle Remoto"
-- QR code apontando para `/remote-setup/[SESSION_ID]`
-- **Um único slot** "📱 Aguardando conexão do controle..." (amarelo piscante)
-- Quando o slot ficar verde ("🟢 Controle Conectado: [Nome]"), habilita botão **"Avançar para o Lobby"**
+**Auth Google**: habilitar provider Google via `configure_social_auth` (mantendo email/senha desabilitado — login só pra salvar histórico).
 
-**Etapa 2 — `/present/$id/lobby` (nova rota intermediária)**
-- QR code gigante centralizado + link de acesso para participantes
-- Avatares/nomes aparecendo em tempo real
-- Botão "Iniciar Apresentação" (no celular do palestrante e no computador)
+### Fase 2 — Fluxo do participante (dual mode)
 
-**Etapa 3 — `/present/$id` (apresentação limpa)**
-- Slide em tela cheia, fundo `#000000`, **sem barra lateral fixa de QR/ranking**
-- Apenas o slide. QR e ranking só aparecem via overlay sob comando do celular.
+- `/join`: botão "Salvar meu histórico — entrar com Google" acima do form atual. Login não-bloqueante. Se logado, preencher nome/email automaticamente e gravar `google_user_id` no `participants`/`participant_scores`.
+- Anônimo continua exatamente como hoje (device_token no localStorage).
+- Ao final da apresentação, se participante atingiu `completion_threshold`, gravar linha em `certificates` automaticamente (idempotente: unique em `(participant_id, event_id, presentation_id)`).
 
-### 2. Controle único (de 2 → 1 slot)
+### Fase 3 — Certificado PDF
 
-Atualmente o sistema permite 2 controles concorrentes (slot 1 e 2). A spec pede **um único controle**. Mudanças:
-- `claimRemoteSlot` em `src/lib/session-remotes.ts`: limita a 1 slot
-- `pairing-frame-overlay.tsx`, `dashboard.tsx`, `remote.$id.tsx`: removem referências ao slot 2
-- 2º túnel WebRTC (`tunnel2`) removido em `-present.$id.component.tsx`
+- Adicionar `jspdf`.
+- Helper `src/lib/certificate.ts` que gera PDF A4 paisagem com: nome do participante, título do evento, título da palestra (se houver), data, pontuação, "QuizHubine".
+- Botão "Baixar certificado" na tela de pódio/encerramento quando elegível.
 
-### 3. Overlays centrais (substituem coluna lateral)
+### Fase 4 — Tela `/meu-historico`
 
-- **Frame QR Central**: modal flutuante centralizada (fundo `#161A23`, borda `#262D3D`), com QR de entrada + texto "Entre a qualquer momento!". Disparada por `TOGGLE_GIANT_QR` do celular.
-- **Frame Ranking Central**: painel vertical flutuante central com lista ordenada (pontuação ↓, tempo médio ↑, idade ↑). Disparada por novo sinal `TOGGLE_RANKING`.
-- Remover toda a coluna lateral atual de QR/ranking no projetor.
+- Rota protegida (requer login Google).
+- Lista eventos/palestras que o usuário participou (join `participants` + `participant_scores` + `events` + `presentations` por `google_user_id`).
+- Para cada item: data, pontuação, % de acerto, botão "Baixar certificado" se houver registro em `certificates`.
+- Item no header do dashboard/login: link "Meu histórico".
 
-### 4. Nova UI do celular (`/remote/$id`)
+### Fase 5 — Analítica para o palestrante
 
-Layout `100dvh` sem rolagem, hierarquia:
-1. **AVANÇAR** (herói) — 60–70% largura, gradiente `#A6193C → #F68B1F`
-2. **VOLTAR** — 44–48px, `#1E2235`
-3. **Outras Funcionalidades ⚙️** — abre gaveta com toggles:
-   - Alternar Tela Cheia (F11)
-   - Mostrar/Ocultar QR Code Central
-   - Mostrar/Ocultar Classificação Central
-   - Encerrar Apresentação Precocemente (vermelho → pula para pódio Top 3 + confetes)
+- Em `event.$id`: nova seção "Engajamento por palestra".
+  - Para cada presentation do evento: total de participantes conectados (`participants` por `event_id` + `presentation_id` da sessão) vs. participantes que responderam ≥1 pergunta (distinct `participant_id` em `answers`).
+  - Gráfico de barras simples (Recharts já presente? se não, SVG inline para não inflar deps).
+- Lista "Quem participou": nome, pontuação, % acerto, tempo médio de resposta (`total_response_ms / answer_count`).
 
-A gaveta de cadastrar controle e os controles de laser/áudio existentes serão preservados ou movidos para dentro dessa gaveta única.
+### Detalhes técnicos
 
-### 5. Idioma PT-BR
+- Toda escrita de `certificates` feita via cliente browser (RLS aberta para insert mas com WITH CHECK validando `correct_count::numeric / NULLIF(answer_count,0) >= completion_threshold`). Isso evita server function só pra isso.
+- Login Google usa `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/join" })`.
+- `useAuthSession` já existe — reutilizar.
+- PT-BR em todos os textos novos.
+- Sem mudança nos fluxos existentes de apresentação/controle remoto/pódio.
 
-Auditar toda UI nova/alterada para usar exclusivamente: celular, tela, usuário, cadastrar, arquivo.
+### Riscos / pontos de atenção
 
-## Arquivos afetados
+- O scanner de segurança já flagueou as policies `open_all`. Esta refatoração não piora a situação, mas também não corrige. Se quiser endurecer RLS junto, é uma fase 6 separada (mover escrita anônima para server functions). Fora do escopo desta entrega para não atrasar o produto.
+- `completion_threshold` por evento exige UI no `event.new` / `event.$id` para editar (vou adicionar input simples).
 
-- `src/lib/session-remotes.ts` — limitar a 1 slot
-- `src/routes/present.$id.pair.tsx` — restaurar tela de pareamento (Etapa 1)
-- `src/routes/present.$id.lobby.tsx` — **novo arquivo** (Etapa 2)
-- `src/routes/-present.$id.component.tsx` — remover sidebar, adicionar overlay ranking central, remover 2º túnel, ajustar handlers
-- `src/components/pairing-frame-overlay.tsx` — simplificar para 1 slot (ou substituir pela tela cheia da Etapa 1)
-- `src/components/giant-qr-overlay.tsx` — manter mas estilizar como frame central
-- `src/components/ranking-overlay.tsx` — **novo** (frame central de ranking)
-- `src/components/remote-drawer.tsx` — nova organização da gaveta
-- `src/routes/remote.$id.tsx` — nova UI hero AVANÇAR/VOLTAR/⚙️
-- `src/routes/dashboard.tsx` — botão "Iniciar Apresentação" deve ir para `/present/$id/pair`
-- `src/hooks/use-remote-bridge.tsx` — adicionar `TOGGLE_RANKING`, `END_EARLY`
+### Ordem de execução
 
-## Perguntas antes de implementar
-
-1. **Controle único vs duplo**: confirma reduzir de 2 para 1 slot? Isso quebra o pareamento existente de qualquer sessão em uso.
-2. **Lobby separado**: criar nova rota `/present/$id/lobby` ou reaproveitar a já existente `/lobby/$id`?
-3. **Funcionalidades existentes do celular** (laser por giroscópio, áudio, navegação por slides com keyboard): mantenho dentro da nova gaveta ⚙️ ou removo para simplificar?
-4. **Coluna lateral atual** do projetor: remover completamente, ou manter como opção legada acionável via toggle?
+1. Migration (aguarda aprovação do usuário).
+2. Habilitar Google auth.
+3. Instalar `jspdf`.
+4. Código das fases 2→5.

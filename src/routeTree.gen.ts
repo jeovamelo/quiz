@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MeuHistoricoRouteImport } from './routes/meu-historico'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -28,6 +29,11 @@ import { Route as PresentIdPairRouteImport } from './routes/present.$id.pair'
 import { Route as EventIdPodiumRouteImport } from './routes/event.$id.podium'
 import { Route as EventIdClassificacaoGeralRouteImport } from './routes/event.$id.classificacao-geral'
 
+const MeuHistoricoRoute = MeuHistoricoRouteImport.update({
+  id: '/meu-historico',
+  path: '/meu-historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JoinRoute = JoinRouteImport.update({
   id: '/join',
   path: '/join',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/meu-historico'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/meu-historico'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/meu-historico'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
@@ -248,6 +260,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   JoinRoute: typeof JoinRoute
+  MeuHistoricoRoute: typeof MeuHistoricoRoute
   EventIdRoute: typeof EventIdRouteWithChildren
   EventNewRoute: typeof EventNewRoute
   LobbyIdRoute: typeof LobbyIdRoute
@@ -262,6 +275,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/meu-historico': {
+      id: '/meu-historico'
+      path: '/meu-historico'
+      fullPath: '/meu-historico'
+      preLoaderRoute: typeof MeuHistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/join': {
       id: '/join'
       path: '/join'
@@ -434,6 +454,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   JoinRoute: JoinRoute,
+  MeuHistoricoRoute: MeuHistoricoRoute,
   EventIdRoute: EventIdRouteWithChildren,
   EventNewRoute: EventNewRoute,
   LobbyIdRoute: LobbyIdRoute,
@@ -448,13 +469,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

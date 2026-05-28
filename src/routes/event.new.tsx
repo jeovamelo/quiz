@@ -17,6 +17,9 @@ function NewEvent() {
   const navigate = useNavigate();
   const { user } = useRequireSpeaker();
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [threshold, setThreshold] = useState(70);
   const [saving, setSaving] = useState(false);
 
   async function handleCreate() {
@@ -27,7 +30,13 @@ function NewEvent() {
     }
     setSaving(true);
     const { data, error } = await (supabase.from("events") as any)
-      .insert({ user_id: user.id, title: title.trim() })
+      .insert({
+        user_id: user.id,
+        title: title.trim(),
+        description: description.trim() || null,
+        start_date: startDate ? new Date(startDate).toISOString() : null,
+        completion_threshold: Math.min(100, Math.max(0, threshold)) / 100,
+      })
       .select("id")
       .single();
     setSaving(false);
@@ -68,6 +77,43 @@ function NewEvent() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ex: Encontro Anual de Inovação BNB"
             />
+          </div>
+          <div>
+            <Label htmlFor="description">Descrição (opcional)</Label>
+            <Input
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Resumo curto do evento"
+            />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label htmlFor="startDate">Data de início (opcional)</Label>
+              <Input
+                id="startDate"
+                type="datetime-local"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="threshold">
+                Meta de aproveitamento para certificado (%)
+              </Label>
+              <Input
+                id="threshold"
+                type="number"
+                min={0}
+                max={100}
+                value={threshold}
+                onChange={(e) => setThreshold(parseInt(e.target.value, 10) || 0)}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Participantes que atingirem ou ultrapassarem este percentual de
+                acertos poderão baixar o certificado automaticamente.
+              </p>
+            </div>
           </div>
           <div className="flex justify-end">
             <Button onClick={handleCreate} disabled={saving}>

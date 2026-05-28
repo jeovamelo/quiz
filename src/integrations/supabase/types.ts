@@ -69,22 +69,76 @@ export type Database = {
           },
         ]
       }
+      certificates: {
+        Row: {
+          answer_count: number
+          correct_count: number
+          event_id: string | null
+          event_title: string
+          generated_at: string
+          google_user_id: string | null
+          id: string
+          participant_id: string
+          participant_name: string
+          presentation_id: string | null
+          presentation_title: string | null
+          score: number
+        }
+        Insert: {
+          answer_count?: number
+          correct_count?: number
+          event_id?: string | null
+          event_title: string
+          generated_at?: string
+          google_user_id?: string | null
+          id?: string
+          participant_id: string
+          participant_name: string
+          presentation_id?: string | null
+          presentation_title?: string | null
+          score?: number
+        }
+        Update: {
+          answer_count?: number
+          correct_count?: number
+          event_id?: string | null
+          event_title?: string
+          generated_at?: string
+          google_user_id?: string | null
+          id?: string
+          participant_id?: string
+          participant_name?: string
+          presentation_id?: string | null
+          presentation_title?: string | null
+          score?: number
+        }
+        Relationships: []
+      }
       events: {
         Row: {
+          completion_threshold: number
           created_at: string
+          description: string | null
           id: string
+          start_date: string | null
           title: string
           user_id: string
         }
         Insert: {
+          completion_threshold?: number
           created_at?: string
+          description?: string | null
           id?: string
+          start_date?: string | null
           title: string
           user_id?: string
         }
         Update: {
+          completion_threshold?: number
           created_at?: string
+          description?: string | null
           id?: string
+          start_date?: string | null
           title?: string
           user_id?: string
         }
@@ -96,7 +150,9 @@ export type Database = {
           birth_date: string | null
           correct_count: number
           device_token: string | null
+          email: string | null
           event_id: string | null
+          google_user_id: string | null
           id: string
           participant_id: string
           participant_name: string
@@ -111,7 +167,9 @@ export type Database = {
           birth_date?: string | null
           correct_count?: number
           device_token?: string | null
+          email?: string | null
           event_id?: string | null
+          google_user_id?: string | null
           id?: string
           participant_id: string
           participant_name?: string
@@ -126,7 +184,9 @@ export type Database = {
           birth_date?: string | null
           correct_count?: number
           device_token?: string | null
+          email?: string | null
           event_id?: string | null
+          google_user_id?: string | null
           id?: string
           participant_id?: string
           participant_name?: string
@@ -145,7 +205,9 @@ export type Database = {
           correct_count: number
           created_at: string
           device_token: string | null
+          email: string | null
           event_id: string | null
+          google_user_id: string | null
           id: string
           name: string
           score: number
@@ -158,7 +220,9 @@ export type Database = {
           correct_count?: number
           created_at?: string
           device_token?: string | null
+          email?: string | null
           event_id?: string | null
+          google_user_id?: string | null
           id?: string
           name: string
           score?: number
@@ -171,7 +235,9 @@ export type Database = {
           correct_count?: number
           created_at?: string
           device_token?: string | null
+          email?: string | null
           event_id?: string | null
+          google_user_id?: string | null
           id?: string
           name?: string
           score?: number
