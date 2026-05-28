@@ -512,6 +512,23 @@ function NewQuiz() {
               </p>
             </div>
 
+            {/* Permissão de download do material original */}
+            <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-5">
+              <div className="flex items-start gap-3">
+                <Download className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">
+                    Permitir download do material após a apresentação
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Quando ativo, os usuários verão um botão para baixar o arquivo
+                    PDF original na tela de Currículo deles, após concluírem a palestra.
+                  </p>
+                </div>
+              </div>
+              <Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
+            </div>
+
             {questions.map((q, i) => (
               <div key={i} className="space-y-3 rounded-xl border border-border bg-card p-5">
                 <div className="flex items-start justify-between gap-3">
