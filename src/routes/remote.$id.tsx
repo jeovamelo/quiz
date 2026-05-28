@@ -473,12 +473,19 @@ function RemoteControl() {
     if (error) toast.error("Falha ao atualizar a projeção.");
   }
 
-  async function showGiantQr() {
+  async function toggleGiantQr() {
     haptic(40);
+    const next = !session?.show_join_qr;
+    const action = next ? "SHOW_GIANT_QR" : "HIDE_GIANT_QR";
     // Túnel P2P primeiro, broadcast em paralelo como garantia.
-    sendCommand("SHOW_GIANT_QR");
-    bridge.send("SHOW_GIANT_QR" as any).catch(() => {});
-    toast.success("QR Gigante exibido no projetor!");
+    sendCommand(action);
+    bridge.send(action as any).catch(() => {});
+    // Atualização otimista via banco — o projetor escuta `sessions`
+    // e a UI do celular reflete o mesmo `session.show_join_qr`.
+    await (supabase.from("sessions") as any)
+      .update({ show_join_qr: next })
+      .eq("id", id);
+    toast.success(next ? "QR Gigante exibido no projetor!" : "QR Gigante ocultado.");
   }
 
   async function exitToHub() {
@@ -630,7 +637,8 @@ function RemoteControl() {
           <RemoteDrawer
             showRanking={!!session?.show_ranking}
             onToggleRanking={() => toggleSessionFlag("show_ranking")}
-            onShowGiantQr={showGiantQr}
+            showGiantQr={!!session?.show_join_qr}
+            onToggleGiantQr={toggleGiantQr}
             onEndSession={exitToHub}
           />
 

@@ -30,14 +30,16 @@ import { haptic } from "@/hooks/use-haptic";
 type Props = {
   showRanking: boolean;
   onToggleRanking: () => void;
-  onShowGiantQr: () => void;
+  showGiantQr: boolean;
+  onToggleGiantQr: () => void;
   onEndSession: () => void;
 };
 
 export function RemoteDrawer({
   showRanking,
   onToggleRanking,
-  onShowGiantQr,
+  showGiantQr,
+  onToggleGiantQr,
   onEndSession,
 }: Props) {
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -87,20 +89,39 @@ export function RemoteDrawer({
               type="button"
               onClick={() => {
                 haptic(35);
-                onShowGiantQr();
+                onToggleGiantQr();
               }}
-              className="flex w-full items-center gap-3 rounded-xl border border-[#F68B1F]/60 bg-gradient-to-br from-[#F68B1F]/15 to-[#A6193C]/15 px-4 py-3 text-left transition active:scale-[0.98]"
+              aria-pressed={showGiantQr}
+              className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition active:scale-[0.98] ${
+                showGiantQr
+                  ? "border-[#F68B1F] bg-gradient-to-br from-[#F68B1F]/35 to-[#A6193C]/35 shadow-[0_0_24px_-4px_rgba(246,139,31,0.7)]"
+                  : "border-[#F68B1F]/60 bg-gradient-to-br from-[#F68B1F]/15 to-[#A6193C]/15"
+              }`}
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#A6193C] to-[#F68B1F] text-white">
                 <ScanLine className="h-5 w-5" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold text-white">
-                  Exibir QR Code Gigante 🎯
+                  {showGiantQr ? "Ocultar QR Code Gigante 🎯" : "Exibir QR Code Gigante 🎯"}
                 </span>
                 <span className="block text-[11px] text-[#9CA3AF]">
-                  Mostra um QR enorme no projetor sobre o slide atual
+                  {showGiantQr
+                    ? "QR ativo no projetor — toque para ocultar"
+                    : "Mostra um QR enorme no projetor sobre o slide atual"}
                 </span>
+              </span>
+              <span
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                  showGiantQr ? "bg-[#F68B1F]" : "bg-[#3A4255]"
+                }`}
+                aria-hidden="true"
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    showGiantQr ? "translate-x-5" : ""
+                  }`}
+                />
               </span>
             </button>
           </div>
