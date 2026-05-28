@@ -386,6 +386,21 @@ function NewQuiz() {
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Inovação Aberta BNB" />
               </div>
               <div>
+                <Label htmlFor="speaker-email">E-mail do Palestrante (Gmail)</Label>
+                <Input
+                  id="speaker-email"
+                  type="email"
+                  value={speakerEmail}
+                  onChange={(e) => setSpeakerEmail(e.target.value)}
+                  placeholder={user?.email || "palestrante@gmail.com"}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Se o palestrante já tiver conta no QuizBini com este e-mail, a
+                  palestra aparecerá automaticamente no Currículo dele. Em branco,
+                  usamos o seu e-mail ({user?.email || "logado"}).
+                </p>
+              </div>
+              <div>
                 <Label htmlFor="time">Tempo limite por pergunta</Label>
                 <select
                   id="time"
