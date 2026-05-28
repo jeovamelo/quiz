@@ -84,6 +84,7 @@ function NewQuiz() {
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [displayMode, setDisplayMode] = useState<"simultaneous" | "after_slide">("simultaneous");
   const [allowDownload, setAllowDownload] = useState<boolean>(false);
+  const [speakerEmail, setSpeakerEmail] = useState<string>("");
   const [generating, setGenerating] = useState(false);
 
   // step 3
@@ -205,6 +206,8 @@ function NewQuiz() {
         file_url: fileUrl,
         ai_context: aiContext || null,
         allow_download: allowDownload,
+        speaker_email:
+          (speakerEmail.trim() || user?.email || "").toLowerCase() || null,
       };
       if (eventId) {
         insertPayload.event_id = eventId;
