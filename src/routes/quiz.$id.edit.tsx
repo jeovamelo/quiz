@@ -426,6 +426,23 @@ function EditQuizPage() {
           </div>
         </div>
 
+        {/* Permissão de download do material */}
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-[#262D3D] bg-[#161A23] p-5">
+          <div className="flex items-start gap-3">
+            <Download className="mt-0.5 h-5 w-5 text-[#F68B1F]" />
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Permitir download do material após a apresentação
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Quando ativo, os usuários poderão baixar o arquivo PDF original na
+                tela de Currículo deles, após concluírem a palestra.
+              </p>
+            </div>
+          </div>
+          <Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
+        </div>
+
         {questions.length === 0 && (
           <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-6 text-center text-sm text-muted-foreground">
             Este quiz ainda não tem perguntas.
