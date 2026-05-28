@@ -524,38 +524,74 @@ function Join() {
       );
     }
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <div className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-6">
-          <div>
-            <h1 className="text-2xl font-bold">Entrar na sala</h1>
-            <p className="text-sm text-muted-foreground">QuizHubine</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#0E1015] p-6">
+        <div className="w-full max-w-sm space-y-6 rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 shadow-2xl">
+          <div className="text-center">
+            <h1 className="text-2xl font-extrabold text-white">Entrar na sala</h1>
+            <p className="text-xs uppercase tracking-widest text-[#F68B1F]">QuizHubine</p>
           </div>
 
+          {/* Seção: Login Google opcional */}
           {!authUser ? (
-            <button
-              type="button"
-              onClick={loginWithGoogle}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-semibold text-black hover:bg-white/90"
-            >
-              <span>Deseja salvar seu histórico? Entrar com Google</span>
-            </button>
+            <div className="space-y-2 rounded-xl border border-[#262D3D] bg-[#0E1015]/60 p-4">
+              <p className="text-center text-sm font-medium text-white">
+                Deseja salvar seu histórico e certificados?
+                <br />
+                <span className="text-[#9CA3AF]">Faça login com Google.</span>
+              </p>
+              <button
+                type="button"
+                onClick={loginWithGoogle}
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#1F1F1F] shadow-sm transition hover:bg-[#F8F9FA] active:scale-[0.98]"
+              >
+                <GoogleIcon className="h-5 w-5" />
+                <span>Login com Google</span>
+              </button>
+              <p className="text-center text-[11px] leading-snug text-[#6B7280]">
+                O login é opcional, mas garante que suas participações sejam
+                registradas no seu histórico profissional.
+              </p>
+            </div>
           ) : (
-            <div className="rounded-lg border border-[#07A684]/30 bg-[#07A684]/10 p-3 text-xs text-[#07A684]">
-              ✓ Seu histórico será salvo na conta {authUser.email}
+            <div className="flex items-center gap-2 rounded-xl border border-[#07A684]/30 bg-[#07A684]/10 p-3 text-xs text-[#34D399]">
+              <span className="text-base">✓</span>
+              <span>
+                Seu histórico será salvo na conta{" "}
+                <span className="font-semibold">{authUser.email}</span>
+              </span>
             </div>
           )}
-          <div className="text-center text-[11px] uppercase tracking-wider text-muted-foreground">
-            ou continue anônimo
+
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-[#262D3D]" />
+            <span className="text-[10px] uppercase tracking-widest text-[#6B7280]">
+              continue para entrar
+            </span>
+            <div className="h-px flex-1 bg-[#262D3D]" />
           </div>
 
-          <div>
-            <Label htmlFor="name">Nome</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" />
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="name" className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF]">
+                Seu nome
+              </Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Como gostaria de ser chamado(a)?"
+                className="mt-1 border-[#262D3D] bg-[#0E1015] text-white placeholder:text-[#3A4255] focus-visible:ring-[#F68B1F]"
+              />
+            </div>
+            <Button
+              className="w-full bg-gradient-to-r from-[#A6193C] to-[#F68B1F] text-base font-extrabold uppercase tracking-wide text-white shadow-lg shadow-[#A6193C]/30 hover:opacity-95"
+              onClick={join}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Entrar
+            </Button>
           </div>
-          <Button className="w-full" onClick={join} disabled={submitting}>
-            {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Entrar
-          </Button>
         </div>
       </div>
     );
