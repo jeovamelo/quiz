@@ -7,14 +7,17 @@ import {
   Download,
   FileDown,
   Loader2,
+  Mic,
   Search,
   Trophy,
+  Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { downloadCertificate } from "@/lib/certificate";
 import { toast } from "sonner";
 
