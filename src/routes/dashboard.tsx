@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, Presentation, Gamepad2, ChevronLeft, ChevronRight, QrCode, BarChart3, PanelRight, PowerOff, Eye, EyeOff } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, Presentation, Gamepad2, ChevronLeft, ChevronRight, QrCode, BarChart3, PanelRight, PowerOff, Eye, EyeOff, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -371,6 +371,11 @@ function Dashboard() {
             <Button asChild size="lg">
               <Link to="/quiz/new">
                 <Plus className="mr-2 h-5 w-5" /> Novo Quiz
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="icon" title="Meu Histórico">
+              <Link to="/meu-historico">
+                <Award className="h-5 w-5" />
               </Link>
             </Button>
             <Button

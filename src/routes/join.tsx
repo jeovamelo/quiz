@@ -582,6 +582,35 @@ function Join() {
       : pos === 3
       ? "bg-gradient-to-br from-[oklch(0.65_0.12_50)] to-[oklch(0.45_0.12_40)]"
       : "bg-card";
+    const pctCorrect = answerCountState > 0 ? correctCount / answerCountState : 0;
+    const eligibleCert = pctCorrect >= completionThreshold && answerCountState > 0;
+    async function handleDownloadCertificate() {
+      if (!participantId) return;
+      try {
+        await (supabase.from("certificates") as any).insert({
+          participant_id: participantId,
+          event_id: eventId,
+          presentation_id: presentationId,
+          google_user_id: authUser?.id ?? null,
+          participant_name: pName || name || "Participante",
+          event_title: eventTitle || "QuizHubine",
+          presentation_title: presentationTitle || null,
+          score,
+          correct_count: correctCount,
+          answer_count: answerCountState,
+        });
+      } catch {
+        /* idempotente — já pode existir */
+      }
+      downloadCertificate({
+        participantName: pName || name || "Participante",
+        eventTitle: eventTitle || "QuizHubine",
+        presentationTitle: presentationTitle || null,
+        score,
+        correctCount,
+        answerCount: answerCountState,
+      });
+    }
     return (
       <div className={`flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center ${bg}`}>
         <div className="text-7xl">{medal}</div>
@@ -595,6 +624,25 @@ function Join() {
         <p className="text-lg text-white/90">
           com <span className="font-bold">{finalRank.score}</span> pontos
         </p>
+        {eligibleCert && (
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <Button
+              onClick={handleDownloadCertificate}
+              className="bg-white text-black hover:bg-white/90"
+            >
+              <Download className="mr-2 h-4 w-4" /> Baixar Certificado
+            </Button>
+            {!authUser && (
+              <button
+                type="button"
+                onClick={loginWithGoogle}
+                className="text-xs text-white/90 underline"
+              >
+                Entre com Google para guardar o certificado no seu histórico
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
