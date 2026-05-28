@@ -71,15 +71,18 @@ function LoginQR() {
 
     async function handleRow(row: any) {
       if (!row) return;
-      if (row.status === "authorized" && row.access_token && row.refresh_token) {
+      // After our server-side fix, `access_token` carries the magic-link
+      // token_hash (not a Supabase access_token). We exchange it via
+      // verifyOtp to mint a fresh, independent session for this browser.
+      if (row.status === "authorized" && row.access_token) {
         setAuthorizedName(row.user_name ?? row.user_email ?? null);
         setStatus("authorized");
-        const { error } = await supabase.auth.setSession({
-          access_token: row.access_token,
-          refresh_token: row.refresh_token,
+        const { error } = await supabase.auth.verifyOtp({
+          type: "magiclink",
+          token_hash: row.access_token as string,
         });
         if (error) {
-          console.error("[qr-login] setSession error", error);
+          console.error("[qr-login] verifyOtp error", error);
           toast.error("Falha ao iniciar a sessão.");
           setStatus("error");
           return;
