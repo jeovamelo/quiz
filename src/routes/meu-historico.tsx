@@ -197,6 +197,82 @@ function MyHistory() {
     });
   }, [rows, query]);
 
+  // Aba "Minhas Palestras": apresentações onde o usuário é o palestrante
+  // (user_id == auth.uid OU speaker_email == e-mail logado).
+  type SpeakerRow = {
+    id: string;
+    title: string;
+    created_at: string;
+    event_id: string | null;
+    event_title?: string | null;
+    file_url: string;
+    allow_download: boolean;
+    participants_count: number;
+  };
+  const { data: speakerRows, isLoading: speakerLoading } = useQuery({
+    queryKey: ["my-speaker-history", user?.id ?? "anon", user?.email ?? ""],
+    enabled: !!user?.id,
+    queryFn: async (): Promise<SpeakerRow[]> => {
+      const emailLower = (user?.email ?? "").toLowerCase();
+      // OR no mesmo .or() do PostgREST
+      const orParts = [`user_id.eq.${user!.id}`];
+      if (emailLower) orParts.push(`speaker_email.eq.${emailLower}`);
+      const { data: pres } = await (supabase.from("presentations") as any)
+        .select("id, title, created_at, event_id, file_url, allow_download")
+        .or(orParts.join(","))
+        .order("created_at", { ascending: false });
+      const list = ((pres ?? []) as any[]).map((p) => ({
+        id: p.id,
+        title: p.title,
+        created_at: p.created_at,
+        event_id: p.event_id,
+        file_url: p.file_url,
+        allow_download: !!p.allow_download,
+        participants_count: 0,
+      })) as SpeakerRow[];
+      if (list.length === 0) return list;
+      const evIds = Array.from(
+        new Set(list.map((r) => r.event_id).filter(Boolean)),
+      ) as string[];
+      const prIds = list.map((r) => r.id);
+      const [evRes, scoresRes] = await Promise.all([
+        evIds.length > 0
+          ? (supabase.from("events") as any).select("id, title").in("id", evIds)
+          : Promise.resolve({ data: [] }),
+        (supabase.from("participant_scores") as any)
+          .select("presentation_id, participant_id")
+          .in("presentation_id", prIds),
+      ]);
+      const evMap = new Map<string, string>();
+      for (const e of ((evRes as any).data ?? []) as any[]) evMap.set(e.id, e.title);
+      const counts = new Map<string, Set<string>>();
+      for (const s of ((scoresRes as any).data ?? []) as any[]) {
+        if (!counts.has(s.presentation_id)) counts.set(s.presentation_id, new Set());
+        counts.get(s.presentation_id)!.add(s.participant_id);
+      }
+      return list
+        .map((r) => ({
+          ...r,
+          event_title: r.event_id ? evMap.get(r.event_id) ?? "Evento" : null,
+          participants_count: counts.get(r.id)?.size ?? 0,
+        }))
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+    },
+  });
+
+  const filteredSpeakerRows = useMemo(() => {
+    if (!speakerRows) return speakerRows;
+    const q = query.trim().toLowerCase();
+    if (!q) return speakerRows;
+    return speakerRows.filter((r) => {
+      const hay = [r.title ?? "", r.event_title ?? ""].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [speakerRows, query]);
+
   useEffect(() => {
     if (!loading && !user) {
       // não redireciona automaticamente: mostra estado vazio com botão de login
