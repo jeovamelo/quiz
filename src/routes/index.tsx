@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Upload, Sparkles, Radio, Presentation, Users, Trophy } from "lucide-react";
+import { Upload, Sparkles, Radio, Presentation, Users, Trophy, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuthSession } from "@/hooks/use-auth";
@@ -70,6 +70,14 @@ function LoginDialog({ trigger, mode }: { trigger: React.ReactNode; mode: "login
           <GoogleIcon />
           {loading ? "Conectando..." : "Continuar com o Google"}
         </button>
+        <Link
+          to="/login-qr"
+          onClick={() => setOpen(false)}
+          className="w-full mt-3 py-3 rounded-2xl border border-[#262D3D] text-white font-semibold flex items-center justify-center gap-3 hover:bg-[#0E1015] transition"
+        >
+          <QrCode className="w-5 h-5" />
+          Logar com QR Code
+        </Link>
         <p className="text-xs text-[#6B7280] text-center mt-4">
           Ao continuar, você concorda com os termos de uso da plataforma QuizBini.
         </p>

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MeuHistoricoRouteImport } from './routes/meu-historico'
+import { Route as LoginQrRouteImport } from './routes/login-qr'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,7 @@ import { Route as RemoteIndexRouteImport } from './routes/remote.index'
 import { Route as RemoteIdRouteImport } from './routes/remote.$id'
 import { Route as RemoteSetupIdRouteImport } from './routes/remote-setup.$id'
 import { Route as QuizNewRouteImport } from './routes/quiz.new'
+import { Route as QrAuthTokenRouteImport } from './routes/qr-auth.$token'
 import { Route as PresentIdRouteImport } from './routes/present.$id'
 import { Route as OperatorIdRouteImport } from './routes/operator.$id'
 import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
@@ -32,6 +34,11 @@ import { Route as EventIdClassificacaoGeralRouteImport } from './routes/event.$i
 const MeuHistoricoRoute = MeuHistoricoRouteImport.update({
   id: '/meu-historico',
   path: '/meu-historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginQrRoute = LoginQrRouteImport.update({
+  id: '/login-qr',
+  path: '/login-qr',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinRoute = JoinRouteImport.update({
@@ -67,6 +74,11 @@ const RemoteSetupIdRoute = RemoteSetupIdRouteImport.update({
 const QuizNewRoute = QuizNewRouteImport.update({
   id: '/quiz/new',
   path: '/quiz/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrAuthTokenRoute = QrAuthTokenRouteImport.update({
+  id: '/qr-auth/$token',
+  path: '/qr-auth/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PresentIdRoute = PresentIdRouteImport.update({
@@ -130,12 +142,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
   '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
+  '/qr-auth/$token': typeof QrAuthTokenRoute
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
@@ -151,12 +165,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
   '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
+  '/qr-auth/$token': typeof QrAuthTokenRoute
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
@@ -173,12 +189,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
   '/operator/$id': typeof OperatorIdRoute
   '/present/$id': typeof PresentIdRouteWithChildren
+  '/qr-auth/$token': typeof QrAuthTokenRoute
   '/quiz/new': typeof QuizNewRoute
   '/remote-setup/$id': typeof RemoteSetupIdRoute
   '/remote/$id': typeof RemoteIdRouteWithChildren
@@ -196,12 +214,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/login-qr'
     | '/meu-historico'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
     | '/operator/$id'
     | '/present/$id'
+    | '/qr-auth/$token'
     | '/quiz/new'
     | '/remote-setup/$id'
     | '/remote/$id'
@@ -217,12 +237,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/login-qr'
     | '/meu-historico'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
     | '/operator/$id'
     | '/present/$id'
+    | '/qr-auth/$token'
     | '/quiz/new'
     | '/remote-setup/$id'
     | '/remote/$id'
@@ -238,12 +260,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/login-qr'
     | '/meu-historico'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
     | '/operator/$id'
     | '/present/$id'
+    | '/qr-auth/$token'
     | '/quiz/new'
     | '/remote-setup/$id'
     | '/remote/$id'
@@ -260,12 +284,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   JoinRoute: typeof JoinRoute
+  LoginQrRoute: typeof LoginQrRoute
   MeuHistoricoRoute: typeof MeuHistoricoRoute
   EventIdRoute: typeof EventIdRouteWithChildren
   EventNewRoute: typeof EventNewRoute
   LobbyIdRoute: typeof LobbyIdRoute
   OperatorIdRoute: typeof OperatorIdRoute
   PresentIdRoute: typeof PresentIdRouteWithChildren
+  QrAuthTokenRoute: typeof QrAuthTokenRoute
   QuizNewRoute: typeof QuizNewRoute
   RemoteSetupIdRoute: typeof RemoteSetupIdRoute
   RemoteIdRoute: typeof RemoteIdRouteWithChildren
@@ -280,6 +306,13 @@ declare module '@tanstack/react-router' {
       path: '/meu-historico'
       fullPath: '/meu-historico'
       preLoaderRoute: typeof MeuHistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login-qr': {
+      id: '/login-qr'
+      path: '/login-qr'
+      fullPath: '/login-qr'
+      preLoaderRoute: typeof LoginQrRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join': {
@@ -329,6 +362,13 @@ declare module '@tanstack/react-router' {
       path: '/quiz/new'
       fullPath: '/quiz/new'
       preLoaderRoute: typeof QuizNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr-auth/$token': {
+      id: '/qr-auth/$token'
+      path: '/qr-auth/$token'
+      fullPath: '/qr-auth/$token'
+      preLoaderRoute: typeof QrAuthTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/present/$id': {
@@ -454,12 +494,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   JoinRoute: JoinRoute,
+  LoginQrRoute: LoginQrRoute,
   MeuHistoricoRoute: MeuHistoricoRoute,
   EventIdRoute: EventIdRouteWithChildren,
   EventNewRoute: EventNewRoute,
   LobbyIdRoute: LobbyIdRoute,
   OperatorIdRoute: OperatorIdRoute,
   PresentIdRoute: PresentIdRouteWithChildren,
+  QrAuthTokenRoute: QrAuthTokenRoute,
   QuizNewRoute: QuizNewRoute,
   RemoteSetupIdRoute: RemoteSetupIdRoute,
   RemoteIdRoute: RemoteIdRouteWithChildren,
@@ -469,13 +511,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
