@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MeuHistoricoRouteImport } from './routes/meu-historico'
+import { Route as LoginQrRouteImport } from './routes/login-qr'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -32,6 +33,11 @@ import { Route as EventIdClassificacaoGeralRouteImport } from './routes/event.$i
 const MeuHistoricoRoute = MeuHistoricoRouteImport.update({
   id: '/meu-historico',
   path: '/meu-historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginQrRoute = LoginQrRouteImport.update({
+  id: '/login-qr',
+  path: '/login-qr',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinRoute = JoinRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/join': typeof JoinRoute
+  '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/login-qr'
     | '/meu-historico'
     | '/event/$id'
     | '/event/new'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/login-qr'
     | '/meu-historico'
     | '/event/$id'
     | '/event/new'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/join'
+    | '/login-qr'
     | '/meu-historico'
     | '/event/$id'
     | '/event/new'
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   JoinRoute: typeof JoinRoute
+  LoginQrRoute: typeof LoginQrRoute
   MeuHistoricoRoute: typeof MeuHistoricoRoute
   EventIdRoute: typeof EventIdRouteWithChildren
   EventNewRoute: typeof EventNewRoute
@@ -280,6 +293,13 @@ declare module '@tanstack/react-router' {
       path: '/meu-historico'
       fullPath: '/meu-historico'
       preLoaderRoute: typeof MeuHistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login-qr': {
+      id: '/login-qr'
+      path: '/login-qr'
+      fullPath: '/login-qr'
+      preLoaderRoute: typeof LoginQrRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join': {
@@ -454,6 +474,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   JoinRoute: JoinRoute,
+  LoginQrRoute: LoginQrRoute,
   MeuHistoricoRoute: MeuHistoricoRoute,
   EventIdRoute: EventIdRouteWithChildren,
   EventNewRoute: EventNewRoute,
@@ -469,3 +490,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
