@@ -421,6 +421,20 @@ function EditQuizPage() {
               placeholder="Ex: Estratégia Comercial 2026"
               className="bg-[#0E1015]"
             />
+            <div className="mt-3">
+              <Label className="text-xs">E-mail do Palestrante (Gmail)</Label>
+              <Input
+                type="email"
+                value={speakerEmail}
+                onChange={(e) => setSpeakerEmail(e.target.value)}
+                placeholder="palestrante@gmail.com"
+                className="bg-[#0E1015]"
+              />
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Vincula esta palestra ao Currículo do palestrante quando ele
+                entrar com este e-mail.
+              </p>
+            </div>
           </div>
           <div>
             <Label className="text-xs">Tempo Geral de Resposta (Padrão)</Label>
