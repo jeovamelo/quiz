@@ -45,6 +45,7 @@ function EditQuizPage() {
   const [title, setTitle] = useState("");
   const [defaultTimeLimit, setDefaultTimeLimit] = useState<number>(30);
   const [allowDownload, setAllowDownload] = useState<boolean>(false);
+  const [speakerEmail, setSpeakerEmail] = useState<string>("");
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
 
   useEffect(() => {
@@ -52,13 +53,14 @@ function EditQuizPage() {
       setLoading(true);
       const { data: pres } = await supabase
         .from("presentations")
-        .select("title, default_time_limit, allow_download")
+        .select("title, default_time_limit, allow_download, speaker_email")
         .eq("id", id)
         .maybeSingle();
       if (pres) {
         setTitle(pres.title);
         setDefaultTimeLimit((pres as any).default_time_limit ?? 30);
         setAllowDownload(!!(pres as any).allow_download);
+        setSpeakerEmail(((pres as any).speaker_email as string) ?? "");
       }
       const { data: qs } = await supabase
         .from("questions")
@@ -202,6 +204,7 @@ function EditQuizPage() {
           title: title.trim() || "Sem título",
           default_time_limit: defaultTimeLimit,
           allow_download: allowDownload,
+          speaker_email: speakerEmail.trim().toLowerCase() || null,
         } as any)
         .eq("id", id);
       if (presErr) throw presErr;
