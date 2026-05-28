@@ -75,7 +75,7 @@ function NewEvent() {
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Encontro Anual de Inovação BNB"
+              placeholder="Ex: Encontro Anual de Inovação"
             />
           </div>
           <div>

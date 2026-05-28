@@ -9,8 +9,8 @@ type Props = {
   joinUrl: string;
   onClose: () => void;
   /**
-   * "remote"      → QR Code do Controle Remoto (palestrante). Roxo/Laranja BNB.
-   * "participant" → QR Code da Plateia (jogo). Verde BNB.
+   * "remote"      → QR Code do Controle Remoto (palestrante). Roxo/Laranja.
+   * "participant" → QR Code da Plateia (jogo). Verde.
    * Default: "participant" (compatível com chamadas antigas).
    */
   variant?: Variant;
@@ -19,12 +19,12 @@ type Props = {
 /**
  * Frame flutuante centralizado de QR Code. Diferenciado por cor, ícone
  * central e textos conforme o público-alvo:
- *  - "participant": para a plateia entrar no jogo (Verde BNB).
- *  - "remote":      para parear o controle do apresentador (Roxo BNB).
+ *  - "participant": para a plateia entrar no jogo (Verde).
+ *  - "remote":      para parear o controle do apresentador (Roxo).
  */
 export function GiantQrOverlay({ open, joinUrl, onClose, variant = "participant" }: Props) {
   const isRemote = variant === "remote";
-  const accent = isRemote ? "#BA2172" : "#07A684"; // Roxo BNB | Verde BNB
+  const accent = isRemote ? "#BA2172" : "#07A684"; // Roxo | Verde
   const headerLabel = isRemote
     ? "📱 PAREAR NOVO CONTROLE REMOTO"
     : "👥 PARTICIPE DA PALESTRA A QUALQUER MOMENTO";

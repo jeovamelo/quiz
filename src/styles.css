@@ -62,7 +62,7 @@
 }
 
 :root {
-  /* QuizBini — Padrão Banco do Nordeste (tema escuro institucional) */
+  /* QuizBini — Tema escuro institucional */
   --radius: 0.625rem;
   --background: oklch(0.18 0.012 260);          /* #0E1015 / #131722 */
   --foreground: oklch(0.97 0.005 240);
@@ -70,17 +70,17 @@
   --card-foreground: oklch(0.97 0.005 240);
   --popover: oklch(0.22 0.013 260);
   --popover-foreground: oklch(0.97 0.005 240);
-  --primary: oklch(0.72 0.17 56);               /* Laranja BNB #F68B1F */
+  --primary: oklch(0.72 0.17 56);               /* Laranja #F68B1F */
   --primary-foreground: oklch(0.18 0.012 260);
   --secondary: oklch(0.27 0.018 260);
   --secondary-foreground: oklch(0.97 0.005 240);
   --muted: oklch(0.27 0.018 260);
   --muted-foreground: oklch(0.72 0.015 250);
-  --accent: oklch(0.86 0.18 90);                /* Amarelo BNB #FFCB05 */
+  --accent: oklch(0.86 0.18 90);                /* Amarelo #FFCB05 */
   --accent-foreground: oklch(0.18 0.012 260);
-  --destructive: oklch(0.51 0.21 15);           /* Vermelho BNB #A6193C */
+  --destructive: oklch(0.51 0.21 15);           /* Vermelho #A6193C */
   --destructive-foreground: oklch(0.98 0.005 240);
-  --success: oklch(0.66 0.14 165);              /* Verde BNB #07A684 */
+  --success: oklch(0.66 0.14 165);              /* Verde #07A684 */
   --success-foreground: oklch(0.12 0.012 260);
   --border: oklch(0.32 0.018 260);              /* #22293a / #262D3D */
   --input: oklch(0.27 0.018 260);
