@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
-import { Loader2, Maximize, Tv, Smartphone, QrCode } from "lucide-react";
+import { Loader2, Maximize, Tv, Smartphone, QrCode, X, Zap, Trophy, Volume2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +22,7 @@ import { useWebRTCTunnel } from "@/hooks/use-webrtc-tunnel";
 import { GiantQrOverlay } from "@/components/giant-qr-overlay";
 import { RankingOverlay } from "@/components/ranking-overlay";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
+import { useAudioSynthesizer } from "@/hooks/use-audio-synthesizer";
 
 type Question = {
   id: string;
