@@ -463,6 +463,8 @@ function Join() {
             answer_count: newAnswerCount,
             total_response_ms: newTotalMs,
             updated_at: new Date().toISOString(),
+            google_user_id: authUser?.id ?? null,
+            email: authUser?.email ?? null,
           },
           { onConflict: "presentation_id,participant_id" },
         );
@@ -526,8 +528,26 @@ function Join() {
         <div className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-6">
           <div>
             <h1 className="text-2xl font-bold">Entrar na sala</h1>
-            <p className="text-sm text-muted-foreground">QuizPulse · Banco do Nordeste</p>
+            <p className="text-sm text-muted-foreground">QuizHubine</p>
           </div>
+
+          {!authUser ? (
+            <button
+              type="button"
+              onClick={loginWithGoogle}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-semibold text-black hover:bg-white/90"
+            >
+              <span>Deseja salvar seu histórico? Entrar com Google</span>
+            </button>
+          ) : (
+            <div className="rounded-lg border border-[#07A684]/30 bg-[#07A684]/10 p-3 text-xs text-[#07A684]">
+              ✓ Seu histórico será salvo na conta {authUser.email}
+            </div>
+          )}
+          <div className="text-center text-[11px] uppercase tracking-wider text-muted-foreground">
+            ou continue anônimo
+          </div>
+
           <div>
             <Label htmlFor="name">Nome</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" />
