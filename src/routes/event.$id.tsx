@@ -491,7 +491,9 @@ function EventManage() {
       })
       .eq("id", presentationId);
 
-    navigate({ to: "/present/$id/pair", params: { id: session.id } });
+    const url = `/present/${session.id}/pair`;
+    const features = "width=1280,height=800,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes";
+    window.open(url, "_blank", features);
   }
 
   return (
