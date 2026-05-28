@@ -375,9 +375,9 @@ function Dashboard() {
                 <Plus className="mr-2 h-5 w-5" /> Novo Quiz
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" title="Currículo de participações">
+            <Button asChild variant="outline" size="lg" title="Currículo de participações" className="whitespace-nowrap">
               <Link to="/meu-historico">
-                <Award className="mr-2 h-5 w-5" /> Currículo
+                <Award className="mr-2 h-5 w-5 shrink-0" /> <span>Currículo</span>
               </Link>
             </Button>
             <Button
