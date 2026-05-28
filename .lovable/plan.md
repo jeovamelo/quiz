@@ -1,4 +1,4 @@
-## QuizHubine Pro — Plataforma de Eventos, Quiz e Certificação
+## QuizBini Pro — Plataforma de Eventos, Quiz e Certificação
 
 Refatoração grande que toca banco de dados, autenticação, telas do participante e do palestrante. Vou entregar em fases para conseguirmos validar cada etapa antes da próxima.
 
@@ -24,7 +24,7 @@ Refatoração grande que toca banco de dados, autenticação, telas do participa
 ### Fase 3 — Certificado PDF
 
 - Adicionar `jspdf`.
-- Helper `src/lib/certificate.ts` que gera PDF A4 paisagem com: nome do participante, título do evento, título da palestra (se houver), data, pontuação, "QuizHubine".
+- Helper `src/lib/certificate.ts` que gera PDF A4 paisagem com: nome do participante, título do evento, título da palestra (se houver), data, pontuação, "QuizBini".
 - Botão "Baixar certificado" na tela de pódio/encerramento quando elegível.
 
 ### Fase 4 — Tela `/meu-historico`
