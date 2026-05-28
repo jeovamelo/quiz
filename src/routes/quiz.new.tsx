@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/quiz/new")({
-  head: () => ({ meta: [{ title: "Novo Quiz — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Novo Quiz — QuizBini" }] }),
   validateSearch: (s: Record<string, unknown>): { eventId?: string } => ({
     eventId: (s.eventId as string) || undefined,
   }),

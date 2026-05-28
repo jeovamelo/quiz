@@ -56,7 +56,7 @@ import { toast } from "sonner";
 import { EventAnalytics } from "@/components/event-analytics";
 
 export const Route = createFileRoute("/event/$id")({
-  head: () => ({ meta: [{ title: "Evento — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Evento — QuizBini" }] }),
   component: EventRouteComponent,
 });
 

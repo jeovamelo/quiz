@@ -62,7 +62,7 @@
 }
 
 :root {
-  /* QuizPulse — Padrão Banco do Nordeste (tema escuro institucional) */
+  /* QuizBini — Padrão Banco do Nordeste (tema escuro institucional) */
   --radius: 0.625rem;
   --background: oklch(0.18 0.012 260);          /* #0E1015 / #131722 */
   --foreground: oklch(0.97 0.005 240);

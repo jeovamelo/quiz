@@ -65,7 +65,7 @@ function openPresentationPopup(sessionId: string) {
 }
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Meus Quizzes — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Meus Quizzes — QuizBini" }] }),
   component: Dashboard,
 });
 
@@ -349,7 +349,7 @@ function Dashboard() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              QuizPulse <span className="text-primary">·</span> Meus Quizzes
+              QuizBini <span className="text-primary">·</span> Meus Quizzes
             </h1>
             <p className="text-sm text-muted-foreground">{user?.user_metadata?.full_name || user?.email || "Palestrante"}</p>
           </div>

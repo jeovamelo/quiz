@@ -31,7 +31,7 @@ export function generateCertificatePdf(data: CertificateData): jsPDF {
   doc.setTextColor(255, 203, 5);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("QUIZHUBINE", W / 2, 30, { align: "center" });
+  doc.text("QUIZBINI", W / 2, 30, { align: "center" });
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(36);
@@ -81,7 +81,7 @@ export function generateCertificatePdf(data: CertificateData): jsPDF {
 
   doc.setFontSize(10);
   doc.setTextColor(140, 140, 140);
-  doc.text("Documento gerado automaticamente pela plataforma QuizHubine.", W / 2, H - 22, {
+  doc.text("Documento gerado automaticamente pela plataforma QuizBini.", W / 2, H - 22, {
     align: "center",
   });
 

@@ -23,7 +23,7 @@ import { RemoteDrawer } from "@/components/remote-drawer";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/remote/$id")({
-  head: () => ({ meta: [{ title: "Controle Remoto — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Controle Remoto — QuizBini" }] }),
   component: RemoteControl,
 });
 

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "QuizHubine — Apresentações Interativas em Tempo Real" }] }),
+  head: () => ({ meta: [{ title: "QuizBini — Apresentações Interativas em Tempo Real" }] }),
   component: Landing,
 });
 
@@ -56,7 +56,7 @@ function LoginDialog({ trigger, mode }: { trigger: React.ReactNode; mode: "login
       <DialogContent className="bg-[#161A23] border-[#262D3D] text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-white">
-            {mode === "login" ? "Acessar QuizHubine" : "Criar conta de palestrante"}
+            {mode === "login" ? "Acessar QuizBini" : "Criar conta de palestrante"}
           </DialogTitle>
           <DialogDescription className="text-[#9CA3AF]">
             Entre com sua conta Google para gerenciar suas apresentações, eventos e quizzes.
@@ -71,7 +71,7 @@ function LoginDialog({ trigger, mode }: { trigger: React.ReactNode; mode: "login
           {loading ? "Conectando..." : "Continuar com o Google"}
         </button>
         <p className="text-xs text-[#6B7280] text-center mt-4">
-          Ao continuar, você concorda com os termos de uso da plataforma QuizHubine.
+          Ao continuar, você concorda com os termos de uso da plataforma QuizBini.
         </p>
       </DialogContent>
     </Dialog>
@@ -103,7 +103,7 @@ function Landing() {
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#A6193C] to-[#F68B1F] flex items-center justify-center font-black">Q</div>
             <span className="text-xl font-bold tracking-tight">
-              Quiz<span className="bg-gradient-to-r from-[#F68B1F] to-[#FFCB05] bg-clip-text text-transparent">Hubine</span>
+              Quiz<span className="bg-gradient-to-r from-[#F68B1F] to-[#FFCB05] bg-clip-text text-transparent">Bini</span>
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm text-[#9CA3AF]">
@@ -255,7 +255,7 @@ function Landing() {
       </section>
 
       <footer className="border-t border-[#262D3D] py-8 text-center text-xs text-[#6B7280]">
-        © {new Date().getFullYear()} QuizHubine • Banco do Nordeste
+        © {new Date().getFullYear()} QuizBini • Banco do Nordeste
       </footer>
 
       <style>{`

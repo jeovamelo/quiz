@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/quiz/$id/edit")({
-  head: () => ({ meta: [{ title: "Editar Quiz — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Editar Quiz — QuizBini" }] }),
   validateSearch: (s: Record<string, unknown>): { redirect_to_event?: string } => ({
     redirect_to_event: (s.redirect_to_event as string) || undefined,
   }),

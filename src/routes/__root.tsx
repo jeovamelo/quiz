@@ -71,10 +71,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "QuizPulse — Apresentações Interativas" },
+      { title: "QuizBini — Apresentações Interativas" },
       { name: "description", content: "Plataforma síncrona de quizzes para palestras corporativas." },
-      { property: "og:title", content: "QuizPulse — Apresentações Interativas" },
-      { name: "twitter:title", content: "QuizPulse — Apresentações Interativas" },
+      { property: "og:title", content: "QuizBini — Apresentações Interativas" },
+      { name: "twitter:title", content: "QuizBini — Apresentações Interativas" },
       { property: "og:description", content: "Plataforma síncrona de quizzes para palestras corporativas." },
       { name: "twitter:description", content: "Plataforma síncrona de quizzes para palestras corporativas." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e87f4447-18cd-4850-be4e-91d777034bdc/id-preview-da3cd720--bdda7e5d-b726-4a6d-b065-f4c3512a727d.lovable.app-1779832647765.png" },

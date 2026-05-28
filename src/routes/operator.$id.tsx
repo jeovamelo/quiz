@@ -31,7 +31,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/operator/$id")({
-  head: () => ({ meta: [{ title: "Central de Controle — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Central de Controle — QuizBini" }] }),
   component: OperatorConsole,
 });
 

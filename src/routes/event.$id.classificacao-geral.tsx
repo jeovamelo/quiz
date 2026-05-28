@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/event/$id/classificacao-geral")({
-  head: () => ({ meta: [{ title: "Classificação Geral — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Classificação Geral — QuizBini" }] }),
   component: ClassificacaoGeral,
 });
 

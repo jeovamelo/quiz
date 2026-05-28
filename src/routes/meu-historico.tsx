@@ -10,7 +10,7 @@ import { downloadCertificate } from "@/lib/certificate";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/meu-historico")({
-  head: () => ({ meta: [{ title: "Meu Histórico — QuizHubine" }] }),
+  head: () => ({ meta: [{ title: "Meu Histórico — QuizBini" }] }),
   component: MyHistory,
 });
 

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { rememberDashboardOrigin } from "@/lib/dashboard-origin";
 
 export const Route = createFileRoute("/remote/")({
-  head: () => ({ meta: [{ title: "Controle Remoto — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Controle Remoto — QuizBini" }] }),
   component: RemoteHub,
 });
 
