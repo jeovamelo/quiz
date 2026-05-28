@@ -316,6 +316,18 @@ function EditQuizPage() {
             </select>
           </div>
 
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-[#262D3D] bg-[#161A23] p-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white">
+                Permitir download do material
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                Libera o PDF original aos usuários no Currículo após a palestra.
+              </p>
+            </div>
+            <Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
+          </div>
+
           <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-4">
             <div className="mb-3 flex items-center gap-2">
               <Zap className="h-4 w-4 text-[#FFCB05]" />
