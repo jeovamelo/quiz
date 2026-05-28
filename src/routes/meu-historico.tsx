@@ -7,14 +7,17 @@ import {
   Download,
   FileDown,
   Loader2,
+  Mic,
   Search,
   Trophy,
+  Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { downloadCertificate } from "@/lib/certificate";
 import { toast } from "sonner";
 
@@ -194,6 +197,82 @@ function MyHistory() {
     });
   }, [rows, query]);
 
+  // Aba "Minhas Palestras": apresentações onde o usuário é o palestrante
+  // (user_id == auth.uid OU speaker_email == e-mail logado).
+  type SpeakerRow = {
+    id: string;
+    title: string;
+    created_at: string;
+    event_id: string | null;
+    event_title?: string | null;
+    file_url: string;
+    allow_download: boolean;
+    participants_count: number;
+  };
+  const { data: speakerRows, isLoading: speakerLoading } = useQuery({
+    queryKey: ["my-speaker-history", user?.id ?? "anon", user?.email ?? ""],
+    enabled: !!user?.id,
+    queryFn: async (): Promise<SpeakerRow[]> => {
+      const emailLower = (user?.email ?? "").toLowerCase();
+      // OR no mesmo .or() do PostgREST
+      const orParts = [`user_id.eq.${user!.id}`];
+      if (emailLower) orParts.push(`speaker_email.eq.${emailLower}`);
+      const { data: pres } = await (supabase.from("presentations") as any)
+        .select("id, title, created_at, event_id, file_url, allow_download")
+        .or(orParts.join(","))
+        .order("created_at", { ascending: false });
+      const list = ((pres ?? []) as any[]).map((p) => ({
+        id: p.id,
+        title: p.title,
+        created_at: p.created_at,
+        event_id: p.event_id,
+        file_url: p.file_url,
+        allow_download: !!p.allow_download,
+        participants_count: 0,
+      })) as SpeakerRow[];
+      if (list.length === 0) return list;
+      const evIds = Array.from(
+        new Set(list.map((r) => r.event_id).filter(Boolean)),
+      ) as string[];
+      const prIds = list.map((r) => r.id);
+      const [evRes, scoresRes] = await Promise.all([
+        evIds.length > 0
+          ? (supabase.from("events") as any).select("id, title").in("id", evIds)
+          : Promise.resolve({ data: [] }),
+        (supabase.from("participant_scores") as any)
+          .select("presentation_id, participant_id")
+          .in("presentation_id", prIds),
+      ]);
+      const evMap = new Map<string, string>();
+      for (const e of ((evRes as any).data ?? []) as any[]) evMap.set(e.id, e.title);
+      const counts = new Map<string, Set<string>>();
+      for (const s of ((scoresRes as any).data ?? []) as any[]) {
+        if (!counts.has(s.presentation_id)) counts.set(s.presentation_id, new Set());
+        counts.get(s.presentation_id)!.add(s.participant_id);
+      }
+      return list
+        .map((r) => ({
+          ...r,
+          event_title: r.event_id ? evMap.get(r.event_id) ?? "Evento" : null,
+          participants_count: counts.get(r.id)?.size ?? 0,
+        }))
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+    },
+  });
+
+  const filteredSpeakerRows = useMemo(() => {
+    if (!speakerRows) return speakerRows;
+    const q = query.trim().toLowerCase();
+    if (!q) return speakerRows;
+    return speakerRows.filter((r) => {
+      const hay = [r.title ?? "", r.event_title ?? ""].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [speakerRows, query]);
+
   useEffect(() => {
     if (!loading && !user) {
       // não redireciona automaticamente: mostra estado vazio com botão de login
@@ -303,6 +382,17 @@ function MyHistory() {
           />
         </div>
 
+        <Tabs defaultValue="participations" className="w-full">
+          <TabsList className="mb-4 grid w-full grid-cols-2 bg-[#161A23] border border-[#262D3D]">
+            <TabsTrigger value="participations" className="data-[state=active]:bg-[#07A684] data-[state=active]:text-white">
+              <Trophy className="mr-2 h-4 w-4" /> Minhas Participações
+            </TabsTrigger>
+            <TabsTrigger value="speaker" className="data-[state=active]:bg-[#F68B1F] data-[state=active]:text-white">
+              <Mic className="mr-2 h-4 w-4" /> Minhas Palestras
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="participations">
         {isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Carregando histórico...
@@ -329,6 +419,11 @@ function MyHistory() {
                   className="flex flex-col gap-3 rounded-xl border border-[#262D3D] bg-[#161A23] p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="min-w-0">
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="rounded-full bg-[#07A684] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                        Participante
+                      </span>
+                    </div>
                     <p className="text-xs uppercase tracking-wider text-muted-foreground">
                       {r.event_title}
                       {r.speaker_name ? ` • ${r.speaker_name}` : ""}
@@ -390,6 +485,79 @@ function MyHistory() {
             })}
           </ul>
         )}
+          </TabsContent>
+
+          <TabsContent value="speaker">
+            {!user ? (
+              <div className="rounded-xl border border-dashed border-[#262D3D] bg-[#161A23]/60 p-10 text-center">
+                <Mic className="mx-auto h-10 w-10 text-muted-foreground" />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Entre com Google para ver as palestras vinculadas ao seu e-mail.
+                </p>
+                <Button
+                  onClick={loginGoogle}
+                  className="mt-4 bg-white text-black hover:bg-white/90"
+                >
+                  Entrar com Google
+                </Button>
+              </div>
+            ) : speakerLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando palestras...
+              </div>
+            ) : !filteredSpeakerRows || filteredSpeakerRows.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#262D3D] bg-[#161A23]/60 p-12 text-center">
+                <Mic className="mx-auto h-10 w-10 text-muted-foreground" />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Nenhuma palestra vinculada ao seu e-mail ({user.email}). Quando
+                  um palestrante cadastrar este e-mail como dele, a palestra
+                  aparecerá aqui automaticamente.
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {filteredSpeakerRows.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex flex-col gap-3 rounded-xl border border-[#262D3D] bg-[#161A23] p-4 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="rounded-full bg-[#F68B1F] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                          Palestrante
+                        </span>
+                      </div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                        {s.event_title ?? "Sem evento"}
+                      </p>
+                      <h3 className="truncate text-base font-semibold">{s.title}</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {new Date(s.created_at).toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#161A23] px-3 py-1 font-semibold text-[#07A684]">
+                        <Users className="h-3.5 w-3.5" /> {s.participants_count} participantes
+                      </span>
+                      {s.allow_download && s.file_url && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            window.open(s.file_url, "_blank", "noopener,noreferrer")
+                          }
+                          className="border-[#F68B1F]/60 text-[#F68B1F] hover:bg-[#F68B1F]/10 hover:text-[#F68B1F]"
+                        >
+                          <FileDown className="mr-1.5 h-4 w-4" /> Material
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

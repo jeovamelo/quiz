@@ -84,6 +84,7 @@ function NewQuiz() {
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [displayMode, setDisplayMode] = useState<"simultaneous" | "after_slide">("simultaneous");
   const [allowDownload, setAllowDownload] = useState<boolean>(false);
+  const [speakerEmail, setSpeakerEmail] = useState<string>("");
   const [generating, setGenerating] = useState(false);
 
   // step 3
@@ -205,6 +206,8 @@ function NewQuiz() {
         file_url: fileUrl,
         ai_context: aiContext || null,
         allow_download: allowDownload,
+        speaker_email:
+          (speakerEmail.trim() || user?.email || "").toLowerCase() || null,
       };
       if (eventId) {
         insertPayload.event_id = eventId;
@@ -381,6 +384,21 @@ function NewQuiz() {
               <div>
                 <Label htmlFor="title">Título do Quiz</Label>
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Inovação Aberta BNB" />
+              </div>
+              <div>
+                <Label htmlFor="speaker-email">E-mail do Palestrante (Gmail)</Label>
+                <Input
+                  id="speaker-email"
+                  type="email"
+                  value={speakerEmail}
+                  onChange={(e) => setSpeakerEmail(e.target.value)}
+                  placeholder={user?.email || "palestrante@gmail.com"}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Se o palestrante já tiver conta no QuizBini com este e-mail, a
+                  palestra aparecerá automaticamente no Currículo dele. Em branco,
+                  usamos o seu e-mail ({user?.email || "logado"}).
+                </p>
               </div>
               <div>
                 <Label htmlFor="time">Tempo limite por pergunta</Label>

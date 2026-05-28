@@ -45,6 +45,7 @@ function EditQuizPage() {
   const [title, setTitle] = useState("");
   const [defaultTimeLimit, setDefaultTimeLimit] = useState<number>(30);
   const [allowDownload, setAllowDownload] = useState<boolean>(false);
+  const [speakerEmail, setSpeakerEmail] = useState<string>("");
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
 
   useEffect(() => {
@@ -52,13 +53,14 @@ function EditQuizPage() {
       setLoading(true);
       const { data: pres } = await supabase
         .from("presentations")
-        .select("title, default_time_limit, allow_download")
+        .select("title, default_time_limit, allow_download, speaker_email")
         .eq("id", id)
         .maybeSingle();
       if (pres) {
         setTitle(pres.title);
         setDefaultTimeLimit((pres as any).default_time_limit ?? 30);
         setAllowDownload(!!(pres as any).allow_download);
+        setSpeakerEmail(((pres as any).speaker_email as string) ?? "");
       }
       const { data: qs } = await supabase
         .from("questions")
@@ -202,6 +204,7 @@ function EditQuizPage() {
           title: title.trim() || "Sem título",
           default_time_limit: defaultTimeLimit,
           allow_download: allowDownload,
+          speaker_email: speakerEmail.trim().toLowerCase() || null,
         } as any)
         .eq("id", id);
       if (presErr) throw presErr;
@@ -418,6 +421,20 @@ function EditQuizPage() {
               placeholder="Ex: Estratégia Comercial 2026"
               className="bg-[#0E1015]"
             />
+            <div className="mt-3">
+              <Label className="text-xs">E-mail do Palestrante (Gmail)</Label>
+              <Input
+                type="email"
+                value={speakerEmail}
+                onChange={(e) => setSpeakerEmail(e.target.value)}
+                placeholder="palestrante@gmail.com"
+                className="bg-[#0E1015]"
+              />
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Vincula esta palestra ao Currículo do palestrante quando ele
+                entrar com este e-mail.
+              </p>
+            </div>
           </div>
           <div>
             <Label className="text-xs">Tempo Geral de Resposta (Padrão)</Label>

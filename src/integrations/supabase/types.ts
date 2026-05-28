@@ -267,6 +267,7 @@ export type Database = {
           id: string
           presented_at: string | null
           sort_order: number
+          speaker_email: string | null
           title: string
           user_id: string
         }
@@ -282,6 +283,7 @@ export type Database = {
           id?: string
           presented_at?: string | null
           sort_order?: number
+          speaker_email?: string | null
           title: string
           user_id?: string
         }
@@ -297,6 +299,7 @@ export type Database = {
           id?: string
           presented_at?: string | null
           sort_order?: number
+          speaker_email?: string | null
           title?: string
           user_id?: string
         }
