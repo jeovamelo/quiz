@@ -191,7 +191,7 @@ export function OnboardingModal({ user }: { user: User }) {
             <>
               <DialogHeader className="text-left space-y-2 mb-4">
                 <DialogTitle className="text-2xl font-black text-white">
-                  Olá! Seja bem-vindo ao QuizHubine.
+                  Olá! Seja bem-vindo ao QuizBini.
                 </DialogTitle>
                 <DialogDescription className="text-[#9CA3AF] text-sm">
                   Escolha seu nome de usuário. Ele aparece nos eventos que você criar e ajuda seu público a te encontrar.

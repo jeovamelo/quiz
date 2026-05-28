@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/lobby/$id")({
-  head: () => ({ meta: [{ title: "Lobby — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Lobby — QuizBini" }] }),
   component: Lobby,
 });
 

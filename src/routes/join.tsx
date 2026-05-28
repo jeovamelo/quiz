@@ -15,7 +15,7 @@ import { sortRanking, type ParticipantRow } from "@/lib/ranking";
 type Search = { session?: string };
 
 export const Route = createFileRoute("/join")({
-  head: () => ({ meta: [{ title: "Entrar na sala — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Entrar na sala — QuizBini" }] }),
   validateSearch: (s: Record<string, unknown>): Search => ({ session: (s.session as string) || undefined }),
   component: Join,
 });
@@ -539,7 +539,7 @@ function Join() {
         <div className="w-full max-w-sm space-y-6 rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 shadow-2xl">
           <div className="text-center">
             <h1 className="text-2xl font-extrabold text-white">Entrar na sala</h1>
-            <p className="text-xs uppercase tracking-widest text-[#F68B1F]">QuizHubine</p>
+            <p className="text-xs uppercase tracking-widest text-[#F68B1F]">QuizBini</p>
           </div>
 
           {/* Seção: Login Google opcional */}
@@ -640,7 +640,7 @@ function Join() {
           presentation_id: presentationId,
           google_user_id: authUser?.id ?? null,
           participant_name: pName || name || "Participante",
-          event_title: eventTitle || "QuizHubine",
+          event_title: eventTitle || "QuizBini",
           presentation_title: presentationTitle || null,
           score,
           correct_count: correctCount,
@@ -651,7 +651,7 @@ function Join() {
       }
       downloadCertificate({
         participantName: pName || name || "Participante",
-        eventTitle: eventTitle || "QuizHubine",
+        eventTitle: eventTitle || "QuizBini",
         presentationTitle: presentationTitle || null,
         score,
         correctCount,

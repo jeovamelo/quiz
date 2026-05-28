@@ -10,7 +10,7 @@ import { aggregateEventRanking, type ScoreRow } from "@/lib/ranking";
 import { useAudioSynthesizer } from "@/hooks/use-audio-synthesizer";
 
 export const Route = createFileRoute("/event/$id/podium")({
-  head: () => ({ meta: [{ title: "Grande Pódio do Evento — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Grande Pódio do Evento — QuizBini" }] }),
   validateSearch: (s: Record<string, unknown>): { finale?: number } => ({
     finale: s.finale === 1 || s.finale === "1" ? 1 : undefined,
   }),

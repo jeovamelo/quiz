@@ -2,6 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Present } from "./-present.$id.component";
 
 export const Route = createFileRoute("/present/$id")({
-  head: () => ({ meta: [{ title: "Apresentação ao vivo — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Apresentação ao vivo — QuizBini" }] }),
   component: Present,
 });

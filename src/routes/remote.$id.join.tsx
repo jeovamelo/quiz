@@ -12,7 +12,7 @@ import {
 import { haptic } from "@/hooks/use-haptic";
 
 export const Route = createFileRoute("/remote/$id/join")({
-  head: () => ({ meta: [{ title: "Ativar Controle Remoto — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Ativar Controle Remoto — QuizBini" }] }),
   component: RemoteJoin,
 });
 

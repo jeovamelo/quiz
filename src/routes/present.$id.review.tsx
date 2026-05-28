@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/present/$id/review")({
-  head: () => ({ meta: [{ title: "Análise por Slide — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Análise por Slide — QuizBini" }] }),
   component: ReviewPresentation,
 });
 

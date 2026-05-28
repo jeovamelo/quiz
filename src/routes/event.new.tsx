@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/event/new")({
-  head: () => ({ meta: [{ title: "Novo Evento — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Novo Evento — QuizBini" }] }),
   component: NewEvent,
 });
 

@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { SessionRemote } from "@/lib/session-remotes";
 
 export const Route = createFileRoute("/present/$id/pair")({
-  head: () => ({ meta: [{ title: "Conectar Controle Remoto — QuizPulse" }] }),
+  head: () => ({ meta: [{ title: "Conectar Controle Remoto — QuizBini" }] }),
   component: PairScreen,
 });
 
