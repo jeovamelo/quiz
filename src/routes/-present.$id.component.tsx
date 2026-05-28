@@ -785,82 +785,12 @@ export function Present() {
 
   // === TELA DE PÓDIO ===
   if (isEnded) {
-    const top3 = ranking.slice(0, 3);
-    // [place index 0..2 = posição real, participant]
-    const slots: Array<{ place: 1 | 2 | 3; p: ParticipantRow }> = [];
-    if (top3[1]) slots.push({ place: 2, p: top3[1] });
-    if (top3[0]) slots.push({ place: 1, p: top3[0] });
-    if (top3[2]) slots.push({ place: 3, p: top3[2] });
-    const styleByPlace = {
-      1: { h: "h-72", color: "from-[oklch(0.85_0.18_85)] to-[oklch(0.6_0.2_40)]", medal: "🥇", label: "1º" },
-      2: { h: "h-48", color: "from-[oklch(0.85_0.02_240)] to-[oklch(0.6_0.02_240)]", medal: "🥈", label: "2º" },
-      3: { h: "h-36", color: "from-[oklch(0.65_0.12_50)] to-[oklch(0.45_0.12_40)]", medal: "🥉", label: "3º" },
-    } as const;
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-10 bg-gradient-to-br from-background via-card to-background p-10">
-        <div className="text-center">
-          <p className="text-sm uppercase tracking-widest text-muted-foreground">{presentation.title}</p>
-          <h1 className="mt-2 text-6xl font-extrabold text-foreground">Pódio Final</h1>
-        </div>
-
-        {top3.length === 0 ? (
-          <p className="text-xl text-muted-foreground">Nenhum participante.</p>
-        ) : (
-          <div className="flex items-end gap-8">
-            {slots.map(({ place, p }) => {
-              const s = styleByPlace[place];
-              return (
-                <div key={p.id} className="flex w-56 flex-col items-center gap-3">
-                  <div className="text-6xl">{s.medal}</div>
-                  <div className="text-2xl font-bold">{p.name}</div>
-                  <div className="text-lg text-muted-foreground">{p.score} pts</div>
-                  <div
-                    className={`flex w-full items-start justify-center rounded-t-xl bg-gradient-to-b pt-4 text-4xl font-black text-white shadow-2xl ${s.h} ${s.color}`}
-                  >
-                    {s.label}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <Button variant="outline" onClick={smartReturn}>
-          Voltar ao Painel
-        </Button>
-        {presentation.event_id && (
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              onClick={() => navigate({ to: "/event/$id/podium", params: { id: presentation.event_id! } })}
-            >
-              Ver Grande Pódio do Evento
-            </Button>
-            {nextPresentationId && (
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  const { data: newSession, error } = await supabase
-                    .from("sessions")
-                    .insert({
-                      presentation_id: nextPresentationId,
-                      status: "lobby",
-                      current_slide: 1,
-                    })
-                    .select("id")
-                    .single();
-                  if (error || !newSession) {
-                    toast.error("Não foi possível iniciar a próxima apresentação");
-                    return;
-                  }
-                  navigate({ to: "/lobby/$id", params: { id: newSession.id } });
-                }}
-              >
-                Próxima Apresentação →
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+      <SessionPodiumReveal
+        title={presentation.title}
+        ranking={ranking}
+        onClose={smartReturn}
+      />
     );
   }
 
