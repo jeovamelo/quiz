@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { AlertTriangle, ChevronLeft, Loader2, Trash2, X, Zap } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Download, Loader2, Trash2, X, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ function EditQuizPage() {
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [defaultTimeLimit, setDefaultTimeLimit] = useState<number>(30);
+  const [allowDownload, setAllowDownload] = useState<boolean>(false);
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
 
   useEffect(() => {
@@ -51,12 +52,13 @@ function EditQuizPage() {
       setLoading(true);
       const { data: pres } = await supabase
         .from("presentations")
-        .select("title, default_time_limit")
+        .select("title, default_time_limit, allow_download")
         .eq("id", id)
         .maybeSingle();
       if (pres) {
         setTitle(pres.title);
         setDefaultTimeLimit((pres as any).default_time_limit ?? 30);
+        setAllowDownload(!!(pres as any).allow_download);
       }
       const { data: qs } = await supabase
         .from("questions")
@@ -196,7 +198,11 @@ function EditQuizPage() {
       // Atualiza nome da apresentação e tempo geral
       const { error: presErr } = await supabase
         .from("presentations")
-        .update({ title: title.trim() || "Sem título", default_time_limit: defaultTimeLimit })
+        .update({
+          title: title.trim() || "Sem título",
+          default_time_limit: defaultTimeLimit,
+          allow_download: allowDownload,
+        } as any)
         .eq("id", id);
       if (presErr) throw presErr;
       for (const q of questions) {
