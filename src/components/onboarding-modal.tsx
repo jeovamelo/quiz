@@ -262,7 +262,7 @@ export function OnboardingModal({ user }: { user: User }) {
                 value={organization}
                 onChange={(e) => setOrganization(e.target.value)}
                 className="w-full px-3 py-3 rounded-xl bg-[#0E1015] border border-[#262D3D] focus:border-[#F68B1F] outline-none text-white"
-                placeholder="Ex.: Banco do Nordeste"
+                placeholder="Ex.: Sua Empresa"
                 maxLength={120}
               />
 

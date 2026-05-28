@@ -900,7 +900,7 @@ function WinnerCelebration({ place }: { place: 1 | 2 | 3 }) {
 
   const title =
     place === 1
-      ? "PARABÉNS! Você é o Campeão do HUBINE!"
+      ? "PARABÉNS! Você é o Campeão do QuizBini!"
       : place === 2
       ? "Espetacular! Você é o Vice-Campeão!"
       : "Parabéns! Você ficou em 3º lugar!";

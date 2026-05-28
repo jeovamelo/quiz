@@ -383,7 +383,7 @@ function NewQuiz() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label htmlFor="title">Título do Quiz</Label>
-                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Inovação Aberta BNB" />
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Inovação Aberta" />
               </div>
               <div>
                 <Label htmlFor="speaker-email">E-mail do Palestrante (Gmail)</Label>
@@ -431,7 +431,7 @@ function NewQuiz() {
                 id="ctx"
                 value={aiContext}
                 onChange={(e) => setAiContext(e.target.value)}
-                placeholder="Ex: Foque nas diretrizes de inovação aberta do Banco do Nordeste"
+                placeholder="Ex: Foque nas diretrizes de inovação aberta da sua organização"
                 rows={4}
               />
             </div>
