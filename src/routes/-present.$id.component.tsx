@@ -508,6 +508,73 @@ export function Present() {
   }, [presentation?.file_url]);
 
   const currentSlide: number = session?.current_slide || 1;
+
+  // ============ Palestrante IA: TTS por slide + auto-avanço ============
+  const ttsTimeoutRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (aiPresenter.mode !== "ai" || !presentation) return;
+
+    // Cancela qualquer fala/timeout anterior
+    window.speechSynthesis.cancel();
+    if (ttsTimeoutRef.current) {
+      window.clearTimeout(ttsTimeoutRef.current);
+      ttsTimeoutRef.current = null;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const { data: row } = await (supabase.from("slide_scripts") as any)
+        .select("script_text")
+        .eq("presentation_id", session?.presentation_id)
+        .eq("slide_number", currentSlide)
+        .maybeSingle();
+      if (cancelled) return;
+      const text = (row?.script_text as string) || "";
+      if (!text) return;
+      const u = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const v = voices.find((x) => x.name === aiPresenter.voice);
+      if (v) u.voice = v;
+      u.lang = v?.lang ?? "pt-BR";
+      u.rate = aiPresenter.rate;
+      u.onend = () => {
+        if (aiPresenter.idleTimeout > 0 && !cancelled) {
+          ttsTimeoutRef.current = window.setTimeout(() => {
+            setSlide(currentSlide + 1, { direction: "next" });
+          }, aiPresenter.idleTimeout * 1000);
+        }
+      };
+      window.speechSynthesis.speak(u);
+    })();
+
+    return () => {
+      cancelled = true;
+      window.speechSynthesis.cancel();
+      if (ttsTimeoutRef.current) {
+        window.clearTimeout(ttsTimeoutRef.current);
+        ttsTimeoutRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, presentation?.file_url, session?.presentation_id]);
+
+  // Fala a resposta de uma pergunta da plateia quando chega
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const ans = (session as any)?.audience_question_answer as string | undefined;
+    if (!ans || aiPresenter.mode !== "ai") return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(ans);
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find((x) => x.name === aiPresenter.voice);
+    if (v) u.voice = v;
+    u.lang = v?.lang ?? "pt-BR";
+    u.rate = aiPresenter.rate;
+    window.speechSynthesis.speak(u);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(session as any)?.audience_question_at]);
+
   const slideQuestion = useMemo(
     () => questions.find((q) => q.slide_number === currentSlide) || null,
     [questions, currentSlide],
