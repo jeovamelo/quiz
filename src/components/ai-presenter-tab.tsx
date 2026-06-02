@@ -87,18 +87,45 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
     })();
   }, [presentationId]);
 
-  // Load TTS voices
+  // Load TTS voices (filtra pt-BR, escuta onvoiceschanged, com retry e log de diagnóstico)
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
+    let cancelled = false;
+    let attempts = 0;
+    const synth = window.speechSynthesis;
+
     const update = () => {
-      const all = window.speechSynthesis.getVoices();
+      if (cancelled) return;
+      const all = synth.getVoices();
+      // Log de diagnóstico — confirma no F12 que o SO entregou as vozes
+      // eslint-disable-next-line no-console
+      console.log(
+        "[Palestrante IA] Vozes detectadas:",
+        all.length,
+        all.map((v) => `${v.name} (${v.lang})`),
+      );
       const pt = all.filter((v) => v.lang.toLowerCase().startsWith("pt"));
+      // Fallback seguro: se não houver pt-BR, mostra todas para o usuário escolher
       setVoices(pt.length > 0 ? pt : all);
+
+      // Algumas plataformas (Chrome no Windows) retornam [] no 1º tick.
+      // Re-tenta algumas vezes até o onvoiceschanged disparar.
+      if (all.length === 0 && attempts < 20) {
+        attempts += 1;
+        setTimeout(update, 250);
+      }
     };
+
     update();
-    window.speechSynthesis.onvoiceschanged = update;
+    synth.addEventListener?.("voiceschanged", update);
+    // Fallback p/ browsers antigos sem addEventListener no synth
+    const prev = synth.onvoiceschanged;
+    synth.onvoiceschanged = update;
+
     return () => {
-      window.speechSynthesis.onvoiceschanged = null;
+      cancelled = true;
+      synth.removeEventListener?.("voiceschanged", update);
+      synth.onvoiceschanged = prev ?? null;
     };
   }, []);
 
