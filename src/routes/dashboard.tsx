@@ -24,6 +24,8 @@ import {
 import { toast } from "sonner";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { StartModeModal, type StartMode } from "@/components/start-mode-modal";
+import { useServerFn } from "@tanstack/react-start";
+import { adjustSessionTimeBudget } from "@/lib/ai-script.functions";
 
 /**
  * Abre a apresentação ao vivo em uma janela popup independente — sem barra
@@ -135,19 +137,39 @@ function Dashboard() {
     setStartModalId(presentationId);
   }
 
-  async function launchSession(presentationId: string, mode: StartMode) {
+  const adjustBudgetFn = useServerFn(adjustSessionTimeBudget);
+
+  async function launchSession(
+    presentationId: string,
+    mode: StartMode,
+    opts?: { totalMinutes?: number },
+  ) {
     rememberDashboardOrigin();
     if (mode === "ai") {
       // Sincroniza o modo configurado da apresentação para que o
       // componente do projetor (que lê presenter_mode) ative a IA.
+      const presUpdate: Record<string, unknown> = { presenter_mode: "ai" };
+      if (opts?.totalMinutes && opts.totalMinutes > 0) {
+        presUpdate.total_duration_minutes = opts.totalMinutes;
+      }
       await (supabase.from("presentations") as any)
-        .update({ presenter_mode: "ai" })
+        .update(presUpdate)
         .eq("id", presentationId);
     } else {
       await (supabase.from("presentations") as any)
         .update({ presenter_mode: "human" })
         .eq("id", presentationId);
     }
+    // Lê o tempo total alvo (ajustado ou padrão) para gravar na sessão
+    const { data: presRow } = await (supabase.from("presentations") as any)
+      .select("total_duration_minutes")
+      .eq("id", presentationId)
+      .maybeSingle();
+    const totalMin =
+      opts?.totalMinutes && opts.totalMinutes > 0
+        ? opts.totalMinutes
+        : Number((presRow as any)?.total_duration_minutes ?? 0);
+    const budgetSec = totalMin > 0 ? Math.round(totalMin * 60) : null;
     const { data: session, error } = await supabase
       .from("sessions")
       .insert({
@@ -155,6 +177,9 @@ function Dashboard() {
         status: "lobby",
         current_slide: 1,
         mode,
+        started_at: new Date().toISOString(),
+        time_budget_seconds: budgetSec,
+        time_used_seconds: 0,
         // Estado de abertura: somente QR do Controle Remoto.
         // Lobby de participantes e classificação ficam ocultos até a
         // máquina de estados do projetor liberar cada etapa.
@@ -167,6 +192,21 @@ function Dashboard() {
     if (error) {
       toast.error("Não foi possível iniciar a sessão");
       return;
+    }
+    // Em modo IA, se o tempo foi ajustado para menor que o original,
+    // já dispara a reescrita do roteiro para caber no novo tempo.
+    if (mode === "ai" && opts?.totalMinutes && opts.totalMinutes > 0) {
+      try {
+        await adjustBudgetFn({
+          data: {
+            sessionId: session.id,
+            totalMinutes: opts.totalMinutes,
+            rewrite: opts.totalMinutes !== Number(presRow?.total_duration_minutes ?? 0),
+          },
+        });
+      } catch (e: any) {
+        toast.error(e?.message || "Falha ao ajustar tempo do roteiro");
+      }
     }
     setStartModalId(null);
     openPresentationPopup(session.id);
@@ -205,7 +245,9 @@ function Dashboard() {
           presentationId={startModalId}
           open={!!startModalId}
           onOpenChange={(v) => !v && setStartModalId(null)}
-          onConfirm={(mode) => startModalId && launchSession(startModalId, mode)}
+          onConfirm={(mode, opts) =>
+            startModalId && launchSession(startModalId, mode, opts)
+          }
         />
         <header className="sticky top-0 z-10 border-b border-[#262D3D] bg-[#131722]/95 px-4 py-3 backdrop-blur">
           <div className="flex items-center justify-between gap-2">
