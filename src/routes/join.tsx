@@ -755,6 +755,9 @@ function Join() {
           Pontuação: <span className="font-semibold text-foreground">{score}</span> · Acertos:{" "}
           <span className="font-semibold text-foreground">{correctCount}</span>
         </p>
+        {aiQuestionsEnabled && sessionId && (
+          <AudienceQuestionPanel sessionId={sessionId} />
+        )}
       </div>
     );
   }
