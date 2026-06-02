@@ -32,6 +32,7 @@ type Question = {
   question_text: string;
   slide_number: number;
   display_mode: string;
+  time_limit?: number;
   is_prize_question?: boolean;
   prize_multiplier?: number;
 };
@@ -361,12 +362,19 @@ function RemoteControl() {
   const isEnded = session?.status === "ended";
 
   const timeLimit = presentation?.default_time_limit ?? 30;
-  const elapsed = session?.question_started_at
-    ? Math.floor((now - new Date(session.question_started_at).getTime()) / 1000)
-    : 0;
-  const remaining = activeQuestion && !session?.question_revealed
-    ? Math.max(0, timeLimit - elapsed)
-    : null;
+  const remaining = (() => {
+    if (!activeQuestion || session?.question_revealed) return null;
+    if (session?.question_expires_at) {
+      const ms = new Date(session.question_expires_at).getTime() - now;
+      return Math.max(0, Math.ceil(ms / 1000));
+    }
+    if (!session?.question_started_at) return null;
+    const lim = activeQuestion.time_limit && activeQuestion.time_limit > 0
+      ? activeQuestion.time_limit
+      : timeLimit;
+    const elapsed = Math.floor((now - new Date(session.question_started_at).getTime()) / 1000);
+    return Math.max(0, lim - elapsed);
+  })();
 
   async function withBusy<T>(fn: () => Promise<T>) {
     setBusy(true);
@@ -407,6 +415,7 @@ function RemoteControl() {
             status: "ended",
             active_question_id: null,
             question_started_at: null,
+            question_expires_at: null,
             question_revealed: false,
           })
           .eq("id", id);
@@ -420,15 +429,18 @@ function RemoteControl() {
       const next = liveSlide + 1;
       const q = questions.find((qq) => qq.slide_number === next) || null;
       const alreadyFired = q ? fired.includes(q.id) : false;
+      // Pergunta ativa persiste em mudanças de slide (timer roda no servidor).
       const patch: any = {
         current_slide: next,
-        question_revealed: false,
-        active_question_id: null,
-        question_started_at: null,
       };
       if (q && !alreadyFired && q.display_mode === "simultaneous") {
+        const lim = q.time_limit && q.time_limit > 0
+          ? q.time_limit
+          : presentation?.default_time_limit ?? 30;
         patch.active_question_id = q.id;
         patch.question_started_at = new Date().toISOString();
+        patch.question_expires_at = new Date(Date.now() + lim * 1000).toISOString();
+        patch.question_revealed = false;
         patch.fired_question_ids = [...fired, q.id];
       }
       await supabase.from("sessions").update(patch).eq("id", id);
@@ -451,14 +463,10 @@ function RemoteControl() {
         .single();
       const liveSlide: number = fresh?.current_slide ?? currentSlide;
       const prev = Math.max(1, liveSlide - 1);
+      // Voltar slide preserva pergunta ativa — o timer continua no servidor.
       await supabase
         .from("sessions")
-        .update({
-          current_slide: prev,
-          question_revealed: false,
-          active_question_id: null,
-          question_started_at: null,
-        })
+        .update({ current_slide: prev })
         .eq("id", id);
     });
   }
@@ -502,6 +510,7 @@ function RemoteControl() {
           status: "ended",
           active_question_id: null,
           question_started_at: null,
+          question_expires_at: null,
           question_revealed: false,
         })
         .eq("id", id);

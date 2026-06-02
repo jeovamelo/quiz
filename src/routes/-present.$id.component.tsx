@@ -504,7 +504,12 @@ export function Present() {
   );
 
   const remaining = useMemo(() => {
-    if (!activeQuestion || !session?.question_started_at || session.question_revealed) return 0;
+    if (!activeQuestion || session.question_revealed) return 0;
+    if (session?.question_expires_at) {
+      const ms = new Date(session.question_expires_at).getTime() - now;
+      return Math.max(0, Math.ceil(ms / 1000));
+    }
+    if (!session?.question_started_at) return 0;
     const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
     const effectiveLimit = activeQuestion.time_limit && activeQuestion.time_limit > 0
       ? activeQuestion.time_limit
@@ -514,14 +519,18 @@ export function Present() {
 
   // auto reveal when time hits 0
   useEffect(() => {
-    if (activeQuestion && session?.question_started_at && !session.question_revealed) {
-      const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
-      const effectiveLimit = activeQuestion.time_limit && activeQuestion.time_limit > 0
-        ? activeQuestion.time_limit
-        : presentation?.default_time_limit ?? 30;
-      if (elapsed >= effectiveLimit) {
-        revealResults();
+    if (activeQuestion && !session?.question_revealed) {
+      let expired = false;
+      if (session?.question_expires_at) {
+        expired = new Date(session.question_expires_at).getTime() <= now;
+      } else if (session?.question_started_at) {
+        const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
+        const effectiveLimit = activeQuestion.time_limit && activeQuestion.time_limit > 0
+          ? activeQuestion.time_limit
+          : presentation?.default_time_limit ?? 30;
+        expired = elapsed >= effectiveLimit;
       }
+      if (expired) revealResults();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, activeQuestion?.id, session?.question_revealed]);
@@ -557,11 +566,11 @@ export function Present() {
       return;
     }
     const next = Math.max(1, n);
+    // IMPORTANTE: navegar entre slides NÃO encerra a pergunta ativa.
+    // O temporizador roda no servidor (question_expires_at) e a pergunta
+    // permanece disponível para resposta até expirar ou ser revelada.
     const patch: any = {
       current_slide: next,
-      question_revealed: false,
-      active_question_id: null,
-      question_started_at: null,
     };
     if (direction === "next") {
       const q = questions.find((qq) => qq.slide_number === next) || null;
@@ -575,8 +584,13 @@ export function Present() {
       }
       const alreadyFired = q ? fired.includes(q.id) : false;
       if (q && !alreadyFired && q.display_mode === "simultaneous") {
+        const lim = q.time_limit && q.time_limit > 0
+          ? q.time_limit
+          : presentation?.default_time_limit ?? 30;
         patch.active_question_id = q.id;
         patch.question_started_at = new Date().toISOString();
+        patch.question_expires_at = new Date(Date.now() + lim * 1000).toISOString();
+        patch.question_revealed = false;
         patch.fired_question_ids = [...fired, q.id];
       }
     }
@@ -585,11 +599,15 @@ export function Present() {
 
   async function triggerQuestion() {
     if (!slideQuestion) return;
+    const lim = slideQuestion.time_limit && slideQuestion.time_limit > 0
+      ? slideQuestion.time_limit
+      : presentation?.default_time_limit ?? 30;
     await supabase
       .from("sessions")
       .update({
         active_question_id: slideQuestion.id,
         question_started_at: new Date().toISOString(),
+        question_expires_at: new Date(Date.now() + lim * 1000).toISOString(),
         question_revealed: false,
       })
       .eq("id", id);
@@ -653,10 +671,14 @@ export function Present() {
         !fired.includes(slideQ.id) &&
         slideQ.display_mode === "simultaneous"
       ) {
+        const lim = slideQ.time_limit && slideQ.time_limit > 0
+          ? slideQ.time_limit
+          : presentation?.default_time_limit ?? 30;
         await (supabase.from("sessions") as any)
           .update({
             active_question_id: slideQ.id,
             question_started_at: new Date().toISOString(),
+            question_expires_at: new Date(Date.now() + lim * 1000).toISOString(),
             question_revealed: false,
             fired_question_ids: [...fired, slideQ.id],
           })
@@ -677,7 +699,7 @@ export function Present() {
   async function endSession(full = false) {
     const { error } = await supabase
       .from("sessions")
-      .update({ status: "ended", active_question_id: null, question_started_at: null, question_revealed: false })
+      .update({ status: "ended", active_question_id: null, question_started_at: null, question_expires_at: null, question_revealed: false })
       .eq("id", id);
     if (error) {
       toast.error("Falha ao encerrar");

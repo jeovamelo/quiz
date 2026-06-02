@@ -490,6 +490,7 @@ export type Database = {
           id: string
           is_fullscreen: boolean
           presentation_id: string
+          question_expires_at: string | null
           question_revealed: boolean
           question_started_at: string | null
           show_join_qr: boolean
@@ -508,6 +509,7 @@ export type Database = {
           id?: string
           is_fullscreen?: boolean
           presentation_id: string
+          question_expires_at?: string | null
           question_revealed?: boolean
           question_started_at?: string | null
           show_join_qr?: boolean
@@ -526,6 +528,7 @@ export type Database = {
           id?: string
           is_fullscreen?: boolean
           presentation_id?: string
+          question_expires_at?: string | null
           question_revealed?: boolean
           question_started_at?: string | null
           show_join_qr?: boolean

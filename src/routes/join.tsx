@@ -372,7 +372,12 @@ function Join() {
   }, [participantId, session?.question_revealed]);
 
   const remaining = useMemo(() => {
-    if (!question || !session?.question_started_at || session.question_revealed) return 0;
+    if (!question || session.question_revealed) return 0;
+    if (session?.question_expires_at) {
+      const ms = new Date(session.question_expires_at).getTime() - now;
+      return Math.max(0, Math.ceil(ms / 1000));
+    }
+    if (!session?.question_started_at) return 0;
     const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
     const limit = question.time_limit && question.time_limit > 0 ? question.time_limit : defaultTimeLimit;
     return Math.max(0, Math.ceil(limit - elapsed));
@@ -410,6 +415,11 @@ function Join() {
     if (!question || !participantId || !session?.question_started_at) return;
     // Bloqueio entrada tardia: pergunta começou antes do participante entrar
     if (participantCreatedAt && new Date(session.question_started_at) < new Date(participantCreatedAt)) return;
+    // Validação local: tempo expirou (a regra do servidor é a fonte da verdade)
+    if (session?.question_expires_at && new Date(session.question_expires_at).getTime() <= Date.now()) {
+      toast.error("Tempo esgotado para esta pergunta");
+      return;
+    }
     setMyAnswer(option);
     try {
       if (navigator.vibrate) navigator.vibrate(50);
@@ -434,7 +444,12 @@ function Join() {
       response_ms: elapsedMs,
     });
     if (error) {
-      // already answered
+      // já respondeu, expirou no servidor, ou pergunta já foi encerrada
+      if ((error as any).message?.includes("question_expired")) {
+        toast.error("Tempo esgotado");
+      } else if ((error as any).message?.includes("question_already_closed")) {
+        toast.error("Pergunta encerrada");
+      }
       return;
     }
     // update participant aggregate
