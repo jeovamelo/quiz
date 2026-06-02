@@ -467,31 +467,49 @@ export type Database = {
       }
       session_remotes: {
         Row: {
+          authorized_at: string | null
           created_at: string
+          denied_at: string | null
           device_token: string | null
           id: string
           last_seen_at: string
           operator_name: string
+          presentation_id: string | null
           session_id: string
           slot: number
+          status: string
+          user_email: string | null
+          user_id: string | null
         }
         Insert: {
+          authorized_at?: string | null
           created_at?: string
+          denied_at?: string | null
           device_token?: string | null
           id?: string
           last_seen_at?: string
           operator_name: string
+          presentation_id?: string | null
           session_id: string
           slot: number
+          status?: string
+          user_email?: string | null
+          user_id?: string | null
         }
         Update: {
+          authorized_at?: string | null
           created_at?: string
+          denied_at?: string | null
           device_token?: string | null
           id?: string
           last_seen_at?: string
           operator_name?: string
+          presentation_id?: string | null
           session_id?: string
           slot?: number
+          status?: string
+          user_email?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -611,6 +629,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_authorized_remote: { Args: { _session_id: string }; Returns: boolean }
       is_presentation_owner: {
         Args: { _presentation_id: string }
         Returns: boolean
