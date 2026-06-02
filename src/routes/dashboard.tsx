@@ -201,6 +201,12 @@ function Dashboard() {
       : "Toque para parear seu celular com a tela do projetor.";
     return (
       <div className="min-h-[100dvh] bg-[#0E1015] text-white">
+        <StartModeModal
+          presentationId={startModalId}
+          open={!!startModalId}
+          onOpenChange={(v) => !v && setStartModalId(null)}
+          onConfirm={(mode) => startModalId && launchSession(startModalId, mode)}
+        />
         <header className="sticky top-0 z-10 border-b border-[#262D3D] bg-[#131722]/95 px-4 py-3 backdrop-blur">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
