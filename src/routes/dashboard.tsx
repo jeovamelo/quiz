@@ -364,6 +364,12 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {user && <OnboardingModal user={user} />}
+      <StartModeModal
+        presentationId={startModalId}
+        open={!!startModalId}
+        onOpenChange={(v) => !v && setStartModalId(null)}
+        onConfirm={(mode) => startModalId && launchSession(startModalId, mode)}
+      />
       <header className="border-b border-border bg-card/50">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div>
