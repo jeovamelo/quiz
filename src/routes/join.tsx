@@ -294,6 +294,25 @@ function Join() {
     };
   }, [sessionId]);
 
+  // Realtime: ai_questions_enabled toggle no presentations
+  useEffect(() => {
+    if (!presentationId) return;
+    const ch = supabase
+      .channel(`join-pres-${presentationId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "presentations", filter: `id=eq.${presentationId}` },
+        (payload: any) => {
+          const next = payload?.new?.ai_questions_enabled;
+          if (typeof next === "boolean") setAiQuestionsEnabled(next);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [presentationId]);
+
   // Escuta a revelação dramática do evento e celebra no celular do vencedor
   useEffect(() => {
     if (!eventId || !deviceToken) return;
