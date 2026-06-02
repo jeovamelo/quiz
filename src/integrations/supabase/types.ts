@@ -531,6 +531,7 @@ export type Database = {
           force_podium: boolean
           id: string
           is_fullscreen: boolean
+          mode: string
           presentation_id: string
           question_expires_at: string | null
           question_revealed: boolean
@@ -553,6 +554,7 @@ export type Database = {
           force_podium?: boolean
           id?: string
           is_fullscreen?: boolean
+          mode?: string
           presentation_id: string
           question_expires_at?: string | null
           question_revealed?: boolean
@@ -575,6 +577,7 @@ export type Database = {
           force_podium?: boolean
           id?: string
           is_fullscreen?: boolean
+          mode?: string
           presentation_id?: string
           question_expires_at?: string | null
           question_revealed?: boolean
