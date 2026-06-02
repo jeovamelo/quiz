@@ -193,15 +193,255 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     const answer: string = json.choices?.[0]?.message?.content?.trim() ?? "";
 
+    // === Gestão dinâmica de tempo: contabiliza segundos reais gastos com a resposta ===
+    const answerWords = answer.trim().split(/\s+/).filter(Boolean).length;
+    // ~150 palavras/min ≈ 2,5 palavras/s
+    const spentSec = Math.max(1, Math.round(answerWords / 2.5));
+
+    // Lê estado atual de tempo da sessão para increment + decidir compensação
+    const { data: sessTime } = await (supabaseAdmin.from("sessions") as any)
+      .select(
+        "time_used_seconds, time_budget_seconds, current_slide, presentation_id",
+      )
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    const newUsed = Number((sessTime as any)?.time_used_seconds ?? 0) + spentSec;
+
     await (supabaseAdmin.from("sessions") as any)
       .update({
         audience_question: data.question,
         audience_question_answer: answer,
         audience_question_at: new Date().toISOString(),
+        time_used_seconds: newUsed,
       })
       .eq("id", data.sessionId);
 
-    return { answer };
+    // Algoritmo de compensação: se o tempo gasto ultrapassou o estimado,
+    // tenta condensar os slides restantes para caber no orçamento total.
+    try {
+      await maybeAutoCondense(supabaseAdmin, data.sessionId);
+    } catch (e) {
+      console.error("auto-condense failed", e);
+    }
+
+    return { answer, spentSec };
+  });
+
+// ============ Dynamic time management helpers ============
+
+async function condenseRemainingForSession(
+  supabaseAdmin: any,
+  sessionId: string,
+  targetRemainingSeconds: number,
+) {
+  const { data: sess } = await supabaseAdmin
+    .from("sessions")
+    .select("presentation_id, current_slide")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (!sess) throw new Error("Sessão não encontrada");
+
+  const { data: rows } = await supabaseAdmin
+    .from("slide_scripts")
+    .select("slide_number, script_text, script_text_original")
+    .eq("presentation_id", sess.presentation_id)
+    .gte("slide_number", sess.current_slide)
+    .order("slide_number");
+  const scripts = (rows ?? []) as Array<{
+    slide_number: number;
+    script_text: string;
+    script_text_original: string | null;
+  }>;
+  if (scripts.length === 0) return { count: 0 };
+
+  // Distribui o orçamento entre os slides restantes (~150 palavras/min)
+  const perSlideSec = Math.max(10, Math.floor(targetRemainingSeconds / scripts.length));
+  const perSlideWords = Math.max(20, Math.round((perSlideSec / 60) * 150));
+
+  // Marca que a IA está ajustando o roteiro (para a UI mostrar feedback)
+  await supabaseAdmin
+    .from("sessions")
+    .update({ ai_adjusting: true })
+    .eq("id", sessionId);
+
+  try {
+    const slidesPayload = scripts
+      .map((s) => `Slide ${s.slide_number}:\n${(s.script_text ?? "").trim()}`)
+      .join("\n\n---\n\n");
+
+    const sys =
+      "Você reescreve roteiros de slides em PT-BR para CONDENSAR o tempo de fala. " +
+      `Cada slide deve caber em ~${perSlideWords} palavras (≈${perSlideSec}s). ` +
+      "Preserve o sentido essencial; corte exemplos longos, repetições e digressões. " +
+      "Vocabulário PT-BR ('tela', 'celular', 'usuário'). Prosa fluida, sem markdown. " +
+      "Responda chamando a função condense_scripts.";
+
+    const json = await callDeepseek({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: sys },
+        {
+          role: "user",
+          content: `Reescreva os ${scripts.length} roteiros restantes:\n\n${slidesPayload}`,
+        },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "condense_scripts",
+            description: "Retorna roteiros condensados por slide em PT-BR",
+            parameters: {
+              type: "object",
+              properties: {
+                scripts: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      slide_number: { type: "number" },
+                      script_text: { type: "string" },
+                    },
+                    required: ["slide_number", "script_text"],
+                  },
+                },
+              },
+              required: ["scripts"],
+            },
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "condense_scripts" } },
+      max_tokens: 8000,
+      temperature: 0.5,
+    });
+
+    const toolCall = json.choices?.[0]?.message?.tool_calls?.[0];
+    const raw: string = toolCall?.function?.arguments ?? "";
+    let parsed: { scripts: Array<{ slide_number: number; script_text: string }> };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("IA retornou formato inválido");
+      parsed = JSON.parse(m[0]);
+    }
+
+    const byNum = new Map(parsed.scripts.map((s) => [s.slide_number, s.script_text]));
+    const updates = scripts
+      .filter((s) => byNum.has(s.slide_number))
+      .map((s) => ({
+        presentation_id: sess.presentation_id,
+        slide_number: s.slide_number,
+        script_text: (byNum.get(s.slide_number) || "").trim(),
+        // Preserva original somente se ainda não houver backup
+        script_text_original: s.script_text_original ?? s.script_text ?? "",
+      }));
+
+    if (updates.length > 0) {
+      await supabaseAdmin.from("slide_scripts").upsert(updates, {
+        onConflict: "presentation_id,slide_number",
+      });
+    }
+
+    await supabaseAdmin
+      .from("sessions")
+      .update({
+        ai_adjusting: false,
+        ai_last_adjustment_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId);
+
+    return { count: updates.length };
+  } catch (err) {
+    await supabaseAdmin
+      .from("sessions")
+      .update({ ai_adjusting: false })
+      .eq("id", sessionId);
+    throw err;
+  }
+}
+
+async function maybeAutoCondense(supabaseAdmin: any, sessionId: string) {
+  const { data: sess } = await supabaseAdmin
+    .from("sessions")
+    .select(
+      "presentation_id, current_slide, time_used_seconds, time_budget_seconds, ai_adjusting",
+    )
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (!sess) return;
+  if (sess.ai_adjusting) return;
+
+  // Carrega scripts restantes
+  const { data: rows } = await supabaseAdmin
+    .from("slide_scripts")
+    .select("slide_number, script_text")
+    .eq("presentation_id", sess.presentation_id)
+    .gte("slide_number", sess.current_slide);
+  const remaining = (rows ?? []) as Array<{ slide_number: number; script_text: string }>;
+  if (remaining.length === 0) return;
+
+  const remainingWords = remaining.reduce(
+    (acc, s) => acc + (s.script_text?.trim().split(/\s+/).filter(Boolean).length ?? 0),
+    0,
+  );
+  const remainingReadingSec = Math.round((remainingWords / 150) * 60);
+
+  const budget = Number(sess.time_budget_seconds ?? 0);
+  if (budget <= 0) return; // sem orçamento definido → nada a fazer
+
+  const used = Number(sess.time_used_seconds ?? 0);
+  const remainingBudget = budget - used;
+  // Se a leitura restante já cabe (com folga de 5%), não mexe
+  if (remainingReadingSec <= Math.floor(remainingBudget * 1.05)) return;
+
+  // Caso contrário, condensa os slides restantes para caber no restante
+  const target = Math.max(30, remainingBudget);
+  await condenseRemainingForSession(supabaseAdmin, sessionId, target);
+}
+
+// Server-fn público: ajustar o tempo total da sessão (no início ou ao vivo)
+const AdjustInput = z.object({
+  sessionId: z.string().uuid(),
+  totalMinutes: z.number().min(1).max(600),
+  rewrite: z.boolean().optional().default(true),
+});
+
+export const adjustSessionTimeBudget = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => AdjustInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const seconds = Math.round(data.totalMinutes * 60);
+
+    const { data: sess } = await supabaseAdmin
+      .from("sessions")
+      .select("started_at, time_used_seconds")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    if (!sess) throw new Error("Sessão não encontrada");
+
+    await supabaseAdmin
+      .from("sessions")
+      .update({
+        time_budget_seconds: seconds,
+        started_at: (sess as any).started_at ?? new Date().toISOString(),
+      })
+      .eq("id", data.sessionId);
+
+    if (data.rewrite) {
+      const remainingBudget = Math.max(
+        30,
+        seconds - Number((sess as any).time_used_seconds ?? 0),
+      );
+      await condenseRemainingForSession(
+        supabaseAdmin,
+        data.sessionId,
+        remainingBudget,
+      );
+    }
+    return { ok: true, budgetSeconds: seconds };
   });
 
 // ============ Expand / Revert scripts ============
