@@ -1,62 +1,103 @@
-## QuizBini Pro — Plataforma de Eventos, Quiz e Certificação
 
-Refatoração grande que toca banco de dados, autenticação, telas do participante e do palestrante. Vou entregar em fases para conseguirmos validar cada etapa antes da próxima.
+# Plano: Abas no Editor + Módulo Palestrante IA
 
-### Fase 1 — Banco de dados e auth
+Reestruturar `src/routes/quiz.$id.edit.tsx` com sistema de abas e criar um novo módulo de Palestrante Autônomo (IA) integrado ao DeepSeek e à síntese de voz do navegador.
 
-**Migração SQL** (uma única migration, com GRANTs + RLS):
+## 1. Migração de banco de dados
 
-- `events`: adicionar `description text`, `start_date timestamptz`, `completion_threshold numeric default 0.7`.
-- `presentations`: já existe com `status` (`execution_status`) e `sort_order`. Sem mudança estrutural.
-- `participants`: adicionar `email text`, `google_user_id uuid` (referência lógica a `auth.users.id`, sem FK para não acoplar ao schema auth), índice em `google_user_id` e em `device_token`.
-- `certificates` (nova): `id`, `participant_id`, `event_id`, `presentation_id` (nullable — null = certificado do evento inteiro), `google_user_id` (nullable, para lookup rápido do "meu histórico"), `participant_name`, `event_title`, `presentation_title` (nullable), `score`, `correct_count`, `answer_count`, `generated_at`.
-- Tabela `responses` do brief já é coberta por `answers` existente — vou reutilizar `answers` em vez de duplicar.
-- RLS: `certificates` legível por `auth.uid() = google_user_id` (logados) + insert anônimo aberto (a emissão acontece no momento que o participante clica). Demais tabelas mantêm policies atuais para não quebrar o quiz anônimo.
+Nova migração SQL adicionando colunas em `presentations`:
 
-**Auth Google**: habilitar provider Google via `configure_social_auth` (mantendo email/senha desabilitado — login só pra salvar histórico).
+- `presenter_mode` text DEFAULT `'human'` — valores: `human` | `ai`
+- `ai_voice` text DEFAULT `'pt-BR-Female'` — identificador da voz TTS
+- `ai_voice_rate` numeric DEFAULT `1.0` — velocidade
+- `ai_idle_timeout` integer DEFAULT `0` — segundos de inatividade para avanço automático (0 = desativado)
+- `ai_questions_enabled` boolean DEFAULT `false` — habilita captura de dúvidas por voz no celular
 
-### Fase 2 — Fluxo do participante (dual mode)
+Nova coluna em `questions` (reaproveitando a tabela para guardar roteiro por slide é ruim — então criar tabela dedicada):
 
-- `/join`: botão "Salvar meu histórico — entrar com Google" acima do form atual. Login não-bloqueante. Se logado, preencher nome/email automaticamente e gravar `google_user_id` no `participants`/`participant_scores`.
-- Anônimo continua exatamente como hoje (device_token no localStorage).
-- Ao final da apresentação, se participante atingiu `completion_threshold`, gravar linha em `certificates` automaticamente (idempotente: unique em `(participant_id, event_id, presentation_id)`).
+Nova tabela `slide_scripts`:
+- `id` uuid PK
+- `presentation_id` uuid (FK lógico)
+- `slide_number` int
+- `script_text` text
+- `updated_at` timestamptz
+- Unique(presentation_id, slide_number)
+- RLS: owner via `is_presentation_owner(presentation_id)` para INSERT/UPDATE/DELETE; SELECT público (igual `questions`)
+- GRANTs para anon (SELECT) e authenticated (ALL) + service_role
 
-### Fase 3 — Certificado PDF
+Nova coluna em `sessions`:
+- `audience_question` text — última pergunta capturada da plateia (para o palestrante responder)
+- `audience_question_answer` text — resposta gerada pela IA
 
-- Adicionar `jspdf`.
-- Helper `src/lib/certificate.ts` que gera PDF A4 paisagem com: nome do participante, título do evento, título da palestra (se houver), data, pontuação, "QuizBini".
-- Botão "Baixar certificado" na tela de pódio/encerramento quando elegível.
+## 2. Server functions (novos arquivos)
 
-### Fase 4 — Tela `/meu-historico`
+`src/lib/ai-script.functions.ts`:
+- `generateSlideScripts({ presentationId })` — protegido por `requireSupabaseAuth`. Lê o PDF text (já temos `ai_context` ou re-extrai), chama DeepSeek com tool calling para retornar um resumo falado curto por slide. Upserta em `slide_scripts`.
+- `answerAudienceQuestion({ sessionId, question })` — busca slide atual + script daquele slide + contexto da apresentação, chama DeepSeek para gerar resposta concisa baseada APENAS nesse contexto. Salva em `sessions.audience_question_answer`.
 
-- Rota protegida (requer login Google).
-- Lista eventos/palestras que o usuário participou (join `participants` + `participant_scores` + `events` + `presentations` por `google_user_id`).
-- Para cada item: data, pontuação, % de acerto, botão "Baixar certificado" se houver registro em `certificates`.
-- Item no header do dashboard/login: link "Meu histórico".
+Reaproveita padrão de `src/lib/ai.functions.ts` (DEEPSEEK_API_KEY já configurada).
 
-### Fase 5 — Analítica para o palestrante
+## 3. UI — Editor com abas
 
-- Em `event.$id`: nova seção "Engajamento por palestra".
-  - Para cada presentation do evento: total de participantes conectados (`participants` por `event_id` + `presentation_id` da sessão) vs. participantes que responderam ≥1 pergunta (distinct `participant_id` em `answers`).
-  - Gráfico de barras simples (Recharts já presente? se não, SVG inline para não inflar deps).
-- Lista "Quem participou": nome, pontuação, % acerto, tempo médio de resposta (`total_response_ms / answer_count`).
+Refatorar `src/routes/quiz.$id.edit.tsx`:
 
-### Detalhes técnicos
+```text
+┌─────────────────────────────────────┐
+│ [Quiz] [Palestrante IA]             │  ← shadcn Tabs
+├─────────────────────────────────────┤
+│ (conteúdo da aba ativa)             │
+└─────────────────────────────────────┘
+```
 
-- Toda escrita de `certificates` feita via cliente browser (RLS aberta para insert mas com WITH CHECK validando `correct_count::numeric / NULLIF(answer_count,0) >= completion_threshold`). Isso evita server function só pra isso.
-- Login Google usa `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/join" })`.
-- `useAuthSession` já existe — reutilizar.
-- PT-BR em todos os textos novos.
-- Sem mudança nos fluxos existentes de apresentação/controle remoto/pódio.
+**Aba "Quiz"**: move todo o conteúdo atual (lista de perguntas, geração via IA, etc) sem mudanças funcionais.
 
-### Riscos / pontos de atenção
+**Aba "Palestrante IA"**: nova UI com seções:
 
-- O scanner de segurança já flagueou as policies `open_all`. Esta refatoração não piora a situação, mas também não corrige. Se quiser endurecer RLS junto, é uma fase 6 separada (mover escrita anônima para server functions). Fora do escopo desta entrega para não atrasar o produto.
-- `completion_threshold` por evento exige UI no `event.new` / `event.$id` para editar (vou adicionar input simples).
+1. **Modo de Apresentação**
+   - Select: `Apresentação Humana` | `Palestrante IA`
+   - Select de voz TTS (popula via `speechSynthesis.getVoices()` filtrando pt-BR)
+   - Slider de velocidade (0.5–2.0)
+   - Input numérico: timeout de inatividade (segundos)
+   - Switch: "Ativar Modo Perguntas da Plateia"
 
-### Ordem de execução
+2. **Roteiro por Slide**
+   - Botão `Gerar Roteiro da IA` (chama `generateSlideScripts`)
+   - Lista expansível: um card por slide com `Textarea` editável + botão Salvar
+   - Indicador de loading durante geração
 
-1. Migration (aguarda aprovação do usuário).
-2. Habilitar Google auth.
-3. Instalar `jspdf`.
-4. Código das fases 2→5.
+## 4. Integração TTS no Presenter
+
+Em `src/routes/-present.$id.component.tsx`:
+- Quando `presentation.presenter_mode === 'ai'` e o slide muda, buscar `slide_scripts` para o `current_slide` e disparar `speechSynthesis.speak(new SpeechSynthesisUtterance(text))` com voice/rate configurados.
+- Cancelar utterance ao trocar de slide.
+- Se `ai_idle_timeout > 0`, agendar `nextSlide()` após o tempo configurado a partir do `onend` do utterance.
+
+## 5. Captura de pergunta por voz (participante)
+
+Em `src/routes/join.tsx`:
+- Se `sessions.audience_question` está ativo (via realtime) e `presentation.ai_questions_enabled === true`, mostrar botão de microfone que usa `webkitSpeechRecognition` para gravar.
+- Ao finalizar, chama `answerAudienceQuestion` server fn.
+- Presenter (`-present.$id.component.tsx`) escuta `sessions.audience_question_answer` via realtime e usa TTS para falar a resposta.
+
+## 6. Detalhes técnicos
+
+- TTS usa `window.speechSynthesis` (Web Speech API) — não consome créditos de IA, suporte nativo do navegador para pt-BR.
+- DeepSeek chamado via `https://api.deepseek.com/v1/chat/completions` com `tool_calls` (mesmo padrão de `ai.functions.ts`).
+- Realtime: habilitar `slide_scripts` e adicionar `audience_question*` ao publication existente de `sessions`.
+- Tipos auto-gerados em `src/integrations/supabase/types.ts` serão atualizados automaticamente após a migração.
+
+## 7. Arquivos afetados
+
+- novo: `supabase/migrations/<timestamp>_palestrante_ia.sql`
+- novo: `src/lib/ai-script.functions.ts`
+- novo: `src/components/ai-presenter-tab.tsx` (conteúdo da nova aba)
+- editado: `src/routes/quiz.$id.edit.tsx` (envolver em Tabs)
+- editado: `src/routes/-present.$id.component.tsx` (TTS + auto-advance)
+- editado: `src/routes/join.tsx` (botão de microfone)
+- editado: `src/integrations/supabase/types.ts` (auto)
+
+## Pontos a confirmar antes de implementar
+
+1. **TTS**: usar Web Speech API nativa do navegador (grátis, instantânea, qualidade variável por SO) ou integrar serviço pago (ElevenLabs/OpenAI TTS) por edge function?
+2. **Reconhecimento de voz no celular**: usar Web Speech API (`webkitSpeechRecognition` — só funciona em Chrome/Edge mobile) ou aceitar pergunta digitada como fallback?
+3. **Avanço automático**: quando timeout = 0 deve desativar completamente, ou usar default (ex: tempo de fala + 5s)?

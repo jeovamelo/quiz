@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AiPresenterTab } from "@/components/ai-presenter-tab";
 
 export const Route = createFileRoute("/quiz/$id/edit")({
   head: () => ({ meta: [{ title: "Editar Quiz — QuizBini" }] }),
@@ -411,6 +413,13 @@ function EditQuizPage() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-4 px-6 py-8">
+        <Tabs defaultValue="quiz" className="w-full">
+          <TabsList className="mb-4 bg-[#131722] border border-[#262D3D]">
+            <TabsTrigger value="quiz">Quiz</TabsTrigger>
+            <TabsTrigger value="ai">Palestrante IA</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="quiz" className="space-y-4">
         {/* Cabeçalho: nome + tempo geral */}
         <div className="grid gap-4 rounded-xl border border-[#262D3D] bg-[#161A23] p-5 md:grid-cols-[1fr_220px]">
           <div>
@@ -741,6 +750,12 @@ function EditQuizPage() {
             </Button>
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="ai">
+            <AiPresenterTab presentationId={id} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

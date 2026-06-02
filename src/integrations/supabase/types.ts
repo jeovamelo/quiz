@@ -257,6 +257,10 @@ export type Database = {
       presentations: {
         Row: {
           ai_context: string | null
+          ai_idle_timeout: number
+          ai_questions_enabled: boolean
+          ai_voice: string | null
+          ai_voice_rate: number
           allow_download: boolean
           chronological_index: number | null
           created_at: string
@@ -266,6 +270,7 @@ export type Database = {
           file_url: string
           id: string
           presented_at: string | null
+          presenter_mode: string
           sort_order: number
           speaker_email: string | null
           title: string
@@ -273,6 +278,10 @@ export type Database = {
         }
         Insert: {
           ai_context?: string | null
+          ai_idle_timeout?: number
+          ai_questions_enabled?: boolean
+          ai_voice?: string | null
+          ai_voice_rate?: number
           allow_download?: boolean
           chronological_index?: number | null
           created_at?: string
@@ -282,6 +291,7 @@ export type Database = {
           file_url: string
           id?: string
           presented_at?: string | null
+          presenter_mode?: string
           sort_order?: number
           speaker_email?: string | null
           title: string
@@ -289,6 +299,10 @@ export type Database = {
         }
         Update: {
           ai_context?: string | null
+          ai_idle_timeout?: number
+          ai_questions_enabled?: boolean
+          ai_voice?: string | null
+          ai_voice_rate?: number
           allow_download?: boolean
           chronological_index?: number | null
           created_at?: string
@@ -298,6 +312,7 @@ export type Database = {
           file_url?: string
           id?: string
           presented_at?: string | null
+          presenter_mode?: string
           sort_order?: number
           speaker_email?: string | null
           title?: string
@@ -483,6 +498,9 @@ export type Database = {
       sessions: {
         Row: {
           active_question_id: string | null
+          audience_question: string | null
+          audience_question_answer: string | null
+          audience_question_at: string | null
           created_at: string
           current_slide: number
           fired_question_ids: string[]
@@ -502,6 +520,9 @@ export type Database = {
         }
         Insert: {
           active_question_id?: string | null
+          audience_question?: string | null
+          audience_question_answer?: string | null
+          audience_question_at?: string | null
           created_at?: string
           current_slide?: number
           fired_question_ids?: string[]
@@ -521,6 +542,9 @@ export type Database = {
         }
         Update: {
           active_question_id?: string | null
+          audience_question?: string | null
+          audience_question_answer?: string | null
+          audience_question_at?: string | null
           created_at?: string
           current_slide?: number
           fired_question_ids?: string[]
@@ -554,6 +578,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      slide_scripts: {
+        Row: {
+          created_at: string
+          id: string
+          presentation_id: string
+          script_text: string
+          slide_number: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          presentation_id: string
+          script_text?: string
+          slide_number: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          presentation_id?: string
+          script_text?: string
+          slide_number?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
