@@ -497,3 +497,107 @@ function OperatorToggle({
     </button>
   );
 }
+
+function TimeStatusPanel({ session }: { session: any }) {
+  const budget = Number(session?.time_budget_seconds ?? 0);
+  const used = Number(session?.time_used_seconds ?? 0);
+  const remaining = Math.max(0, budget - used);
+  const pct = budget > 0 ? Math.min(100, Math.round((used / budget) * 100)) : 0;
+  const adjusting = !!session?.ai_adjusting;
+  const lastAdj = session?.ai_last_adjustment_at
+    ? new Date(session.ai_last_adjustment_at)
+    : null;
+  const recentlyAdjusted =
+    lastAdj && Date.now() - lastAdj.getTime() < 60_000;
+
+  function fmt(sec: number) {
+    if (sec <= 0) return "0s";
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (m === 0) return `${s}s`;
+    if (s === 0) return `${m} min`;
+    return `${m} min ${s}s`;
+  }
+
+  const barColor =
+    pct >= 90
+      ? "from-red-500 to-red-400"
+      : pct >= 70
+      ? "from-amber-500 to-orange-400"
+      : "from-emerald-500 to-emerald-400";
+
+  return (
+    <section className="rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 shadow-xl">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#9CA3AF]">
+            Gestão Dinâmica de Tempo · IA
+          </p>
+          <h2 className="mt-1 flex items-center gap-2 text-lg font-extrabold text-white">
+            <Clock className="h-5 w-5 text-[#A78BFA]" /> Status do Tempo
+          </h2>
+        </div>
+        {(adjusting || recentlyAdjusted) && (
+          <span
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold ${
+              adjusting
+                ? "border-[#A78BFA]/50 bg-[#A78BFA]/15 text-[#C4B5FD]"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+            }`}
+          >
+            <Sparkles
+              className={`h-3.5 w-3.5 ${adjusting ? "animate-pulse" : ""}`}
+            />
+            {adjusting
+              ? "IA ajustando roteiro…"
+              : "Roteiro recalculado"}
+          </span>
+        )}
+      </div>
+
+      {budget <= 0 ? (
+        <p className="mt-4 text-sm text-[#9CA3AF]">
+          Defina o tempo total da apresentação na aba <strong>Palestrante IA</strong>
+          para habilitar a gestão dinâmica de tempo.
+        </p>
+      ) : (
+        <>
+          <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-lg border border-[#262D3D] bg-[#0E1015] p-3">
+              <p className="text-[10px] uppercase tracking-widest text-[#9CA3AF]">
+                Decorrido (IA)
+              </p>
+              <p className="mt-1 text-xl font-extrabold text-white">{fmt(used)}</p>
+            </div>
+            <div className="rounded-lg border border-[#262D3D] bg-[#0E1015] p-3">
+              <p className="text-[10px] uppercase tracking-widest text-[#9CA3AF]">
+                Total
+              </p>
+              <p className="mt-1 text-xl font-extrabold text-white">{fmt(budget)}</p>
+            </div>
+            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3">
+              <p className="text-[10px] uppercase tracking-widest text-emerald-300">
+                Restante
+              </p>
+              <p className="mt-1 text-xl font-extrabold text-white">
+                {fmt(remaining)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="h-3 w-full overflow-hidden rounded-full bg-[#0E1015] ring-1 ring-[#262D3D]">
+              <div
+                className={`h-full bg-gradient-to-r ${barColor} transition-all duration-500`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-[#9CA3AF]">
+              {pct}% do tempo já consumido pelas respostas da IA.
+            </p>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
