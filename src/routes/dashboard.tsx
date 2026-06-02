@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { OnboardingModal } from "@/components/onboarding-modal";
+import { StartModeModal, type StartMode } from "@/components/start-mode-modal";
 
 /**
  * Abre a apresentação ao vivo em uma janela popup independente — sem barra
@@ -74,6 +75,7 @@ function Dashboard() {
   const { user } = useRequireSpeaker();
   const userId = user?.id;
   const isMobile = useIsMobile();
+  const [startModalId, setStartModalId] = useState<string | null>(null);
 
   /* Mantém heartbeat de pareamento ativo em segundo plano,
      mesmo sem exibir o selo visual no cabeçalho. */
@@ -129,14 +131,30 @@ function Dashboard() {
     ? (data ?? []).find((p) => p.id === activeSession.presentation_id)?.title
     : null;
 
-  async function startSession(presentationId: string) {
+  function startSession(presentationId: string) {
+    setStartModalId(presentationId);
+  }
+
+  async function launchSession(presentationId: string, mode: StartMode) {
     rememberDashboardOrigin();
+    if (mode === "ai") {
+      // Sincroniza o modo configurado da apresentação para que o
+      // componente do projetor (que lê presenter_mode) ative a IA.
+      await (supabase.from("presentations") as any)
+        .update({ presenter_mode: "ai" })
+        .eq("id", presentationId);
+    } else {
+      await (supabase.from("presentations") as any)
+        .update({ presenter_mode: "human" })
+        .eq("id", presentationId);
+    }
     const { data: session, error } = await supabase
       .from("sessions")
       .insert({
         presentation_id: presentationId,
         status: "lobby",
         current_slide: 1,
+        mode,
         // Estado de abertura: somente QR do Controle Remoto.
         // Lobby de participantes e classificação ficam ocultos até a
         // máquina de estados do projetor liberar cada etapa.
@@ -150,6 +168,7 @@ function Dashboard() {
       toast.error("Não foi possível iniciar a sessão");
       return;
     }
+    setStartModalId(null);
     openPresentationPopup(session.id);
   }
 
