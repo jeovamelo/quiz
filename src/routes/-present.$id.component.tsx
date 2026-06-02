@@ -671,10 +671,14 @@ export function Present() {
         !fired.includes(slideQ.id) &&
         slideQ.display_mode === "simultaneous"
       ) {
+        const lim = slideQ.time_limit && slideQ.time_limit > 0
+          ? slideQ.time_limit
+          : presentation?.default_time_limit ?? 30;
         await (supabase.from("sessions") as any)
           .update({
             active_question_id: slideQ.id,
             question_started_at: new Date().toISOString(),
+            question_expires_at: new Date(Date.now() + lim * 1000).toISOString(),
             question_revealed: false,
             fired_question_ids: [...fired, slideQ.id],
           })
@@ -695,7 +699,7 @@ export function Present() {
   async function endSession(full = false) {
     const { error } = await supabase
       .from("sessions")
-      .update({ status: "ended", active_question_id: null, question_started_at: null, question_revealed: false })
+      .update({ status: "ended", active_question_id: null, question_started_at: null, question_expires_at: null, question_revealed: false })
       .eq("id", id);
     if (error) {
       toast.error("Falha ao encerrar");
