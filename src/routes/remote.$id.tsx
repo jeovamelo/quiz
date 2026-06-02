@@ -780,3 +780,59 @@ function RemoteControl() {
     </div>
   );
 }
+
+/**
+ * Overlay de tela cheia exibido enquanto o controle remoto NÃO está
+ * autorizado. Cobre toda a tela e bloqueia o uso dos botões abaixo.
+ */
+function AuthorizationGate({
+  status,
+  name,
+  onLeave,
+}: {
+  status: "pending" | "authorized" | "denied" | null;
+  name: string;
+  onLeave: () => void;
+}) {
+  const denied = status === "denied";
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[#0E1015]/95 px-6 text-center text-white backdrop-blur">
+      <div
+        className={`flex h-20 w-20 items-center justify-center rounded-3xl ${
+          denied
+            ? "bg-red-600/20 text-red-300"
+            : "bg-gradient-to-br from-[#A6193C] to-[#F68B1F] text-white"
+        }`}
+      >
+        {denied ? <ShieldX className="h-10 w-10" /> : <ShieldAlert className="h-10 w-10 animate-pulse" />}
+      </div>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-black tracking-tight">
+          {denied
+            ? "Acesso negado pelo palestrante"
+            : status === "pending"
+            ? "Aguardando autorização"
+            : "Verificando autorização..."}
+        </h1>
+        <p className="max-w-sm text-sm text-[#9CA3AF]">
+          {denied
+            ? "Sua solicitação foi recusada. Fale com o palestrante se isso foi um engano."
+            : "Sua solicitação foi enviada ao Painel de Controle do palestrante. Assim que ele autorizar, este aparelho assume o controle automaticamente."}
+        </p>
+        {name && (
+          <p className="text-xs text-[#6B7280]">
+            Identificado como <span className="font-semibold text-white">{name}</span>
+          </p>
+        )}
+      </div>
+      {!denied && <Loader2 className="h-6 w-6 animate-spin text-[#F68B1F]" />}
+      <button
+        type="button"
+        onClick={onLeave}
+        className="mt-2 rounded-xl border border-[#3A4255] px-5 py-2 text-xs font-bold uppercase tracking-wide text-[#9CA3AF] transition hover:border-white hover:text-white"
+      >
+        {denied ? "Tentar novamente" : "Cancelar solicitação"}
+      </button>
+    </div>
+  );
+}
