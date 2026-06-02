@@ -103,6 +103,53 @@ function RemoteControl() {
     return () => window.clearInterval(t);
   }, [stored?.remoteId]);
 
+  // === Autorização: observa o status deste controle remoto em tempo real ===
+  useEffect(() => {
+    if (!stored?.remoteId) return;
+    let cancelled = false;
+    async function load() {
+      const { data } = await supabase
+        .from("session_remotes")
+        .select("status")
+        .eq("id", stored!.remoteId)
+        .maybeSingle();
+      if (cancelled) return;
+      const next = ((data as any)?.status ?? null) as
+        | "pending"
+        | "authorized"
+        | "denied"
+        | null;
+      setAuthStatus((prev) => {
+        if (prev !== "authorized" && next === "authorized") {
+          haptic(80);
+          toast.success("Controle autorizado pelo palestrante!");
+        }
+        if (prev === "authorized" && next !== "authorized") {
+          toast.warning("Sua autorização foi revogada.");
+        }
+        return next;
+      });
+    }
+    load();
+    const ch = supabase
+      .channel(`remote-auth-self-${stored.remoteId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "session_remotes",
+          filter: `id=eq.${stored.remoteId}`,
+        },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [stored?.remoteId]);
+
   // === PERSISTÊNCIA: salva a última sessão ativa para auto-reconectar ===
   useEffect(() => {
     try {
