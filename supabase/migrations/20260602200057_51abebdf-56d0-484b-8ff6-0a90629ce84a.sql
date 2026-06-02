@@ -1,0 +1,1 @@
+ALTER TABLE public.slide_scripts ADD COLUMN IF NOT EXISTS script_text_original text;
