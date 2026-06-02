@@ -56,6 +56,7 @@ function RemoteControl() {
   const [answersCount, setAnswersCount] = useState(0);
   const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
+  const [authStatus, setAuthStatus] = useState<"pending" | "authorized" | "denied" | null>(null);
 
   // Ponte de tempo real (Broadcast) entre celular e projetor.
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
@@ -73,6 +74,10 @@ function RemoteControl() {
    * se indisponível, cai automaticamente no broadcast da nuvem.
    */
   function sendCommand(action: string, extra?: Record<string, any>) {
+    if (authStatus !== "authorized") {
+      toast.error("Aguardando autorização do palestrante.");
+      return Promise.resolve(false);
+    }
     const payload = { action, ts: Date.now(), from: stored?.slot ?? 0, ...(extra ?? {}) };
     const viaP2P = tunnel.transport === "p2p" ? tunnel.send(payload) : false;
     if (viaP2P) return Promise.resolve(true);
