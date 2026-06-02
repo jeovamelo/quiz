@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { RemoteAuthorizationPanel } from "@/components/remote-authorization-panel";
 
 export const Route = createFileRoute("/operator/$id")({
   head: () => ({ meta: [{ title: "Central de Controle — QuizBini" }] }),
