@@ -8,6 +8,8 @@ import {
   Users,
   Target,
   LayoutDashboard,
+  ShieldAlert,
+  ShieldX,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
@@ -17,6 +19,7 @@ import { NetworkStatusBadge, NetworkFallbackBanner } from "@/components/network-
 import {
   heartbeatRemote,
   loadStoredRemote,
+  clearStoredRemote,
   type StoredRemote,
 } from "@/lib/session-remotes";
 import { RemoteDrawer } from "@/components/remote-drawer";
