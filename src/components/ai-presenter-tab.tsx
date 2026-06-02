@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Mic, Save, Sparkles, Volume2 } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Mic, Save, Sparkles, Volume2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,8 @@ type Settings = {
   ai_voice_rate: number;
   ai_idle_timeout: number;
   ai_questions_enabled: boolean;
+  total_duration_minutes: number;
+  ai_max_answer_seconds: number;
 };
 
 type ScriptRow = { slide_number: number; script_text: string };
@@ -33,6 +35,8 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
     ai_voice_rate: 1.0,
     ai_idle_timeout: 0,
     ai_questions_enabled: false,
+    total_duration_minutes: 0,
+    ai_max_answer_seconds: 30,
   });
   const [scripts, setScripts] = useState<ScriptRow[]>([]);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -46,7 +50,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
       setLoading(true);
       const { data: pres } = await (supabase.from("presentations") as any)
         .select(
-          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled",
+          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds",
         )
         .eq("id", presentationId)
         .maybeSingle();
@@ -59,6 +63,8 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
           ai_voice_rate: Number(pres.ai_voice_rate ?? 1),
           ai_idle_timeout: Number(pres.ai_idle_timeout ?? 0),
           ai_questions_enabled: !!pres.ai_questions_enabled,
+          total_duration_minutes: Number(pres.total_duration_minutes ?? 0),
+          ai_max_answer_seconds: Number(pres.ai_max_answer_seconds ?? 30),
         });
       }
       const { data: sc } = await (supabase.from("slide_scripts") as any)
