@@ -1,0 +1,1 @@
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS mode text NOT NULL DEFAULT 'manual' CHECK (mode IN ('manual','ai'));
