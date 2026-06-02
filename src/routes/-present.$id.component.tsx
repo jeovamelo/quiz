@@ -43,6 +43,13 @@ export function Present() {
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
   const [presentation, setPresentation] = useState<{ file_url: string; title: string; event_id: string | null; default_time_limit: number } | null>(null);
+  const [aiPresenter, setAiPresenter] = useState<{
+    mode: "human" | "ai";
+    voice: string | null;
+    rate: number;
+    idleTimeout: number;
+    questionsEnabled: boolean;
+  }>({ mode: "human", voice: null, rate: 1, idleTimeout: 0, questionsEnabled: false });
   const [nextPresentationId, setNextPresentationId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
