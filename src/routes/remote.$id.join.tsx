@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2, Smartphone } from "lucide-react";
+import { Loader2, Smartphone, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { useAuthSession } from "@/hooks/use-auth";
 import {
-  claimRemoteSlot,
+  requestRemoteAuthorization,
   getOrCreateDeviceToken,
   loadStoredRemote,
   saveStoredRemote,
@@ -19,6 +21,7 @@ export const Route = createFileRoute("/remote/$id/join")({
 function RemoteJoin() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const { user: authUser, loading: authLoading } = useAuthSession();
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sessionExists, setSessionExists] = useState<boolean | null>(null);
@@ -42,8 +45,29 @@ function RemoteJoin() {
     };
   }, [id]);
 
+  // Pré-preenche o nome a partir do perfil Google assim que o usuário loga.
+  useEffect(() => {
+    if (!authUser) return;
+    setName((prev) => {
+      if (prev.trim().length > 0) return prev;
+      const meta: any = authUser.user_metadata ?? {};
+      return meta.full_name || meta.name || authUser.email?.split("@")[0] || "";
+    });
+  }, [authUser]);
+
+  async function loginWithGoogle() {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.href,
+    });
+    if (result.error) toast.error("Não foi possível iniciar o login com Google.");
+  }
+
   async function activate(e: React.FormEvent) {
     e.preventDefault();
+    if (!authUser) {
+      toast.error("Faça login com Google antes de solicitar o controle remoto.");
+      return;
+    }
     const trimmed = name.trim();
     if (trimmed.length < 2) {
       toast.error("Digite seu nome (mínimo 2 letras).");
@@ -56,9 +80,12 @@ function RemoteJoin() {
     setSubmitting(true);
     try {
       const deviceToken = getOrCreateDeviceToken(id);
-      const claimed = await claimRemoteSlot(id, trimmed, deviceToken);
+      const claimed = await requestRemoteAuthorization(id, trimmed, deviceToken, {
+        id: authUser.id,
+        email: authUser.email ?? null,
+      });
       if (!claimed) {
-        toast.error("Os 2 controles desta sessão já estão conectados.");
+        toast.error("Já existe um controle autorizado nesta sessão.");
         return;
       }
       saveStoredRemote(id, {
@@ -68,7 +95,11 @@ function RemoteJoin() {
         deviceToken,
       });
       haptic(60);
-      toast.success(`Controle ativado — Olá, ${claimed.operator_name}!`);
+      if (claimed.status === "authorized") {
+        toast.success(`Controle ativado — Olá, ${claimed.operator_name}!`);
+      } else {
+        toast.success("Solicitação enviada. Aguardando aprovação do palestrante.");
+      }
       navigate({ to: "/remote/$id", params: { id } });
     } catch (err: any) {
       toast.error(err?.message || "Falha ao ativar controle remoto.");
@@ -97,11 +128,28 @@ function RemoteJoin() {
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#A6193C] to-[#F68B1F] shadow-lg">
             <Smartphone className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight">Qual é o seu nome?</h1>
+          <h1 className="text-3xl font-black tracking-tight">Solicitar Controle Remoto</h1>
           <p className="mt-2 text-sm text-[#9CA3AF]">
-            Esse nome aparecerá no projetor para identificar este controle.
+            Faça login com Google e aguarde a aprovação do palestrante.
           </p>
         </div>
+
+        {!authLoading && !authUser && (
+          <button
+            type="button"
+            onClick={loginWithGoogle}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#262D3D] bg-white px-6 py-4 text-base font-bold text-[#0E1015] shadow-lg transition active:scale-95"
+          >
+            <ShieldCheck className="h-5 w-5" /> Entrar com Google
+          </button>
+        )}
+
+        {authUser && (
+          <div className="rounded-xl border border-[#262D3D] bg-[#131722]/70 px-4 py-3 text-xs text-[#9CA3AF]">
+            <p className="font-semibold text-white">Conectado como</p>
+            <p className="mt-0.5 truncate">{authUser.email}</p>
+          </div>
+        )}
 
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-widest text-[#F68B1F]">
@@ -115,21 +163,22 @@ function RemoteJoin() {
             autoFocus
             maxLength={60}
             required
+            disabled={!authUser}
             className="mt-2 w-full rounded-xl border border-[#262D3D] bg-[#131722] px-4 py-4 text-lg font-semibold text-white placeholder:text-[#3A4255] focus:border-[#F68B1F] focus:outline-none focus:ring-2 focus:ring-[#F68B1F]/40"
           />
         </label>
 
         <button
           type="submit"
-          disabled={submitting || sessionExists === null}
+          disabled={submitting || sessionExists === null || !authUser}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#A6193C] to-[#F68B1F] px-6 py-4 text-base font-extrabold uppercase tracking-wide text-white shadow-2xl shadow-[#A6193C]/40 transition-all duration-100 active:scale-95 disabled:opacity-60"
         >
           {submitting ? (
             <>
-              <Loader2 className="h-5 w-5 animate-spin" /> Conectando...
+              <Loader2 className="h-5 w-5 animate-spin" /> Enviando solicitação...
             </>
           ) : (
-            <>Ativar Controle Remoto 📱</>
+            <>Solicitar Autorização 📱</>
           )}
         </button>
       </form>

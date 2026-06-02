@@ -8,6 +8,8 @@ import {
   Users,
   Target,
   LayoutDashboard,
+  ShieldAlert,
+  ShieldX,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
@@ -17,6 +19,7 @@ import { NetworkStatusBadge, NetworkFallbackBanner } from "@/components/network-
 import {
   heartbeatRemote,
   loadStoredRemote,
+  clearStoredRemote,
   type StoredRemote,
 } from "@/lib/session-remotes";
 import { RemoteDrawer } from "@/components/remote-drawer";
@@ -53,6 +56,7 @@ function RemoteControl() {
   const [answersCount, setAnswersCount] = useState(0);
   const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
+  const [authStatus, setAuthStatus] = useState<"pending" | "authorized" | "denied" | null>(null);
 
   // Ponte de tempo real (Broadcast) entre celular e projetor.
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
@@ -70,6 +74,10 @@ function RemoteControl() {
    * se indisponível, cai automaticamente no broadcast da nuvem.
    */
   function sendCommand(action: string, extra?: Record<string, any>) {
+    if (authStatus !== "authorized") {
+      toast.error("Aguardando autorização do palestrante.");
+      return Promise.resolve(false);
+    }
     const payload = { action, ts: Date.now(), from: stored?.slot ?? 0, ...(extra ?? {}) };
     const viaP2P = tunnel.transport === "p2p" ? tunnel.send(payload) : false;
     if (viaP2P) return Promise.resolve(true);
@@ -93,6 +101,53 @@ function RemoteControl() {
     tick();
     const t = window.setInterval(tick, 20000);
     return () => window.clearInterval(t);
+  }, [stored?.remoteId]);
+
+  // === Autorização: observa o status deste controle remoto em tempo real ===
+  useEffect(() => {
+    if (!stored?.remoteId) return;
+    let cancelled = false;
+    async function load() {
+      const { data } = await supabase
+        .from("session_remotes")
+        .select("status")
+        .eq("id", stored!.remoteId)
+        .maybeSingle();
+      if (cancelled) return;
+      const next = ((data as any)?.status ?? null) as
+        | "pending"
+        | "authorized"
+        | "denied"
+        | null;
+      setAuthStatus((prev) => {
+        if (prev !== "authorized" && next === "authorized") {
+          haptic(80);
+          toast.success("Controle autorizado pelo palestrante!");
+        }
+        if (prev === "authorized" && next !== "authorized") {
+          toast.warning("Sua autorização foi revogada.");
+        }
+        return next;
+      });
+    }
+    load();
+    const ch = supabase
+      .channel(`remote-auth-self-${stored.remoteId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "session_remotes",
+          filter: `id=eq.${stored.remoteId}`,
+        },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
   }, [stored?.remoteId]);
 
   // === PERSISTÊNCIA: salva a última sessão ativa para auto-reconectar ===
@@ -577,6 +632,16 @@ function RemoteControl() {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#0E1015] text-white">
       <NetworkFallbackBanner transport={tunnel.transport} />
+      {authStatus !== "authorized" && (
+        <AuthorizationGate
+          status={authStatus}
+          name={stored?.name ?? ""}
+          onLeave={() => {
+            if (stored?.remoteId) clearStoredRemote(id);
+            navigate({ to: "/remote/$id/join", params: { id }, replace: true });
+          }}
+        />
+      )}
       {bridge.status !== "connected" && (
         <div className="shrink-0 bg-[#F68B1F] px-3 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-black animate-pulse">
           Reconectando ao projetor...
@@ -712,6 +777,62 @@ function RemoteControl() {
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+/**
+ * Overlay de tela cheia exibido enquanto o controle remoto NÃO está
+ * autorizado. Cobre toda a tela e bloqueia o uso dos botões abaixo.
+ */
+function AuthorizationGate({
+  status,
+  name,
+  onLeave,
+}: {
+  status: "pending" | "authorized" | "denied" | null;
+  name: string;
+  onLeave: () => void;
+}) {
+  const denied = status === "denied";
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[#0E1015]/95 px-6 text-center text-white backdrop-blur">
+      <div
+        className={`flex h-20 w-20 items-center justify-center rounded-3xl ${
+          denied
+            ? "bg-red-600/20 text-red-300"
+            : "bg-gradient-to-br from-[#A6193C] to-[#F68B1F] text-white"
+        }`}
+      >
+        {denied ? <ShieldX className="h-10 w-10" /> : <ShieldAlert className="h-10 w-10 animate-pulse" />}
+      </div>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-black tracking-tight">
+          {denied
+            ? "Acesso negado pelo palestrante"
+            : status === "pending"
+            ? "Aguardando autorização"
+            : "Verificando autorização..."}
+        </h1>
+        <p className="max-w-sm text-sm text-[#9CA3AF]">
+          {denied
+            ? "Sua solicitação foi recusada. Fale com o palestrante se isso foi um engano."
+            : "Sua solicitação foi enviada ao Painel de Controle do palestrante. Assim que ele autorizar, este aparelho assume o controle automaticamente."}
+        </p>
+        {name && (
+          <p className="text-xs text-[#6B7280]">
+            Identificado como <span className="font-semibold text-white">{name}</span>
+          </p>
+        )}
+      </div>
+      {!denied && <Loader2 className="h-6 w-6 animate-spin text-[#F68B1F]" />}
+      <button
+        type="button"
+        onClick={onLeave}
+        className="mt-2 rounded-xl border border-[#3A4255] px-5 py-2 text-xs font-bold uppercase tracking-wide text-[#9CA3AF] transition hover:border-white hover:text-white"
+      >
+        {denied ? "Tentar novamente" : "Cancelar solicitação"}
+      </button>
     </div>
   );
 }

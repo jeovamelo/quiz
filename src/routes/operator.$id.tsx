@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { RemoteAuthorizationPanel } from "@/components/remote-authorization-panel";
 
 export const Route = createFileRoute("/operator/$id")({
   head: () => ({ meta: [{ title: "Central de Controle — QuizBini" }] }),
@@ -328,6 +329,9 @@ function OperatorConsole() {
             </button>
           </div>
         </section>
+
+        {/* === BLOCO B — Overlays === */}
+        <RemoteAuthorizationPanel sessionId={id} />
 
         {/* === BLOCO B — Overlays === */}
         <section className="rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 shadow-xl">
