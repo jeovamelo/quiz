@@ -14,6 +14,8 @@ import {
   Users,
   LayoutDashboard,
   ExternalLink,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
@@ -332,6 +334,8 @@ function OperatorConsole() {
 
         {/* === BLOCO B — Overlays === */}
         <RemoteAuthorizationPanel sessionId={id} />
+
+        {session.mode === "ai" && <TimeStatusPanel session={session} />}
 
         {/* === BLOCO B — Overlays === */}
         <section className="rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 shadow-xl">
