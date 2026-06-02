@@ -343,7 +343,7 @@ export function Present() {
       if (s) {
         const { data: p } = await supabase
           .from("presentations")
-          .select("file_url, title, event_id, sort_order, default_time_limit")
+          .select("file_url, title, event_id, sort_order, default_time_limit, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled")
           .eq("id", s.presentation_id)
           .single();
         if (p) {
@@ -352,6 +352,13 @@ export function Present() {
             title: p.title,
             event_id: (p as any).event_id ?? null,
             default_time_limit: (p as any).default_time_limit ?? 30,
+          });
+          setAiPresenter({
+            mode: ((p as any).presenter_mode as any) ?? "human",
+            voice: (p as any).ai_voice ?? null,
+            rate: Number((p as any).ai_voice_rate ?? 1),
+            idleTimeout: Number((p as any).ai_idle_timeout ?? 0),
+            questionsEnabled: !!(p as any).ai_questions_enabled,
           });
           // Buscar próxima apresentação do mesmo evento (sort_order > atual)
           if ((p as any).event_id) {
