@@ -917,6 +917,10 @@ function Join() {
           </p>
         </div>
       )}
+
+      {aiQuestionsEnabled && sessionId && (
+        <AudienceQuestionPanel sessionId={sessionId} />
+      )}
     </div>
   );
 }
