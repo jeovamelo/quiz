@@ -504,7 +504,12 @@ export function Present() {
   );
 
   const remaining = useMemo(() => {
-    if (!activeQuestion || !session?.question_started_at || session.question_revealed) return 0;
+    if (!activeQuestion || session.question_revealed) return 0;
+    if (session?.question_expires_at) {
+      const ms = new Date(session.question_expires_at).getTime() - now;
+      return Math.max(0, Math.ceil(ms / 1000));
+    }
+    if (!session?.question_started_at) return 0;
     const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
     const effectiveLimit = activeQuestion.time_limit && activeQuestion.time_limit > 0
       ? activeQuestion.time_limit
@@ -514,14 +519,18 @@ export function Present() {
 
   // auto reveal when time hits 0
   useEffect(() => {
-    if (activeQuestion && session?.question_started_at && !session.question_revealed) {
-      const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
-      const effectiveLimit = activeQuestion.time_limit && activeQuestion.time_limit > 0
-        ? activeQuestion.time_limit
-        : presentation?.default_time_limit ?? 30;
-      if (elapsed >= effectiveLimit) {
-        revealResults();
+    if (activeQuestion && !session?.question_revealed) {
+      let expired = false;
+      if (session?.question_expires_at) {
+        expired = new Date(session.question_expires_at).getTime() <= now;
+      } else if (session?.question_started_at) {
+        const elapsed = (now - new Date(session.question_started_at).getTime()) / 1000;
+        const effectiveLimit = activeQuestion.time_limit && activeQuestion.time_limit > 0
+          ? activeQuestion.time_limit
+          : presentation?.default_time_limit ?? 30;
+        expired = elapsed >= effectiveLimit;
       }
+      if (expired) revealResults();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, activeQuestion?.id, session?.question_revealed]);
