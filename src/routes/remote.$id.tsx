@@ -32,6 +32,7 @@ type Question = {
   question_text: string;
   slide_number: number;
   display_mode: string;
+  time_limit?: number;
   is_prize_question?: boolean;
   prize_multiplier?: number;
 };
