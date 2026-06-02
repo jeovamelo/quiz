@@ -632,6 +632,16 @@ function RemoteControl() {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#0E1015] text-white">
       <NetworkFallbackBanner transport={tunnel.transport} />
+      {authStatus !== "authorized" && (
+        <AuthorizationGate
+          status={authStatus}
+          name={stored?.name ?? ""}
+          onLeave={() => {
+            if (stored?.remoteId) clearStoredRemote(id);
+            navigate({ to: "/remote/$id/join", params: { id }, replace: true });
+          }}
+        />
+      )}
       {bridge.status !== "connected" && (
         <div className="shrink-0 bg-[#F68B1F] px-3 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-black animate-pulse">
           Reconectando ao projetor...
