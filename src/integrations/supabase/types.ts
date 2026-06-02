@@ -258,6 +258,7 @@ export type Database = {
         Row: {
           ai_context: string | null
           ai_idle_timeout: number
+          ai_max_answer_seconds: number
           ai_questions_enabled: boolean
           ai_voice: string | null
           ai_voice_rate: number
@@ -274,11 +275,13 @@ export type Database = {
           sort_order: number
           speaker_email: string | null
           title: string
+          total_duration_minutes: number
           user_id: string
         }
         Insert: {
           ai_context?: string | null
           ai_idle_timeout?: number
+          ai_max_answer_seconds?: number
           ai_questions_enabled?: boolean
           ai_voice?: string | null
           ai_voice_rate?: number
@@ -295,11 +298,13 @@ export type Database = {
           sort_order?: number
           speaker_email?: string | null
           title: string
+          total_duration_minutes?: number
           user_id?: string
         }
         Update: {
           ai_context?: string | null
           ai_idle_timeout?: number
+          ai_max_answer_seconds?: number
           ai_questions_enabled?: boolean
           ai_voice?: string | null
           ai_voice_rate?: number
@@ -316,6 +321,7 @@ export type Database = {
           sort_order?: number
           speaker_email?: string | null
           title?: string
+          total_duration_minutes?: number
           user_id?: string
         }
         Relationships: [

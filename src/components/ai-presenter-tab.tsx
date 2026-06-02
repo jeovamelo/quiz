@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Mic, Save, Sparkles, Volume2 } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Mic, Save, Sparkles, Volume2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,8 @@ type Settings = {
   ai_voice_rate: number;
   ai_idle_timeout: number;
   ai_questions_enabled: boolean;
+  total_duration_minutes: number;
+  ai_max_answer_seconds: number;
 };
 
 type ScriptRow = { slide_number: number; script_text: string };
@@ -33,6 +35,8 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
     ai_voice_rate: 1.0,
     ai_idle_timeout: 0,
     ai_questions_enabled: false,
+    total_duration_minutes: 0,
+    ai_max_answer_seconds: 30,
   });
   const [scripts, setScripts] = useState<ScriptRow[]>([]);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -46,7 +50,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
       setLoading(true);
       const { data: pres } = await (supabase.from("presentations") as any)
         .select(
-          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled",
+          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds",
         )
         .eq("id", presentationId)
         .maybeSingle();
@@ -59,6 +63,8 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
           ai_voice_rate: Number(pres.ai_voice_rate ?? 1),
           ai_idle_timeout: Number(pres.ai_idle_timeout ?? 0),
           ai_questions_enabled: !!pres.ai_questions_enabled,
+          total_duration_minutes: Number(pres.total_duration_minutes ?? 0),
+          ai_max_answer_seconds: Number(pres.ai_max_answer_seconds ?? 30),
         });
       }
       const { data: sc } = await (supabase.from("slide_scripts") as any)
@@ -86,6 +92,31 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
   }, []);
 
   const ptVoices = useMemo(() => voices, [voices]);
+
+  // === Cálculo de tempo de leitura estimado a partir dos roteiros ===
+  // ~150 palavras por minuto em pt-BR, ajustado pela velocidade da voz.
+  const estimatedReadingSeconds = useMemo(() => {
+    const words = scripts.reduce(
+      (acc, s) => acc + (s.script_text?.trim().split(/\s+/).filter(Boolean).length ?? 0),
+      0,
+    );
+    const rate = settings.ai_voice_rate > 0 ? settings.ai_voice_rate : 1;
+    const minutes = words / (150 * rate);
+    return Math.round(minutes * 60);
+  }, [scripts, settings.ai_voice_rate]);
+
+  const totalSeconds = settings.total_duration_minutes * 60;
+  const questionsSeconds = totalSeconds - estimatedReadingSeconds;
+  const overBudget = totalSeconds > 0 && estimatedReadingSeconds > totalSeconds;
+
+  function formatDuration(totalSec: number) {
+    if (totalSec <= 0) return "0 min";
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    if (m === 0) return `${s}s`;
+    if (s === 0) return `${m} min`;
+    return `${m} min ${s}s`;
+  }
 
   function patch<K extends keyof Settings>(k: K, v: Settings[K]) {
     setSettings((s) => ({ ...s, [k]: v }));
@@ -280,6 +311,102 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
             <Volume2 className="mr-2 h-4 w-4" /> Testar voz
           </Button>
         </div>
+      </div>
+
+      {/* Gestão de Tempo do Evento */}
+      <div className="rounded-xl border border-[#262D3D] bg-[#161A23] p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-[#A78BFA]" />
+          <h2 className="text-lg font-bold text-white">Gestão de Tempo do Evento</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          A IA usa estes parâmetros para se auto-regular: prioriza respostas mais
+          curtas ou reduz o número de perguntas para não ultrapassar o tempo total.
+        </p>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-[#262D3D] bg-[#0E1015] p-3">
+            <p className="text-[10px] uppercase tracking-widest text-[#9CA3AF]">
+              Tempo estimado de leitura
+            </p>
+            <p className="mt-1 text-xl font-extrabold text-white">
+              {formatDuration(estimatedReadingSeconds)}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              {scripts.length} slide(s) · {settings.ai_voice_rate.toFixed(1)}x
+            </p>
+          </div>
+
+          <div>
+            <Label className="text-xs">
+              Tempo total da apresentação (minutos) *
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              max={600}
+              value={settings.total_duration_minutes}
+              onChange={(e) =>
+                patch("total_duration_minutes", Math.max(0, Number(e.target.value)))
+              }
+              className="bg-[#0E1015]"
+              required
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Inclui exposição + perguntas da plateia.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-[#07A684]/40 bg-[#07A684]/10 p-3">
+            <p className="text-[10px] uppercase tracking-widest text-[#34D399]">
+              Tempo disponível para perguntas
+            </p>
+            <p className="mt-1 text-xl font-extrabold text-white">
+              {settings.total_duration_minutes > 0
+                ? formatDuration(Math.max(0, questionsSeconds))
+                : "—"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Calculado automaticamente.
+            </p>
+          </div>
+        </div>
+
+        {overBudget && (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/60 bg-destructive/10 p-3 text-xs text-destructive">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <strong>Atenção:</strong> O roteiro excede o tempo total da apresentação.
+              Encurte os scripts dos slides ou aumente o tempo total.
+            </span>
+          </div>
+        )}
+
+        <div>
+          <Label className="text-xs">Tempo máximo por resposta da IA (segundos)</Label>
+          <Input
+            type="number"
+            min={5}
+            max={300}
+            value={settings.ai_max_answer_seconds}
+            onChange={(e) =>
+              patch("ai_max_answer_seconds", Math.max(5, Number(e.target.value)))
+            }
+            className="bg-[#0E1015] md:max-w-xs"
+          />
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Limita cada intervenção da IA durante o bloco de perguntas.
+          </p>
+        </div>
+
+        <Button
+          onClick={handleSaveSettings}
+          disabled={saving}
+          className="bg-gradient-to-r from-[#7C3AED] to-[#A78BFA] text-white"
+        >
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Salvar tempo do evento
+        </Button>
       </div>
 
       {/* Gerador de roteiro */}
