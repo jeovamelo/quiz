@@ -750,6 +750,12 @@ function EditQuizPage() {
             </Button>
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="ai">
+            <AiPresenterTab presentationId={id} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
