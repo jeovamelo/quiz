@@ -331,6 +331,9 @@ function OperatorConsole() {
         </section>
 
         {/* === BLOCO B — Overlays === */}
+        <RemoteAuthorizationPanel sessionId={id} />
+
+        {/* === BLOCO B — Overlays === */}
         <section className="rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 shadow-xl">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#9CA3AF]">
