@@ -151,7 +151,7 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     const { data: pres } = await supabaseAdmin
       .from("presentations")
-      .select("title, ai_context")
+      .select("title, ai_context, ai_max_answer_seconds")
       .eq("id", sess.presentation_id)
       .maybeSingle();
 
@@ -160,6 +160,10 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
       .eq("presentation_id", sess.presentation_id)
       .eq("slide_number", sess.current_slide)
       .maybeSingle();
+
+    const maxSec = Math.max(5, Number((pres as any)?.ai_max_answer_seconds ?? 30));
+    // ~150 palavras/min → palavras permitidas no orçamento de tempo
+    const wordBudget = Math.max(15, Math.round((maxSec / 60) * 150));
 
     const ctx =
       `Apresentação: ${pres?.title ?? "(sem título)"}\n` +
@@ -177,8 +181,8 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
             "TRIAGEM: avalie a RELEVÂNCIA da pergunta em relação ao tema do slide atual e ao roteiro. " +
             "Se a pergunta for ofensiva, fora de contexto, spam ou repetida, RECUSE educadamente em 1 frase. " +
             "Se for relevante, responda usando APENAS o contexto fornecido (apresentação + roteiro do slide atual). " +
-            "Seja conciso (máx 4 frases, ~60 palavras), fale como uma pessoa explicando ao vivo, " +
-            "respeitando a gestão de tempo da apresentação. " +
+            `Seja conciso: NO MÁXIMO ${wordBudget} palavras (cabe em ${maxSec}s de fala). ` +
+            "Fale como uma pessoa explicando ao vivo, respeitando a gestão de tempo. " +
             "NUNCA use markdown — apenas prosa simples para ser lida em voz alta.",
         },
         { role: "user", content: `${ctx}\n\nPergunta da plateia: ${data.question}` },
