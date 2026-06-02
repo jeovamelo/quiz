@@ -413,6 +413,13 @@ function EditQuizPage() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-4 px-6 py-8">
+        <Tabs defaultValue="quiz" className="w-full">
+          <TabsList className="mb-4 bg-[#131722] border border-[#262D3D]">
+            <TabsTrigger value="quiz">Quiz</TabsTrigger>
+            <TabsTrigger value="ai">Palestrante IA</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="quiz" className="space-y-4">
         {/* Cabeçalho: nome + tempo geral */}
         <div className="grid gap-4 rounded-xl border border-[#262D3D] bg-[#161A23] p-5 md:grid-cols-[1fr_220px]">
           <div>
