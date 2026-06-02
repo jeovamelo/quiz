@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { sortRanking, type ParticipantRow } from "@/lib/ranking";
+import { AudienceQuestionPanel } from "@/components/audience-question-panel";
 
 type Search = { session?: string };
 
@@ -97,6 +98,7 @@ function Join() {
   const [pBirth, setPBirth] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [finalRank, setFinalRank] = useState<{ position: number; total: number; score: number } | null>(null);
+  const [aiQuestionsEnabled, setAiQuestionsEnabled] = useState(false);
 
   // Preenche nome com o do Google quando logado
   useEffect(() => {
@@ -179,7 +181,7 @@ function Join() {
       if (!cancelled) setPresentationId(presId);
 
       const { data: presRow } = await (supabase.from("presentations") as any)
-        .select("event_id, default_time_limit, title")
+        .select("event_id, default_time_limit, title, ai_questions_enabled")
         .eq("id", presId)
         .maybeSingle();
       const evId = (presRow?.event_id as string | null) ?? null;
@@ -187,6 +189,7 @@ function Join() {
         setEventId(evId);
         setDefaultTimeLimit((presRow as any)?.default_time_limit ?? 30);
         setPresentationTitle((presRow as any)?.title ?? "");
+        setAiQuestionsEnabled(!!(presRow as any)?.ai_questions_enabled);
       }
       if (evId) {
         const { data: evRow } = await (supabase.from("events") as any)
