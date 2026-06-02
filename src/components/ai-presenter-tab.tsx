@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Clock, Loader2, Mic, Save, Sparkles, Volume2 } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Mic, RotateCcw, Save, Sparkles, Volume2, Wand2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { generateSlideScripts } from "@/lib/ai-script.functions";
+import { expandSlideScripts, generateSlideScripts, revertSlideScripts } from "@/lib/ai-script.functions";
 import { extractPdfText } from "@/lib/pdf-extract";
 
 type Settings = {
@@ -21,12 +21,21 @@ type Settings = {
   ai_max_answer_seconds: number;
 };
 
-type ScriptRow = { slide_number: number; script_text: string };
+type ScriptRow = {
+  slide_number: number;
+  script_text: string;
+  script_text_original?: string | null;
+};
+
+type DetailLevel = "concise" | "standard" | "extensive";
 
 export function AiPresenterTab({ presentationId }: { presentationId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [expanding, setExpanding] = useState(false);
+  const [reverting, setReverting] = useState(false);
+  const [detailLevel, setDetailLevel] = useState<DetailLevel>("standard");
   const [fileUrl, setFileUrl] = useState<string>("");
   const [aiContext, setAiContext] = useState<string>("");
   const [settings, setSettings] = useState<Settings>({
@@ -43,6 +52,8 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
   const previewRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const generateFn = useServerFn(generateSlideScripts);
+  const expandFn = useServerFn(expandSlideScripts);
+  const revertFn = useServerFn(revertSlideScripts);
 
   // Load presentation + scripts
   useEffect(() => {
@@ -68,7 +79,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
         });
       }
       const { data: sc } = await (supabase.from("slide_scripts") as any)
-        .select("slide_number, script_text")
+        .select("slide_number, script_text, script_text_original")
         .eq("presentation_id", presentationId)
         .order("slide_number");
       setScripts((sc as ScriptRow[]) ?? []);
@@ -161,7 +172,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
 
       // Recarrega scripts
       const { data: sc } = await (supabase.from("slide_scripts") as any)
-        .select("slide_number, script_text")
+        .select("slide_number, script_text, script_text_original")
         .eq("presentation_id", presentationId)
         .order("slide_number");
       setScripts((sc as ScriptRow[]) ?? []);
@@ -172,6 +183,49 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
       setGenerating(false);
     }
   }
+
+  async function reloadScripts() {
+    const { data: sc } = await (supabase.from("slide_scripts") as any)
+      .select("slide_number, script_text, script_text_original")
+      .eq("presentation_id", presentationId)
+      .order("slide_number");
+    setScripts((sc as ScriptRow[]) ?? []);
+  }
+
+  async function handleExpandScripts() {
+    if (scripts.length === 0) {
+      toast.error("Gere o roteiro antes de expandir.");
+      return;
+    }
+    setExpanding(true);
+    try {
+      const result = await expandFn({ data: { presentationId, level: detailLevel } });
+      await reloadScripts();
+      toast.success(`Roteiro expandido em ${result.count} slide(s)!`);
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao expandir roteiro");
+    } finally {
+      setExpanding(false);
+    }
+  }
+
+  async function handleRevertScripts() {
+    setReverting(true);
+    try {
+      const result = await revertFn({ data: { presentationId } });
+      await reloadScripts();
+      toast.success(`Roteiro revertido em ${result.count} slide(s).`);
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao reverter");
+    } finally {
+      setReverting(false);
+    }
+  }
+
+  const hasOriginalBackup = useMemo(
+    () => scripts.some((s) => !!s.script_text_original),
+    [scripts],
+  );
 
   async function handleSaveScript(slideNumber: number, text: string) {
     const { error } = await (supabase.from("slide_scripts") as any).upsert(
@@ -430,6 +484,68 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
             )}
             {scripts.length > 0 ? "Regenerar Roteiro da IA" : "Gerar Roteiro da IA"}
           </Button>
+        </div>
+
+        {/* Expandir roteiro para preencher tempo */}
+        <div className="rounded-lg border border-[#262D3D] bg-[#0E1015]/60 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Wand2 className="h-4 w-4 text-[#F68B1F]" />
+            <p className="text-sm font-semibold text-white">
+              Expandir roteiro para preencher tempo
+            </p>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            A IA reescreve cada slide adicionando analogias práticas, casos de uso,
+            aprofundamento técnico e frases de conexão entre slides.
+          </p>
+          <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+            <div>
+              <Label className="text-xs">Nível de Detalhamento / Duração</Label>
+              <select
+                value={detailLevel}
+                onChange={(e) => setDetailLevel(e.target.value as DetailLevel)}
+                className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
+              >
+                <option value="concise">Conciso (~100 palavras/slide)</option>
+                <option value="standard">Padrão (~175 palavras/slide)</option>
+                <option value="extensive">Extenso (~260 palavras/slide)</option>
+              </select>
+            </div>
+            <Button
+              onClick={handleExpandScripts}
+              disabled={expanding || scripts.length === 0}
+              className="bg-gradient-to-r from-[#F68B1F] to-[#A6193C] text-white"
+            >
+              {expanding ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Wand2 className="mr-2 h-4 w-4" />
+              )}
+              Expandir para ocupar tempo
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleRevertScripts}
+              disabled={reverting || !hasOriginalBackup}
+              className="border-[#262D3D]"
+              title={hasOriginalBackup ? "Restaurar o roteiro anterior à expansão" : "Sem backup do original"}
+            >
+              {reverting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" />
+              )}
+              Reverter para original
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Novo tempo estimado:{" "}
+            <span className="font-semibold text-white">
+              {formatDuration(estimatedReadingSeconds)}
+            </span>{" "}
+            — recalculado automaticamente após a expansão.
+          </p>
         </div>
 
         {scripts.length === 0 ? (
