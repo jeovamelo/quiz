@@ -522,6 +522,8 @@ export type Database = {
       sessions: {
         Row: {
           active_question_id: string | null
+          ai_adjusting: boolean
+          ai_last_adjustment_at: string | null
           audience_question: string | null
           audience_question_answer: string | null
           audience_question_at: string | null
@@ -540,11 +542,16 @@ export type Database = {
           show_pair_qr: boolean
           show_ranking: boolean
           show_sidebar: boolean
+          started_at: string | null
           status: string
+          time_budget_seconds: number | null
+          time_used_seconds: number
           updated_at: string
         }
         Insert: {
           active_question_id?: string | null
+          ai_adjusting?: boolean
+          ai_last_adjustment_at?: string | null
           audience_question?: string | null
           audience_question_answer?: string | null
           audience_question_at?: string | null
@@ -563,11 +570,16 @@ export type Database = {
           show_pair_qr?: boolean
           show_ranking?: boolean
           show_sidebar?: boolean
+          started_at?: string | null
           status?: string
+          time_budget_seconds?: number | null
+          time_used_seconds?: number
           updated_at?: string
         }
         Update: {
           active_question_id?: string | null
+          ai_adjusting?: boolean
+          ai_last_adjustment_at?: string | null
           audience_question?: string | null
           audience_question_answer?: string | null
           audience_question_at?: string | null
@@ -586,7 +598,10 @@ export type Database = {
           show_pair_qr?: boolean
           show_ranking?: boolean
           show_sidebar?: boolean
+          started_at?: string | null
           status?: string
+          time_budget_seconds?: number | null
+          time_used_seconds?: number
           updated_at?: string
         }
         Relationships: [

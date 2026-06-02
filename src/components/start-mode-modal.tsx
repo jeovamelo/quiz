@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { User, Sparkles, Loader2 } from "lucide-react";
+import { User, Sparkles, Loader2, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 
 export type StartMode = "manual" | "ai";
@@ -17,13 +19,14 @@ type Props = {
   presentationId: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onConfirm: (mode: StartMode) => void;
+  onConfirm: (mode: StartMode, opts?: { totalMinutes?: number }) => void;
 };
 
 type AiReadiness = {
   loading: boolean;
   hasVoice: boolean;
   hasScripts: boolean;
+  totalMinutes: number;
 };
 
 export function StartModeModal({ presentationId, open, onOpenChange, onConfirm }: Props) {
@@ -33,26 +36,33 @@ export function StartModeModal({ presentationId, open, onOpenChange, onConfirm }
     loading: false,
     hasVoice: false,
     hasScripts: false,
+    totalMinutes: 0,
   });
+  const [step, setStep] = useState<"mode" | "time">("mode");
+  const [adjustedMinutes, setAdjustedMinutes] = useState<number>(0);
 
   useEffect(() => {
     if (!open || !presentationId) return;
     setSelected("manual");
     setConfirming(false);
+    setStep("mode");
     setReadiness((r) => ({ ...r, loading: true }));
     (async () => {
       const { data: pres } = await (supabase.from("presentations") as any)
-        .select("ai_voice, presenter_mode")
+        .select("ai_voice, presenter_mode, total_duration_minutes")
         .eq("id", presentationId)
         .single();
       const { count } = await (supabase.from("slide_scripts") as any)
         .select("id", { count: "exact", head: true })
         .eq("presentation_id", presentationId);
+      const total = Number((pres as any)?.total_duration_minutes ?? 0);
       setReadiness({
         loading: false,
         hasVoice: !!(pres && pres.ai_voice),
         hasScripts: (count ?? 0) > 0,
+        totalMinutes: total,
       });
+      setAdjustedMinutes(total);
       if (pres && (pres as any).presenter_mode === "ai") setSelected("ai");
     })();
   }, [open, presentationId]);
@@ -66,20 +76,35 @@ export function StartModeModal({ presentationId, open, onOpenChange, onConfirm }
       );
       if (!ok) return;
     }
+    // Para IA com tempo total definido, passa pelo painel de "Status do Tempo"
+    if (selected === "ai" && readiness.totalMinutes > 0 && step === "mode") {
+      setStep("time");
+      return;
+    }
     setConfirming(true);
-    onConfirm(selected);
+    onConfirm(
+      selected,
+      selected === "ai" && adjustedMinutes > 0
+        ? { totalMinutes: adjustedMinutes }
+        : undefined,
+    );
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Como deseja iniciar?</DialogTitle>
+          <DialogTitle>
+            {step === "mode" ? "Como deseja iniciar?" : "Status do Tempo"}
+          </DialogTitle>
           <DialogDescription>
-            Escolha o modo de execução desta apresentação.
+            {step === "mode"
+              ? "Escolha o modo de execução desta apresentação."
+              : "Confirme o tempo total disponível antes do primeiro slide."}
           </DialogDescription>
         </DialogHeader>
 
+        {step === "mode" && (
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
           <ModeCard
             icon={<User className="h-6 w-6" />}
@@ -104,8 +129,9 @@ export function StartModeModal({ presentationId, open, onOpenChange, onConfirm }
             onClick={() => setSelected("ai")}
           />
         </div>
+        )}
 
-        {selected === "ai" && !readiness.loading && !aiReady && (
+        {step === "mode" && selected === "ai" && !readiness.loading && !aiReady && (
           <p className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
             Faltam: {!readiness.hasScripts && "roteiro dos slides"}
             {!readiness.hasScripts && !readiness.hasVoice && " e "}
@@ -114,13 +140,73 @@ export function StartModeModal({ presentationId, open, onOpenChange, onConfirm }
           </p>
         )}
 
+        {step === "time" && (
+          <div className="mt-2 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <p className="text-sm font-semibold">Tempo total da apresentação</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Original: <strong>{readiness.totalMinutes} min</strong>. Se o evento
+              atrasou e você tem menos tempo, ajuste agora — a IA reescreverá o
+              roteiro restante automaticamente para terminar dentro do prazo.
+            </p>
+            <div>
+              <Label className="text-xs">Tempo total (minutos)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={600}
+                value={adjustedMinutes}
+                onChange={(e) =>
+                  setAdjustedMinutes(Math.max(1, Number(e.target.value)))
+                }
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAdjustedMinutes(readiness.totalMinutes)}
+              >
+                Manter original ({readiness.totalMinutes} min)
+              </Button>
+              {[-10, -5, +5].map((d) => (
+                <Button
+                  key={d}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setAdjustedMinutes((m) => Math.max(1, m + d))
+                  }
+                >
+                  {d > 0 ? `+${d}` : d} min
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={confirming}>
             Cancelar
           </Button>
+          {step === "time" && (
+            <Button
+              variant="outline"
+              onClick={() => setStep("mode")}
+              disabled={confirming}
+            >
+              Voltar
+            </Button>
+          )}
           <Button onClick={handleConfirm} disabled={confirming}>
             {confirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Iniciar apresentação
+            {step === "mode" && selected === "ai" && readiness.totalMinutes > 0
+              ? "Continuar"
+              : "Iniciar apresentação"}
           </Button>
         </DialogFooter>
       </DialogContent>
