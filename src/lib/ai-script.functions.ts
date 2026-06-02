@@ -203,3 +203,168 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     return { answer };
   });
+
+// ============ Expand / Revert scripts ============
+
+const ExpandInput = z.object({
+  presentationId: z.string().uuid(),
+  level: z.enum(["concise", "standard", "extensive"]).default("standard"),
+});
+
+export const expandSlideScripts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => ExpandInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: pres } = await supabase
+      .from("presentations")
+      .select("id, title, ai_context")
+      .eq("id", data.presentationId)
+      .maybeSingle();
+    if (!pres) throw new Error("Apresentação não encontrada");
+
+    const { data: rows } = await (supabase.from("slide_scripts") as any)
+      .select("slide_number, script_text, script_text_original")
+      .eq("presentation_id", data.presentationId)
+      .order("slide_number");
+    const scripts = (rows ?? []) as Array<{
+      slide_number: number;
+      script_text: string;
+      script_text_original: string | null;
+    }>;
+    if (scripts.length === 0) throw new Error("Nenhum roteiro para expandir. Gere primeiro.");
+
+    const levelInstr =
+      data.level === "concise"
+        ? "Mantenha CONCISO: ~80-120 palavras por slide."
+        : data.level === "extensive"
+        ? "Seja EXTENSO: ~220-300 palavras por slide, sem encher linguiça."
+        : "Use detalhamento PADRÃO: ~150-200 palavras por slide.";
+
+    const sys =
+      "Você reescreve roteiros de slides em PT-BR para expandir o tempo de fala do palestrante. " +
+      "REGRAS: (1) acrescente ANALOGIAS práticas e CASOS DE USO reais relacionados ao tema do slide; " +
+      "(2) APROFUNDE conceitos técnicos explicando o 'porquê' e o 'como'; " +
+      "(3) inclua FRASES DE CONEXÃO entre slides convidando a plateia a refletir; " +
+      "(4) PRESERVE o sentido original e o vocabulário PT-BR ('tela', 'celular', 'usuário'); " +
+      "(5) NUNCA use markdown, listas ou marcadores — apenas prosa fluida para ser lida em voz alta. " +
+      levelInstr +
+      " Responda chamando a função expand_scripts com um array contendo um item por slide.";
+
+    const slidesPayload = scripts
+      .map(
+        (s) =>
+          `Slide ${s.slide_number}:\n${(s.script_text_original ?? s.script_text ?? "").trim()}`,
+      )
+      .join("\n\n---\n\n");
+
+    const user =
+      `Título: ${pres.title}\n` +
+      `Contexto adicional: ${pres.ai_context ?? "(nenhum)"}\n\n` +
+      `Reescreva os ${scripts.length} roteiros abaixo, mantendo o mesmo número de slides e ordem.\n\n` +
+      slidesPayload;
+
+    const json = await callDeepseek({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: sys },
+        { role: "user", content: user },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "expand_scripts",
+            description: "Retorna roteiros expandidos por slide em PT-BR",
+            parameters: {
+              type: "object",
+              properties: {
+                scripts: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      slide_number: { type: "number" },
+                      script_text: { type: "string" },
+                    },
+                    required: ["slide_number", "script_text"],
+                  },
+                },
+              },
+              required: ["scripts"],
+            },
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "expand_scripts" } },
+      max_tokens: 12000,
+      temperature: 0.7,
+    });
+
+    const toolCall = json.choices?.[0]?.message?.tool_calls?.[0];
+    const raw: string = toolCall?.function?.arguments ?? "";
+    let parsed: { scripts: Array<{ slide_number: number; script_text: string }> };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("IA retornou formato inválido");
+      parsed = JSON.parse(m[0]);
+    }
+
+    const byNum = new Map(parsed.scripts.map((s) => [s.slide_number, s.script_text]));
+    const updates = scripts
+      .filter((s) => byNum.has(s.slide_number))
+      .map((s) => ({
+        presentation_id: data.presentationId,
+        slide_number: s.slide_number,
+        script_text: (byNum.get(s.slide_number) || "").trim(),
+        // Preserva o original na primeira expansão
+        script_text_original: s.script_text_original ?? s.script_text ?? "",
+      }));
+
+    if (updates.length > 0) {
+      const { error } = await (supabase.from("slide_scripts") as any).upsert(updates, {
+        onConflict: "presentation_id,slide_number",
+      });
+      if (error) throw new Error(error.message);
+    }
+
+    return { count: updates.length };
+  });
+
+const RevertInput = z.object({
+  presentationId: z.string().uuid(),
+});
+
+export const revertSlideScripts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => RevertInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: rows } = await (supabase.from("slide_scripts") as any)
+      .select("slide_number, script_text_original")
+      .eq("presentation_id", data.presentationId)
+      .not("script_text_original", "is", null);
+    const scripts = (rows ?? []) as Array<{
+      slide_number: number;
+      script_text_original: string | null;
+    }>;
+    if (scripts.length === 0)
+      throw new Error("Não há roteiro original para reverter.");
+
+    const updates = scripts.map((s) => ({
+      presentation_id: data.presentationId,
+      slide_number: s.slide_number,
+      script_text: s.script_text_original ?? "",
+      script_text_original: null,
+    }));
+
+    const { error } = await (supabase.from("slide_scripts") as any).upsert(updates, {
+      onConflict: "presentation_id,slide_number",
+    });
+    if (error) throw new Error(error.message);
+    return { count: updates.length };
+  });

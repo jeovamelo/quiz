@@ -612,6 +612,7 @@ export type Database = {
           id: string
           presentation_id: string
           script_text: string
+          script_text_original: string | null
           slide_number: number
           updated_at: string
         }
@@ -620,6 +621,7 @@ export type Database = {
           id?: string
           presentation_id: string
           script_text?: string
+          script_text_original?: string | null
           slide_number: number
           updated_at?: string
         }
@@ -628,6 +630,7 @@ export type Database = {
           id?: string
           presentation_id?: string
           script_text?: string
+          script_text_original?: string | null
           slide_number?: number
           updated_at?: string
         }
