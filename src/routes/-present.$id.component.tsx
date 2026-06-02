@@ -566,11 +566,11 @@ export function Present() {
       return;
     }
     const next = Math.max(1, n);
+    // IMPORTANTE: navegar entre slides NÃO encerra a pergunta ativa.
+    // O temporizador roda no servidor (question_expires_at) e a pergunta
+    // permanece disponível para resposta até expirar ou ser revelada.
     const patch: any = {
       current_slide: next,
-      question_revealed: false,
-      active_question_id: null,
-      question_started_at: null,
     };
     if (direction === "next") {
       const q = questions.find((qq) => qq.slide_number === next) || null;
@@ -584,8 +584,13 @@ export function Present() {
       }
       const alreadyFired = q ? fired.includes(q.id) : false;
       if (q && !alreadyFired && q.display_mode === "simultaneous") {
+        const lim = q.time_limit && q.time_limit > 0
+          ? q.time_limit
+          : presentation?.default_time_limit ?? 30;
         patch.active_question_id = q.id;
         patch.question_started_at = new Date().toISOString();
+        patch.question_expires_at = new Date(Date.now() + lim * 1000).toISOString();
+        patch.question_revealed = false;
         patch.fired_question_ids = [...fired, q.id];
       }
     }
@@ -594,11 +599,15 @@ export function Present() {
 
   async function triggerQuestion() {
     if (!slideQuestion) return;
+    const lim = slideQuestion.time_limit && slideQuestion.time_limit > 0
+      ? slideQuestion.time_limit
+      : presentation?.default_time_limit ?? 30;
     await supabase
       .from("sessions")
       .update({
         active_question_id: slideQuestion.id,
         question_started_at: new Date().toISOString(),
+        question_expires_at: new Date(Date.now() + lim * 1000).toISOString(),
         question_revealed: false,
       })
       .eq("id", id);
