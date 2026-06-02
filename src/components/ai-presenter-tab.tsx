@@ -93,6 +93,31 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
 
   const ptVoices = useMemo(() => voices, [voices]);
 
+  // === Cálculo de tempo de leitura estimado a partir dos roteiros ===
+  // ~150 palavras por minuto em pt-BR, ajustado pela velocidade da voz.
+  const estimatedReadingSeconds = useMemo(() => {
+    const words = scripts.reduce(
+      (acc, s) => acc + (s.script_text?.trim().split(/\s+/).filter(Boolean).length ?? 0),
+      0,
+    );
+    const rate = settings.ai_voice_rate > 0 ? settings.ai_voice_rate : 1;
+    const minutes = words / (150 * rate);
+    return Math.round(minutes * 60);
+  }, [scripts, settings.ai_voice_rate]);
+
+  const totalSeconds = settings.total_duration_minutes * 60;
+  const questionsSeconds = totalSeconds - estimatedReadingSeconds;
+  const overBudget = totalSeconds > 0 && estimatedReadingSeconds > totalSeconds;
+
+  function formatDuration(totalSec: number) {
+    if (totalSec <= 0) return "0 min";
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    if (m === 0) return `${s}s`;
+    if (s === 0) return `${m} min`;
+    return `${m} min ${s}s`;
+  }
+
   function patch<K extends keyof Settings>(k: K, v: Settings[K]) {
     setSettings((s) => ({ ...s, [k]: v }));
   }
