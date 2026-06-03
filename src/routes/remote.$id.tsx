@@ -10,7 +10,10 @@ import {
   LayoutDashboard,
   ShieldAlert,
   ShieldX,
+  Sparkles,
+  Play,
 } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
