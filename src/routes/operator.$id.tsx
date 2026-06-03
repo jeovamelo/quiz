@@ -16,8 +16,25 @@ import {
   ExternalLink,
   Clock,
   Sparkles,
+  Play,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRequireSpeaker } from "@/hooks/use-auth";
+import { useRemoteBridge } from "@/hooks/use-remote-bridge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { RemoteAuthorizationPanel } from "@/components/remote-authorization-panel";
+import { Button } from "@/components/ui/button";
+
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
 import {
