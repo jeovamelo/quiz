@@ -1009,7 +1009,8 @@ export function Present() {
         title="Clique para avançar / use as setas do teclado"
       >
         {/* Trava de Segurança IA: Tela de Espera */}
-        {aiPresenter.mode === "ai" && !session?.is_ready && (
+        {aiPresenter.mode === "ai" && !session?.is_ready && pairFlowDone && (
+
           <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-[#0E1015] p-12 text-center">
             <div className="mb-8 rounded-3xl border border-[#F68B1F]/30 bg-[#F68B1F]/5 p-8 shadow-2xl shadow-[#F68B1F]/10">
               <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F68B1F] to-[#A6193C] shadow-lg">
