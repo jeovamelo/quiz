@@ -359,8 +359,12 @@ function OperatorConsole() {
                   try {
                     const { error } = await supabase
                       .from("sessions")
-                      .update({ is_ready: true })
+                      .update({ 
+                        is_ready: true,
+                        status: 'live'
+                      })
                       .eq("id", id);
+
                     if (error) toast.error("Falha ao liberar início.");
                     else toast.success("Palestra iniciada!");
                   } finally {
