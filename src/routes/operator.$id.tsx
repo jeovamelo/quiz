@@ -17,6 +17,8 @@ import {
   Clock,
   Sparkles,
   Play,
+  Pause,
+
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
@@ -335,7 +337,80 @@ function OperatorConsole() {
           </div>
         </section>
 
+        {/* Gestão de Pausa (Operador) */}
+        {session.status === "live" && (
+          <section className="rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 shadow-xl">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl ${session.is_paused ? 'bg-amber-500/10' : 'bg-emerald-500/10'}`}>
+                  {session.is_paused ? <Pause className="h-6 w-6 text-amber-500" /> : <Play className="h-6 w-6 text-emerald-500" />}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Status da Execução</h3>
+                  <p className="text-sm text-[#9CA3AF]">
+                    {session.is_paused ? 'Apresentação pausada' : 'Apresentação em andamento'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const isPausing = !session.is_paused;
+                      const now = new Date();
+                      const patch: any = { is_paused: isPausing };
+                      if (isPausing) {
+                        const lastResume = session.last_resume_at ? new Date(session.last_resume_at) : new Date(session.started_at);
+                        const elapsed = Math.floor((now.getTime() - lastResume.getTime()) / 1000);
+                        patch.time_used_seconds = (session.time_used_seconds || 0) + elapsed;
+                      } else {
+                        patch.last_resume_at = now.toISOString();
+                      }
+                      await supabase.from("sessions").update(patch).eq("id", id);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  disabled={busy}
+                  variant="outline"
+                  className={`h-12 px-6 border-2 font-bold uppercase tracking-wider ${
+                    session.is_paused 
+                      ? "border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10" 
+                      : "border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                  }`}
+                >
+                  {session.is_paused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
+                  {session.is_paused ? "Continuar" : "Pausar Apresentação"}
+                </Button>
+                
+                {session.time_budget_seconds > 0 && (
+                  <div className="flex items-center gap-2 rounded-xl border border-[#3A4255] bg-[#0E1015] px-4 py-2">
+                    <Clock className={`h-4 w-4 ${session.is_paused ? 'text-gray-500' : 'text-[#F68B1F] animate-pulse'}`} />
+                    <span className="text-xl font-black tabular-nums text-white">
+                      {(() => {
+                        const budget = session.time_budget_seconds || 0;
+                        const used = session.time_used_seconds || 0;
+                        let elapsedSinceResume = 0;
+                        if (!session.is_paused && session.last_resume_at) {
+                          elapsedSinceResume = Math.floor((Date.now() - new Date(session.last_resume_at).getTime()) / 1000);
+                        }
+                        const rem = Math.max(0, budget - (used + elapsedSinceResume));
+                        const mm = Math.floor(rem / 60).toString().padStart(2, "0");
+                        const ss = (rem % 60).toString().padStart(2, "0");
+                        return `${mm}:${ss}`;
+                      })()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* === BLOCO B — Overlays === */}
+
         <RemoteAuthorizationPanel sessionId={id} />
 
         {session.mode === "ai" && <TimeStatusPanel session={session} />}
