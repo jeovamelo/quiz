@@ -35,20 +35,6 @@ import { toast } from "sonner";
 import { RemoteAuthorizationPanel } from "@/components/remote-authorization-panel";
 import { Button } from "@/components/ui/button";
 
-import { useRequireSpeaker } from "@/hooks/use-auth";
-import { useRemoteBridge } from "@/hooks/use-remote-bridge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { RemoteAuthorizationPanel } from "@/components/remote-authorization-panel";
 
 export const Route = createFileRoute("/operator/$id")({
   head: () => ({ meta: [{ title: "Central de Controle — QuizBini" }] }),
