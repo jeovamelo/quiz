@@ -17,6 +17,8 @@ import {
   Clock,
   Sparkles,
   Play,
+  Pause,
+
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
