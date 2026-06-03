@@ -517,7 +517,7 @@ export function Present() {
   const ttsTimeoutRef = useRef<number | null>(null);
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
-    if (aiPresenter.mode !== "ai" || !presentation || !session?.is_ready) return;
+    if (aiPresenter.mode !== "ai" || !presentation || !session?.is_ready || session?.is_paused) return;
 
     // Cancela qualquer fala/timeout anterior
     window.speechSynthesis.cancel();
