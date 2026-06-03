@@ -564,7 +564,7 @@ export function Present() {
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     const ans = (session as any)?.audience_question_answer as string | undefined;
-    if (!ans || aiPresenter.mode !== "ai") return;
+    if (!ans || aiPresenter.mode !== "ai" || !session?.is_ready) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(ans);
     const voices = window.speechSynthesis.getVoices();
