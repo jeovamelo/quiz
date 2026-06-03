@@ -464,7 +464,10 @@ export function Present() {
   useEffect(() => {
     if (!session) return;
     const status = session.status;
-    if (status === "lobby") {
+    const isAiWaiting = aiPresenter.mode === "ai" && !session.is_ready;
+    
+    if (status === "lobby" && !isAiWaiting) {
+
       if (!pairFlowDone) {
         // ETAPA 1 — abre o QR do Controle Remoto uma única vez.
         if (!pairAutoOpenedRef.current) {
