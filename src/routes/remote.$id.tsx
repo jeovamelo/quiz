@@ -722,7 +722,79 @@ function RemoteControl() {
             onEndSession={exitToHub}
           />
 
+          {/* Gestão de Tempo e Pausa */}
+          {session?.status === "live" && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  haptic(50);
+                  setBusy(true);
+                  try {
+                    const isPausing = !session.is_paused;
+                    const now = new Date();
+                    const patch: any = { is_paused: isPausing };
+                    
+                    if (isPausing) {
+                      // Ao pausar, calcula e acumula o tempo gasto desde o último resume
+                      const lastResume = session.last_resume_at ? new Date(session.last_resume_at) : new Date(session.started_at);
+                      const elapsed = Math.floor((now.getTime() - lastResume.getTime()) / 1000);
+                      patch.time_used_seconds = (session.time_used_seconds || 0) + elapsed;
+                    } else {
+                      // Ao despausar, atualiza o marco de referência para o novo tempo "correndo"
+                      patch.last_resume_at = now.toISOString();
+                    }
+                    
+                    await supabase.from("sessions").update(patch).eq("id", id);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                disabled={busy}
+                className={`flex h-16 flex-1 items-center justify-center gap-3 rounded-2xl border transition-all duration-100 active:scale-[0.98] ${
+                  session.is_paused
+                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                    : "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                }`}
+              >
+                {session.is_paused ? (
+                  <>
+                    <Play className="h-6 w-6 fill-current" />
+                    <span className="font-black uppercase tracking-wider">Continuar</span>
+                  </>
+                ) : (
+                  <>
+                    <Pause className="h-6 w-6 fill-current" />
+                    <span className="font-black uppercase tracking-wider">Pausar</span>
+                  </>
+                )}
+              </button>
+              
+              {session.time_budget_seconds > 0 && (
+                <div className="flex w-32 flex-col items-center justify-center rounded-2xl border border-[#262D3D] bg-[#161A23] p-2">
+                  <Clock className={`h-4 w-4 mb-1 ${session.is_paused ? 'text-gray-500' : 'text-[#F68B1F] animate-pulse'}`} />
+                  <span className="text-[10px] font-bold uppercase text-[#9CA3AF]">Restante</span>
+                  <span className="text-sm font-black tabular-nums text-white">
+                    {(() => {
+                      const budget = session.time_budget_seconds || 0;
+                      const used = session.time_used_seconds || 0;
+                      let elapsedSinceResume = 0;
+                      if (!session.is_paused && session.last_resume_at) {
+                        elapsedSinceResume = Math.floor((Date.now() - new Date(session.last_resume_at).getTime()) / 1000);
+                      }
+                      const rem = Math.max(0, budget - (used + elapsedSinceResume));
+                      const mm = Math.floor(rem / 60).toString().padStart(2, "0");
+                      const ss = (rem % 60).toString().padStart(2, "0");
+                      return `${mm}:${ss}`;
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Trava de Segurança IA: Liberar Início */}
+
           {session?.mode === "ai" && !session?.is_ready && (
             <button
               type="button"
