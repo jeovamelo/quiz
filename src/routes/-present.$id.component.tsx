@@ -1041,6 +1041,45 @@ export function Present() {
           </div>
         )}
 
+        {/* Overlay de Pausa */}
+        {session?.is_paused && (
+          <div className="absolute inset-0 z-[70] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md">
+            <div className="rounded-3xl border border-white/20 bg-black/40 p-10 text-center shadow-2xl">
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/10">
+                <Pause className="h-10 w-10 text-white animate-pulse" />
+              </div>
+              <h2 className="text-3xl font-black text-white uppercase tracking-widest">Apresentação Pausada</h2>
+              <p className="mt-2 text-white/60">Aguardando comando para continuar...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Cronômetro de Tempo Restante */}
+        {session?.status === "live" && session?.time_budget_seconds > 0 && (
+          <div className="absolute top-6 left-6 z-[50] flex items-center gap-3 rounded-2xl border border-white/10 bg-black/40 px-5 py-3 shadow-2xl backdrop-blur-md">
+            <Clock className={`h-5 w-5 ${session.is_paused ? 'text-white/40' : 'text-[#F68B1F] animate-pulse'}`} />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Tempo Restante</span>
+              <span className={`text-xl font-black tabular-nums ${session.is_paused ? 'text-white/60' : 'text-white'}`}>
+                {(() => {
+                  const budget = session.time_budget_seconds || 0;
+                  const used = session.time_used_seconds || 0;
+                  let elapsedSinceResume = 0;
+                  if (!session.is_paused && session.last_resume_at) {
+                    elapsedSinceResume = Math.floor((now - new Date(session.last_resume_at).getTime()) / 1000);
+                  }
+                  const totalUsed = used + elapsedSinceResume;
+                  const rem = Math.max(0, budget - totalUsed);
+                  const mm = Math.floor(rem / 60).toString().padStart(2, "0");
+                  const ss = (rem % 60).toString().padStart(2, "0");
+                  return `${mm}:${ss}`;
+                })()}
+              </span>
+            </div>
+          </div>
+        )}
+
+
 
         <iframe
           key={currentSlide}
