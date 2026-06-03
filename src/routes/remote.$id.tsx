@@ -12,7 +12,10 @@ import {
   ShieldX,
   Sparkles,
   Play,
+  Pause,
+  Clock,
 } from "lucide-react";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
