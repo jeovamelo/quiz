@@ -1004,6 +1004,38 @@ export function Present() {
         onClick={() => handleMasterAdvanceRef.current()}
         title="Clique para avançar / use as setas do teclado"
       >
+        {/* Trava de Segurança IA: Tela de Espera */}
+        {aiPresenter.mode === "ai" && !session?.is_ready && (
+          <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-[#0E1015] p-12 text-center">
+            <div className="mb-8 rounded-3xl border border-[#F68B1F]/30 bg-[#F68B1F]/5 p-8 shadow-2xl shadow-[#F68B1F]/10">
+              <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F68B1F] to-[#A6193C] shadow-lg">
+                <Sparkles className="h-12 w-12 text-white animate-pulse" />
+              </div>
+              <h2 className="text-4xl font-black text-white mb-2">Preparando Apresentação</h2>
+              <p className="text-[#9CA3AF] text-xl max-w-lg mx-auto">
+                Aguardando conexão da plateia... Escaneie o QR Code abaixo para participar.
+              </p>
+            </div>
+            
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-gradient-to-r from-[#F68B1F] to-[#A6193C] rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+              <div className="relative bg-white p-8 rounded-2xl shadow-2xl">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(joinUrl)}`}
+                  alt="QR Code de Participação"
+                  className="w-64 h-64"
+                />
+              </div>
+            </div>
+            
+            <p className="mt-10 flex items-center gap-2 text-[#F68B1F] font-bold text-lg">
+              <span className="inline-flex h-3 w-3 animate-ping rounded-full bg-[#F68B1F]" />
+              Aguardando sinal do palestrante para iniciar...
+            </p>
+          </div>
+        )}
+
+
         <iframe
           key={currentSlide}
           title={presentation.title}
