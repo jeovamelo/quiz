@@ -557,7 +557,8 @@ export function Present() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, presentation?.file_url, session?.presentation_id]);
+  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, presentation?.file_url, session?.presentation_id, session?.is_ready]);
+
 
   // Fala a resposta de uma pergunta da plateia quando chega
   useEffect(() => {
