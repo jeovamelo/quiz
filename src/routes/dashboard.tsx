@@ -179,6 +179,8 @@ function Dashboard() {
         mode,
         started_at: new Date().toISOString(),
         time_budget_seconds: budgetSec,
+        last_resume_at: new Date().toISOString(),
+
         time_used_seconds: 0,
         // Estado de abertura: somente QR do Controle Remoto.
         // Lobby de participantes e classificação ficam ocultos até a
