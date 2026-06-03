@@ -337,6 +337,44 @@ function OperatorConsole() {
 
         {session.mode === "ai" && <TimeStatusPanel session={session} />}
 
+        {/* Trava de Segurança Modo IA */}
+        {session.mode === "ai" && !session.is_ready && (
+          <section className="rounded-2xl border border-[#F68B1F] bg-[#F68B1F]/10 p-6 shadow-xl animate-pulse">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="rounded-full bg-[#F68B1F]/20 p-4">
+                <Sparkles className="h-10 w-10 text-[#F68B1F]" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-black text-white">Preparando Apresentação IA</h3>
+                <p className="text-[#9CA3AF] text-sm max-w-md">
+                  A IA está aguardando seu sinal. Certifique-se de que a plateia já escaneou o QR Code antes de liberar o início.
+                </p>
+              </div>
+              <Button
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const { error } = await supabase
+                      .from("sessions")
+                      .update({ is_ready: true })
+                      .eq("id", id);
+                    if (error) toast.error("Falha ao liberar início.");
+                    else toast.success("Palestra iniciada!");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                disabled={busy}
+                className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-[#F68B1F] to-[#A6193C] hover:from-[#d57a1b] hover:to-[#8e1533] text-white font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#F68B1F]/20"
+              >
+                {busy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-6 w-6" />}
+                Iniciar Palestra Agora
+              </Button>
+            </div>
+          </section>
+        )}
+
+
         {/* === BLOCO B — Overlays === */}
         <section className="rounded-2xl border border-[#262D3D] bg-[#161A23] p-6 shadow-xl">
           <div>
