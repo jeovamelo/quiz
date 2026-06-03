@@ -474,8 +474,9 @@ export function Present() {
           pairAutoOpenedRef.current = true;
           if (!session.show_pair_qr) setOverlayFlag("show_pair_qr", true);
         }
-      } else {
-        // ETAPA 2 — abre o QR dos Participantes uma única vez.
+      } else if (!isAiWaiting) {
+        // ETAPA 2 — abre o QR dos Participantes uma única vez (exceto no modo IA aguardando início).
+
         if (!joinAutoOpenedRef.current) {
           joinAutoOpenedRef.current = true;
           if (!session.show_join_qr) setOverlayFlag("show_join_qr", true);
