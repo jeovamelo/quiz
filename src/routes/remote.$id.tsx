@@ -10,7 +10,10 @@ import {
   LayoutDashboard,
   ShieldAlert,
   ShieldX,
+  Sparkles,
+  Play,
 } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { haptic } from "@/hooks/use-haptic";
 import { useRemoteBridge } from "@/hooks/use-remote-bridge";
@@ -716,7 +719,42 @@ function RemoteControl() {
             onEndSession={exitToHub}
           />
 
+          {/* Trava de Segurança IA: Liberar Início */}
+          {session?.mode === "ai" && !session?.is_ready && (
+            <button
+              type="button"
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const { error } = await supabase
+                    .from("sessions")
+                    .update({ 
+                      is_ready: true,
+                      status: 'live' 
+                    })
+                    .eq("id", id);
+                  if (error) toast.error("Falha ao liberar início.");
+                  else {
+                    haptic(100);
+                    toast.success("Palestra iniciada!");
+                  }
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              disabled={busy}
+              className="relative flex h-[84px] w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl border-0 bg-gradient-to-r from-[#F68B1F] to-[#A6193C] text-white shadow-xl shadow-[#F68B1F]/30 transition-all duration-100 active:scale-[0.98] disabled:opacity-60"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 animate-pulse" />
+                <span className="text-lg font-black uppercase tracking-widest">Iniciar Palestra AGORA</span>
+              </div>
+              <span className="text-[10px] font-bold opacity-80">LIBERAR ÁUDIO E SLIDES DA IA</span>
+            </button>
+          )}
+
           {/* APONTADOR LASER — toggle */}
+
           <button
             type="button"
             onClick={toggleLaser}

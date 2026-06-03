@@ -186,6 +186,8 @@ function Dashboard() {
         show_pair_qr: true,
         show_join_qr: false,
         show_ranking: false,
+        is_ready: false,
+
       } as any)
       .select("id")
       .single();

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
-import { Loader2, Maximize, Tv, Smartphone, QrCode, X, Zap, Trophy, Volume2 } from "lucide-react";
+import { Loader2, Maximize, Tv, Smartphone, QrCode, X, Zap, Trophy, Volume2, Sparkles } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -464,15 +464,19 @@ export function Present() {
   useEffect(() => {
     if (!session) return;
     const status = session.status;
-    if (status === "lobby") {
+    const isAiWaiting = aiPresenter.mode === "ai" && !session.is_ready;
+    
+    if (status === "lobby" && !isAiWaiting) {
+
       if (!pairFlowDone) {
         // ETAPA 1 — abre o QR do Controle Remoto uma única vez.
         if (!pairAutoOpenedRef.current) {
           pairAutoOpenedRef.current = true;
           if (!session.show_pair_qr) setOverlayFlag("show_pair_qr", true);
         }
-      } else {
-        // ETAPA 2 — abre o QR dos Participantes uma única vez.
+      } else if (!isAiWaiting) {
+        // ETAPA 2 — abre o QR dos Participantes uma única vez (exceto no modo IA aguardando início).
+
         if (!joinAutoOpenedRef.current) {
           joinAutoOpenedRef.current = true;
           if (!session.show_join_qr) setOverlayFlag("show_join_qr", true);
@@ -513,7 +517,7 @@ export function Present() {
   const ttsTimeoutRef = useRef<number | null>(null);
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
-    if (aiPresenter.mode !== "ai" || !presentation) return;
+    if (aiPresenter.mode !== "ai" || !presentation || !session?.is_ready) return;
 
     // Cancela qualquer fala/timeout anterior
     window.speechSynthesis.cancel();
@@ -557,13 +561,14 @@ export function Present() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, presentation?.file_url, session?.presentation_id]);
+  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, presentation?.file_url, session?.presentation_id, session?.is_ready]);
+
 
   // Fala a resposta de uma pergunta da plateia quando chega
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     const ans = (session as any)?.audience_question_answer as string | undefined;
-    if (!ans || aiPresenter.mode !== "ai") return;
+    if (!ans || aiPresenter.mode !== "ai" || !session?.is_ready) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(ans);
     const voices = window.speechSynthesis.getVoices();
@@ -1004,6 +1009,39 @@ export function Present() {
         onClick={() => handleMasterAdvanceRef.current()}
         title="Clique para avançar / use as setas do teclado"
       >
+        {/* Trava de Segurança IA: Tela de Espera */}
+        {aiPresenter.mode === "ai" && !session?.is_ready && pairFlowDone && (
+
+          <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-[#0E1015] p-12 text-center">
+            <div className="mb-8 rounded-3xl border border-[#F68B1F]/30 bg-[#F68B1F]/5 p-8 shadow-2xl shadow-[#F68B1F]/10">
+              <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F68B1F] to-[#A6193C] shadow-lg">
+                <Sparkles className="h-12 w-12 text-white animate-pulse" />
+              </div>
+              <h2 className="text-4xl font-black text-white mb-2">Preparando Apresentação</h2>
+              <p className="text-[#9CA3AF] text-xl max-w-lg mx-auto">
+                Aguardando conexão da plateia... Escaneie o QR Code abaixo para participar.
+              </p>
+            </div>
+            
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-gradient-to-r from-[#F68B1F] to-[#A6193C] rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+              <div className="relative bg-white p-8 rounded-2xl shadow-2xl">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(joinUrl)}`}
+                  alt="QR Code de Participação"
+                  className="w-64 h-64"
+                />
+              </div>
+            </div>
+            
+            <p className="mt-10 flex items-center gap-2 text-[#F68B1F] font-bold text-lg">
+              <span className="inline-flex h-3 w-3 animate-ping rounded-full bg-[#F68B1F]" />
+              Aguardando sinal do palestrante para iniciar...
+            </p>
+          </div>
+        )}
+
+
         <iframe
           key={currentSlide}
           title={presentation.title}
