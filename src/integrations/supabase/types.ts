@@ -533,6 +533,7 @@ export type Database = {
           force_podium: boolean
           id: string
           is_fullscreen: boolean
+          is_ready: boolean
           mode: string
           presentation_id: string
           question_expires_at: string | null
@@ -561,6 +562,7 @@ export type Database = {
           force_podium?: boolean
           id?: string
           is_fullscreen?: boolean
+          is_ready?: boolean
           mode?: string
           presentation_id: string
           question_expires_at?: string | null
@@ -589,6 +591,7 @@ export type Database = {
           force_podium?: boolean
           id?: string
           is_fullscreen?: boolean
+          is_ready?: boolean
           mode?: string
           presentation_id?: string
           question_expires_at?: string | null
