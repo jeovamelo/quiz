@@ -165,21 +165,15 @@ function Dashboard() {
     opts?: { totalMinutes?: number },
   ) {
     rememberDashboardOrigin();
-    if (mode === "ai") {
-      // Sincroniza o modo configurado da apresentação para que o
-      // componente do projetor (que lê presenter_mode) ative a IA.
-      const presUpdate: Record<string, unknown> = { presenter_mode: "ai" };
-      if (opts?.totalMinutes && opts.totalMinutes > 0) {
-        presUpdate.total_duration_minutes = opts.totalMinutes;
-      }
-      await (supabase.from("presentations") as any)
-        .update(presUpdate)
-        .eq("id", presentationId);
-    } else {
-      await (supabase.from("presentations") as any)
-        .update({ presenter_mode: "human" })
-        .eq("id", presentationId);
+    
+    // Atualiza o modo da apresentação e o tempo total, se fornecido
+    const presUpdate: Record<string, unknown> = { presenter_mode: mode };
+    if (opts?.totalMinutes && opts.totalMinutes > 0) {
+      presUpdate.total_duration_minutes = opts.totalMinutes;
     }
+    await (supabase.from("presentations") as any)
+      .update(presUpdate)
+      .eq("id", presentationId);
     // Lê o tempo total alvo (ajustado ou padrão) para gravar na sessão
     const { data: presRow } = await (supabase.from("presentations") as any)
       .select("total_duration_minutes")
@@ -209,7 +203,7 @@ function Dashboard() {
         show_join_qr: false,
         show_ranking: false,
         is_ready: false,
-
+        mic_enabled: true,
       } as any)
       .select("id")
       .single();
