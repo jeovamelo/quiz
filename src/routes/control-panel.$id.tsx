@@ -20,6 +20,8 @@ import {
   ExternalLink,
   ShieldAlert,
   Smartphone,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
@@ -28,6 +30,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
 import { answerAudienceQuestion, updateAudienceQuestionStatus } from "@/lib/ai-script.functions";
+import { RemoteAuthorizationPanel } from "@/components/remote-authorization-panel";
 
 export const Route = createFileRoute("/control-panel/$id")({
   head: () => ({ meta: [{ title: "Cockpit do Palestrante — QuizBini" }] }),
@@ -298,6 +301,11 @@ function ControlPanel() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Remote Control Management */}
+            <div className="lg:col-span-7">
+              <RemoteAuthorizationPanel sessionId={id} />
             </div>
 
             {/* Status & Help */}
