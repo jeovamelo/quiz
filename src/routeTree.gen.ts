@@ -24,6 +24,7 @@ import { Route as OperatorIdRouteImport } from './routes/operator.$id'
 import { Route as LobbyIdRouteImport } from './routes/lobby.$id'
 import { Route as EventNewRouteImport } from './routes/event.new'
 import { Route as EventIdRouteImport } from './routes/event.$id'
+import { Route as ControlPanelIdRouteImport } from './routes/control-panel.$id'
 import { Route as RemoteIdJoinRouteImport } from './routes/remote.$id.join'
 import { Route as QuizIdEditRouteImport } from './routes/quiz.$id.edit'
 import { Route as PresentIdReviewRouteImport } from './routes/present.$id.review'
@@ -106,6 +107,11 @@ const EventIdRoute = EventIdRouteImport.update({
   path: '/event/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ControlPanelIdRoute = ControlPanelIdRouteImport.update({
+  id: '/control-panel/$id',
+  path: '/control-panel/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RemoteIdJoinRoute = RemoteIdJoinRouteImport.update({
   id: '/join',
   path: '/join',
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/join': typeof JoinRoute
   '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
+  '/control-panel/$id': typeof ControlPanelIdRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/join': typeof JoinRoute
   '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
+  '/control-panel/$id': typeof ControlPanelIdRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/join': typeof JoinRoute
   '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
+  '/control-panel/$id': typeof ControlPanelIdRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
   '/lobby/$id': typeof LobbyIdRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login-qr'
     | '/meu-historico'
+    | '/control-panel/$id'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login-qr'
     | '/meu-historico'
+    | '/control-panel/$id'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login-qr'
     | '/meu-historico'
+    | '/control-panel/$id'
     | '/event/$id'
     | '/event/new'
     | '/lobby/$id'
@@ -286,6 +298,7 @@ export interface RootRouteChildren {
   JoinRoute: typeof JoinRoute
   LoginQrRoute: typeof LoginQrRoute
   MeuHistoricoRoute: typeof MeuHistoricoRoute
+  ControlPanelIdRoute: typeof ControlPanelIdRoute
   EventIdRoute: typeof EventIdRouteWithChildren
   EventNewRoute: typeof EventNewRoute
   LobbyIdRoute: typeof LobbyIdRoute
@@ -406,6 +419,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/control-panel/$id': {
+      id: '/control-panel/$id'
+      path: '/control-panel/$id'
+      fullPath: '/control-panel/$id'
+      preLoaderRoute: typeof ControlPanelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/remote/$id/join': {
       id: '/remote/$id/join'
       path: '/join'
@@ -496,6 +516,7 @@ const rootRouteChildren: RootRouteChildren = {
   JoinRoute: JoinRoute,
   LoginQrRoute: LoginQrRoute,
   MeuHistoricoRoute: MeuHistoricoRoute,
+  ControlPanelIdRoute: ControlPanelIdRoute,
   EventIdRoute: EventIdRouteWithChildren,
   EventNewRoute: EventNewRoute,
   LobbyIdRoute: LobbyIdRoute,
@@ -511,3 +532,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
