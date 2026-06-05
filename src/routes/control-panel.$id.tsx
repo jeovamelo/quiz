@@ -31,6 +31,15 @@ import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
 import { answerAudienceQuestion, updateAudienceQuestionStatus } from "@/lib/ai-script.functions";
 import { RemoteAuthorizationPanel } from "@/components/remote-authorization-panel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/control-panel/$id")({
   head: () => ({ meta: [{ title: "Cockpit do Palestrante — QuizBini" }] }),
@@ -466,33 +475,35 @@ function ControlPanel() {
       </main>
 
       {/* Popup Blocked Notification */}
-      {popupBlocked && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
-          <div className="max-w-md rounded-3xl border border-red-500/30 bg-[#131722] p-8 text-center shadow-2xl">
+      <AlertDialog open={popupBlocked} onOpenChange={setPopupBlocked}>
+        <AlertDialogContent className="max-w-md border-red-500/30 bg-[#131722] text-white">
+          <AlertDialogHeader>
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
               <ShieldAlert className="h-8 w-8 text-red-500" />
             </div>
-            <h2 className="text-xl font-black text-white">Navegador bloqueou a Projeção</h2>
-            <p className="mt-2 text-sm text-[#9CA3AF]">
-              Para que a automação funcione em duas telas, você precisa permitir que este site abra pop-ups.
-            </p>
-            <div className="mt-6 flex flex-col gap-3">
-              <Button 
-                onClick={() => window.location.reload()}
-                className="bg-primary hover:bg-primary/90"
-              >
-                Recarregar e Tentar Novamente
-              </Button>
-              <button 
-                onClick={() => setPopupBlocked(false)}
-                className="text-xs font-bold text-[#3A4255] hover:text-white transition-colors"
-              >
-                Entendi, fechar aviso
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            <AlertDialogTitle className="text-center text-xl font-black">Projeção Bloqueada</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[#9CA3AF]">
+              O navegador impediu a abertura da janela de Projeção. 
+              <br /><br />
+              Por favor, autorize a abertura de <strong>pop-ups</strong> para este site na sua barra de endereços para que o sistema funcione corretamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction 
+              onClick={() => window.location.reload()}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
+              Recarregar e Tentar Novamente
+            </AlertDialogAction>
+            <button 
+              onClick={() => setPopupBlocked(false)}
+              className="mt-2 text-xs font-bold text-[#3A4255] hover:text-white transition-colors"
+            >
+              Fechar aviso
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
