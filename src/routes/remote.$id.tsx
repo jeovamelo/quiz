@@ -647,8 +647,9 @@ function RemoteControl() {
           status={authStatus}
           name={stored?.name ?? ""}
           onLeave={() => {
-            if (stored?.remoteId) clearStoredRemote(id);
-            navigate({ to: "/remote/$id/join", params: { id }, replace: true });
+            // Ao "Sair" ou "Cancelar", limpamos o registro local para permitir nova identificação se necessário
+            clearStoredRemote(id);
+            navigate({ to: "/dashboard", replace: true });
           }}
         />
       )}
