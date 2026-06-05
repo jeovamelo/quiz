@@ -229,6 +229,16 @@ function ControlPanel() {
               </div>
             </div>
             <div className="h-8 w-px bg-[#262D3D]" />
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">Controle Remoto</p>
+              <div className="flex items-center gap-1.5 justify-end">
+                <ShieldCheck className={`h-3 w-3 ${authorizedRemotes.length > 0 ? 'text-emerald-500' : 'text-[#3A4255]'}`} />
+                <span className={`text-xs font-bold ${authorizedRemotes.length > 0 ? 'text-white' : 'text-[#3A4255]'}`}>
+                  {authorizedRemotes.length > 0 ? `${authorizedRemotes.length} AUTORIZADO(S)` : 'NENHUM'}
+                </span>
+              </div>
+            </div>
+            <div className="h-8 w-px bg-[#262D3D]" />
             <div className="flex items-center gap-3">
               <Users className="h-5 w-5 text-primary" />
               <div>
