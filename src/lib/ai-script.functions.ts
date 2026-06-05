@@ -153,8 +153,8 @@ export const submitAudienceQuestion = createServerFn({ method: "POST" })
       throw new Error("O microfone da plateia está desativado pelo palestrante.");
     }
 
-    const { error } = await (supabaseAdmin
-      .from("audience_questions") as any)
+    const { error } = await ((supabaseAdmin as any)
+      .from("audience_questions"))
       .insert({
         session_id: data.sessionId,
         participant_id: data.participantId,
@@ -177,8 +177,8 @@ export const updateAudienceQuestionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { error } = await (supabaseAdmin
-      .from("audience_questions") as any)
+    const { error } = await ((supabaseAdmin as any)
+      .from("audience_questions"))
       .update({ status: data.status })
       .eq("id", data.questionId);
 
@@ -201,8 +201,8 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: qRow } = await (supabaseAdmin
-      .from("audience_questions") as any)
+    const { data: qRow } = await ((supabaseAdmin as any)
+      .from("audience_questions"))
       .select("*")
       .eq("id", data.questionId)
       .maybeSingle();
@@ -267,8 +267,8 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
     const newUsed = Number((sessTime as any)?.time_used_seconds ?? 0) + spentSec;
 
     // Atualiza a pergunta para 'answered'
-    await (supabaseAdmin
-      .from("audience_questions") as any)
+    await ((supabaseAdmin as any)
+      .from("audience_questions"))
       .update({ 
         answer_text: answer,
         status: "answered"
