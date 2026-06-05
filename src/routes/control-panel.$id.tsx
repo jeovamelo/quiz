@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -46,12 +46,18 @@ function ControlPanel() {
   const [presentation, setPresentation] = useState<any>(null);
   const [participantsCount, setParticipantsCount] = useState(0);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [remotes, setRemotes] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
 
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
   const updateStatusFn = useServerFn(updateAudienceQuestionStatus);
   const answerFn = useServerFn(answerAudienceQuestion);
+
+  const remotesRef = useRef<any[]>([]);
+  useEffect(() => {
+    remotesRef.current = remotes;
+  }, [remotes]);
 
   useEffect(() => {
     // Check if projector window was likely blocked (heuristic)
@@ -116,6 +122,14 @@ function ControlPanel() {
           setQuestions(qs ?? []);
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "session_remotes", filter: `session_id=eq.${id}` },
+        async () => {
+          const { data: rems } = await supabase.from("session_remotes").select("*").eq("session_id", id).order("created_at", { ascending: false });
+          setRemotes(rems ?? []);
+        },
+      )
       .subscribe();
 
     return () => {
@@ -170,6 +184,9 @@ function ControlPanel() {
       toast.error(e.message);
     }
   }
+
+  const pendingRemotes = remotes.filter(r => r.status === 'pending');
+  const authorizedRemotes = remotes.filter(r => r.status === 'authorized');
 
   if (!session || !presentation) {
     return (
@@ -308,8 +325,12 @@ function ControlPanel() {
               <RemoteAuthorizationPanel sessionId={id} />
             </div>
 
-            {/* Status & Help */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="lg:col-span-7">
+                <RemoteAuthorizationPanel sessionId={id} />
+              </div>
+
+              {/* Status & Help */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
                 <div className="rounded-xl bg-primary/10 p-3">
                   <ShieldAlert className="h-6 w-6 text-primary" />
