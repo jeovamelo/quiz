@@ -34,24 +34,21 @@ import { adjustSessionTimeBudget } from "@/lib/ai-script.functions";
  */
 function openPresentationPopup(sessionId: string) {
   if (typeof window === "undefined") return;
-  // Abre diretamente a janela do projetor — a máquina de estados
-  // interna controla o lobby (QR do Controle Remoto → QR dos
-  // Participantes → Slides) sem rotas intermediárias.
-  const url = `/present/${sessionId}`;
+  
   const scr: any = window.screen || {};
   const width = scr.width || 1280;
   const height = scr.height || 800;
-  // Heurística multimonitor: se o navegador expõe availLeft positivo
-  // (ou se a área disponível for maior que a tela principal), tentamos
-  // posicionar a popup no monitor lateral.
   const availLeft = typeof scr.availLeft === "number" ? scr.availLeft : 0;
-  const left = availLeft > 0 ? availLeft : width;
-  const top = 0;
-  const features = [
+
+  // 1. Janela de Projeção (Público)
+  // Tentamos posicionar no segundo monitor se detectado
+  const projectorUrl = `/present/${sessionId}`;
+  const projectorLeft = availLeft > 0 ? availLeft : width;
+  const projectorFeatures = [
     `width=${width}`,
     `height=${height}`,
-    `left=${left}`,
-    `top=${top}`,
+    `left=${projectorLeft}`,
+    `top=0`,
     "popup=yes",
     "menubar=no",
     "toolbar=no",
@@ -59,12 +56,37 @@ function openPresentationPopup(sessionId: string) {
     "status=no",
     "resizable=yes",
   ].join(",");
-  const win = window.open(url, `ApresentacaoLive-${sessionId}`, features);
-  if (!win) {
-    toast.error("Permita pop-ups deste site para abrir a apresentação em nova janela.");
+
+  const projectorWin = window.open(projectorUrl, `ApresentacaoPublico-${sessionId}`, projectorFeatures);
+
+  // 2. Cockpit do Palestrante (Controle)
+  // Abre no monitor principal
+  const controlUrl = `/control-panel/${sessionId}`;
+  const controlFeatures = [
+    `width=1280`,
+    `height=800`,
+    `left=0`,
+    `top=0`,
+    "popup=yes",
+    "menubar=no",
+    "toolbar=no",
+    "location=no",
+    "status=no",
+    "resizable=yes",
+  ].join(",");
+
+  const controlWin = window.open(controlUrl, `CockpitPalestrante-${sessionId}`, controlFeatures);
+
+  if (!projectorWin || !controlWin) {
+    toast.error(
+      "O navegador bloqueou a abertura das janelas. Clique em 'Permitir pop-ups para este site' na barra de endereços para que a automação funcione.",
+      { duration: 6000 }
+    );
     return;
   }
-  win.focus();
+
+  // Foco no cockpit
+  controlWin.focus();
 }
 
 export const Route = createFileRoute("/dashboard")({
