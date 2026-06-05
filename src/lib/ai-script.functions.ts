@@ -143,8 +143,8 @@ export const submitAudienceQuestion = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Verifica se o microfone está habilitado na sessão
-    const { data: sess } = await supabaseAdmin
-      .from("sessions")
+    const { data: sess } = await (supabaseAdmin
+      .from("sessions") as any)
       .select("mic_enabled")
       .eq("id", data.sessionId)
       .maybeSingle();
@@ -153,8 +153,8 @@ export const submitAudienceQuestion = createServerFn({ method: "POST" })
       throw new Error("O microfone da plateia está desativado pelo palestrante.");
     }
 
-    const { error } = await supabaseAdmin
-      .from("audience_questions")
+    const { error } = await (supabaseAdmin
+      .from("audience_questions") as any)
       .insert({
         session_id: data.sessionId,
         participant_id: data.participantId,
@@ -177,8 +177,8 @@ export const updateAudienceQuestionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { error } = await supabaseAdmin
-      .from("audience_questions")
+    const { error } = await (supabaseAdmin
+      .from("audience_questions") as any)
       .update({ status: data.status })
       .eq("id", data.questionId);
 
@@ -201,8 +201,8 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: qRow } = await supabaseAdmin
-      .from("audience_questions")
+    const { data: qRow } = await (supabaseAdmin
+      .from("audience_questions") as any)
       .select("*")
       .eq("id", data.questionId)
       .maybeSingle();
@@ -249,7 +249,7 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
             "Fale como uma pessoa explicando ao vivo, respeitando a gestão de tempo. " +
             "NUNCA use markdown — apenas prosa simples para ser lida em voz alta.",
         },
-        { role: "user", content: `${ctx}\n\nPergunta da plateia: ${qRow.question_text}` },
+        { role: "user", content: `${ctx}\n\nPergunta da plateia: ${(qRow as any).question_text}` },
       ],
       max_tokens: 400,
       temperature: 0.6,
@@ -267,8 +267,8 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
     const newUsed = Number((sessTime as any)?.time_used_seconds ?? 0) + spentSec;
 
     // Atualiza a pergunta para 'answered'
-    await supabaseAdmin
-      .from("audience_questions")
+    await (supabaseAdmin
+      .from("audience_questions") as any)
       .update({ 
         answer_text: answer,
         status: "answered"
