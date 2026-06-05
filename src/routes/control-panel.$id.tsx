@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -20,6 +20,8 @@ import {
   ExternalLink,
   ShieldAlert,
   Smartphone,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
@@ -28,6 +30,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useServerFn } from "@tanstack/react-start";
 import { answerAudienceQuestion, updateAudienceQuestionStatus } from "@/lib/ai-script.functions";
+import { RemoteAuthorizationPanel } from "@/components/remote-authorization-panel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/control-panel/$id")({
   head: () => ({ meta: [{ title: "Cockpit do Palestrante — QuizBini" }] }),
@@ -43,12 +55,18 @@ function ControlPanel() {
   const [presentation, setPresentation] = useState<any>(null);
   const [participantsCount, setParticipantsCount] = useState(0);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [remotes, setRemotes] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
 
   const bridge = useRemoteBridge({ sessionId: id, role: "remote" });
   const updateStatusFn = useServerFn(updateAudienceQuestionStatus);
   const answerFn = useServerFn(answerAudienceQuestion);
+
+  const remotesRef = useRef<any[]>([]);
+  useEffect(() => {
+    remotesRef.current = remotes;
+  }, [remotes]);
 
   useEffect(() => {
     // Check if projector window was likely blocked (heuristic)
@@ -113,6 +131,14 @@ function ControlPanel() {
           setQuestions(qs ?? []);
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "session_remotes", filter: `session_id=eq.${id}` },
+        async () => {
+          const { data: rems } = await supabase.from("session_remotes").select("*").eq("session_id", id).order("created_at", { ascending: false });
+          setRemotes(rems ?? []);
+        },
+      )
       .subscribe();
 
     return () => {
@@ -168,6 +194,9 @@ function ControlPanel() {
     }
   }
 
+  const pendingRemotes = remotes.filter(r => r.status === 'pending');
+  const authorizedRemotes = remotes.filter(r => r.status === 'authorized');
+
   if (!session || !presentation) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0E1015] text-white">
@@ -205,6 +234,16 @@ function ControlPanel() {
                 <Sparkles className={`h-3 w-3 ${session.mode === 'ai' ? 'text-primary' : 'text-[#3A4255]'}`} />
                 <span className={`text-xs font-bold ${session.mode === 'ai' ? 'text-white' : 'text-[#3A4255]'}`}>
                   {session.mode === 'ai' ? 'ATIVA' : 'DESATIVADA'}
+                </span>
+              </div>
+            </div>
+            <div className="h-8 w-px bg-[#262D3D]" />
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">Controle Remoto</p>
+              <div className="flex items-center gap-1.5 justify-end">
+                <ShieldCheck className={`h-3 w-3 ${authorizedRemotes.length > 0 ? 'text-emerald-500' : 'text-[#3A4255]'}`} />
+                <span className={`text-xs font-bold ${authorizedRemotes.length > 0 ? 'text-white' : 'text-[#3A4255]'}`}>
+                  {authorizedRemotes.length > 0 ? `${authorizedRemotes.length} AUTORIZADO(S)` : 'NENHUM'}
                 </span>
               </div>
             </div>
@@ -298,6 +337,11 @@ function ControlPanel() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Remote Control Management */}
+            <div className="lg:col-span-7">
+              <RemoteAuthorizationPanel sessionId={id} />
             </div>
 
             {/* Status & Help */}
@@ -431,33 +475,35 @@ function ControlPanel() {
       </main>
 
       {/* Popup Blocked Notification */}
-      {popupBlocked && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
-          <div className="max-w-md rounded-3xl border border-red-500/30 bg-[#131722] p-8 text-center shadow-2xl">
+      <AlertDialog open={popupBlocked} onOpenChange={setPopupBlocked}>
+        <AlertDialogContent className="max-w-md border-red-500/30 bg-[#131722] text-white">
+          <AlertDialogHeader>
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
               <ShieldAlert className="h-8 w-8 text-red-500" />
             </div>
-            <h2 className="text-xl font-black text-white">Navegador bloqueou a Projeção</h2>
-            <p className="mt-2 text-sm text-[#9CA3AF]">
-              Para que a automação funcione em duas telas, você precisa permitir que este site abra pop-ups.
-            </p>
-            <div className="mt-6 flex flex-col gap-3">
-              <Button 
-                onClick={() => window.location.reload()}
-                className="bg-primary hover:bg-primary/90"
-              >
-                Recarregar e Tentar Novamente
-              </Button>
-              <button 
-                onClick={() => setPopupBlocked(false)}
-                className="text-xs font-bold text-[#3A4255] hover:text-white transition-colors"
-              >
-                Entendi, fechar aviso
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            <AlertDialogTitle className="text-center text-xl font-black">Projeção Bloqueada</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[#9CA3AF]">
+              O navegador impediu a abertura da janela de Projeção. 
+              <br /><br />
+              Por favor, autorize a abertura de <strong>pop-ups</strong> para este site na sua barra de endereços para que o sistema funcione corretamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction 
+              onClick={() => window.location.reload()}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
+              Recarregar e Tentar Novamente
+            </AlertDialogAction>
+            <button 
+              onClick={() => setPopupBlocked(false)}
+              className="mt-2 text-xs font-bold text-[#3A4255] hover:text-white transition-colors"
+            >
+              Fechar aviso
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -85,6 +85,10 @@ function RemoteControl() {
       return Promise.resolve(false);
     }
     const payload = { action, ts: Date.now(), from: stored?.slot ?? 0, ...(extra ?? {}) };
+    
+    // Log do comando para auditoria no Cockpit (opcional, já que bridge já emite)
+    console.log(`[controle] Enviando comando: ${action}`, payload);
+
     const viaP2P = tunnel.transport === "p2p" ? tunnel.send(payload) : false;
     if (viaP2P) return Promise.resolve(true);
     return bridge.send(action as any, extra);
@@ -643,8 +647,9 @@ function RemoteControl() {
           status={authStatus}
           name={stored?.name ?? ""}
           onLeave={() => {
-            if (stored?.remoteId) clearStoredRemote(id);
-            navigate({ to: "/remote/$id/join", params: { id }, replace: true });
+            // Ao "Sair" ou "Cancelar", limpamos o registro local para permitir nova identificação se necessário
+            clearStoredRemote(id);
+            navigate({ to: "/dashboard", replace: true });
           }}
         />
       )}
@@ -938,13 +943,13 @@ function AuthorizationGate({
           </p>
         )}
       </div>
-      {!denied && <Loader2 className="h-6 w-6 animate-spin text-[#F68B1F]" />}
+      {!denied && status === "pending" && <Loader2 className="h-6 w-6 animate-spin text-[#F68B1F]" />}
       <button
         type="button"
         onClick={onLeave}
         className="mt-2 rounded-xl border border-[#3A4255] px-5 py-2 text-xs font-bold uppercase tracking-wide text-[#9CA3AF] transition hover:border-white hover:text-white"
       >
-        {denied ? "Tentar novamente" : "Cancelar solicitação"}
+        {denied ? "Tentar novamente" : "Sair"}
       </button>
     </div>
   );

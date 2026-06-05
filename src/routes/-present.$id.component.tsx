@@ -184,11 +184,42 @@ export function Present() {
       const liveSlide: number = fresh?.current_slide ?? 1;
 
       if (action === "NEXT") {
+        // Validação de Autorização: verifica se o remetente está autorizado
+        const fromSlot = payload?.from; // slot do remote
+        const ts = payload?.ts;
+        const { data: remote } = await supabase
+          .from("session_remotes")
+          .select("status")
+          .eq("session_id", id)
+          .eq("slot", fromSlot || 1)
+          .eq("status", "authorized")
+          .maybeSingle();
+
+        if (!remote && fromSlot !== undefined) {
+          console.warn("[ponte] Comando NEXT ignorado: dispositivo não autorizado ou revogado.");
+          return;
+        }
+
         // Clique virtual do celular = mesmo comportamento do clique do mouse
         // no slide. Toda a lógica vive em handleMasterAdvance no computador.
         console.log("Clique remoto recebido do celular. Avançando apresentação...");
         await handleMasterAdvanceRef.current();
       } else if (action === "PREV") {
+        // Validação de Autorização
+        const fromSlot = payload?.from;
+        const { data: remote } = await supabase
+          .from("session_remotes")
+          .select("status")
+          .eq("session_id", id)
+          .eq("slot", fromSlot || 1)
+          .eq("status", "authorized")
+          .maybeSingle();
+
+        if (!remote && fromSlot !== undefined) {
+          console.warn("[ponte] Comando PREV ignorado: dispositivo não autorizado.");
+          return;
+        }
+
         await setSlide(Math.max(1, liveSlide - 1), { direction: "prev" });
       } else if (action === "TOGGLE_FULLSCREEN") {
         const nextVal = !fresh?.is_fullscreen;
