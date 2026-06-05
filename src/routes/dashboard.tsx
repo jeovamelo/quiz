@@ -32,7 +32,7 @@ import { adjustSessionTimeBudget } from "@/lib/ai-script.functions";
  * de navegação, sem abas — para que o palestrante posicione no segundo
  * monitor (projetor) e mantenha o Dashboard aberto na tela principal.
  */
-function openPresentationPopup(sessionId: string) {
+function openPresentationPopup(sessionId: string, onBlock?: () => void) {
   if (typeof window === "undefined") return;
   
   const scr: any = window.screen || {};
@@ -78,10 +78,7 @@ function openPresentationPopup(sessionId: string) {
   const controlWin = window.open(controlUrl, `CockpitPalestrante-${sessionId}`, controlFeatures);
 
   if (!projectorWin || !controlWin) {
-    toast.error(
-      "O navegador bloqueou a abertura das janelas. Clique em 'Permitir pop-ups para este site' na barra de endereços para que a automação funcione.",
-      { duration: 6000 }
-    );
+    onBlock?.();
     return;
   }
 
@@ -100,6 +97,7 @@ function Dashboard() {
   const userId = user?.id;
   const isMobile = useIsMobile();
   const [startModalId, setStartModalId] = useState<string | null>(null);
+  const [showPopupWarning, setShowPopupWarning] = useState(false);
 
   /* Mantém heartbeat de pareamento ativo em segundo plano,
      mesmo sem exibir o selo visual no cabeçalho. */
@@ -235,7 +233,7 @@ function Dashboard() {
       }
     }
     setStartModalId(null);
-    openPresentationPopup(session.id);
+    openPresentationPopup(session.id, () => setShowPopupWarning(true));
   }
 
   async function deletePresentation(presentationId: string) {
@@ -438,6 +436,32 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {user && <OnboardingModal user={user} />}
+      <AlertDialog open={showPopupWarning} onOpenChange={setShowPopupWarning}>
+        <AlertDialogContent className="max-w-md border-red-500/20 bg-[#131722] text-white">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10">
+              <ShieldAlert className="h-8 w-8 text-red-500" />
+            </div>
+            <AlertDialogTitle className="text-center text-xl font-black">Pop-ups Bloqueados</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[#9CA3AF]">
+              O navegador impediu a abertura automática das janelas de Projeção e Cockpit. 
+              <br /><br />
+              Por favor, clique no ícone de bloqueio na <strong>barra de endereços</strong> do navegador e selecione <strong>"Sempre permitir pop-ups"</strong> para este site.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogAction 
+              onClick={() => {
+                setShowPopupWarning(false);
+                if (startModalId) startSession(startModalId);
+              }}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Entendi, tentar novamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <StartModeModal
         presentationId={startModalId}
         open={!!startModalId}
