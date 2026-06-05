@@ -942,13 +942,13 @@ function AuthorizationGate({
           </p>
         )}
       </div>
-      {!denied && <Loader2 className="h-6 w-6 animate-spin text-[#F68B1F]" />}
+      {!denied && status === "pending" && <Loader2 className="h-6 w-6 animate-spin text-[#F68B1F]" />}
       <button
         type="button"
         onClick={onLeave}
         className="mt-2 rounded-xl border border-[#3A4255] px-5 py-2 text-xs font-bold uppercase tracking-wide text-[#9CA3AF] transition hover:border-white hover:text-white"
       >
-        {denied ? "Tentar novamente" : "Cancelar solicitação"}
+        {denied ? "Tentar novamente" : "Sair"}
       </button>
     </div>
   );
