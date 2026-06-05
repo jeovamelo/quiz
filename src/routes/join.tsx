@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, AArrowDown, AArrowUp, LogOut, Download } from "lucide-react";
+import { Loader2, AArrowDown, AArrowUp, LogOut, Download, MicOff } from "lucide-react";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
