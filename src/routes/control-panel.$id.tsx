@@ -320,17 +320,11 @@ function ControlPanel() {
               </div>
             </div>
 
-            {/* Remote Control Management */}
-            <div className="lg:col-span-7">
-              <RemoteAuthorizationPanel sessionId={id} />
-            </div>
+            {/* Execution Controls */}
+            {/* ... already rendered above ... */}
 
-              <div className="lg:col-span-7">
-                <RemoteAuthorizationPanel sessionId={id} />
-              </div>
-
-              {/* Status & Help */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Status & Help */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
                 <div className="rounded-xl bg-primary/10 p-3">
                   <ShieldAlert className="h-6 w-6 text-primary" />

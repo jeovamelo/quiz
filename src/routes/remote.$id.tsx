@@ -85,6 +85,10 @@ function RemoteControl() {
       return Promise.resolve(false);
     }
     const payload = { action, ts: Date.now(), from: stored?.slot ?? 0, ...(extra ?? {}) };
+    
+    // Log do comando para auditoria no Cockpit (opcional, já que bridge já emite)
+    console.log(`[controle] Enviando comando: ${action}`, payload);
+
     const viaP2P = tunnel.transport === "p2p" ? tunnel.send(payload) : false;
     if (viaP2P) return Promise.resolve(true);
     return bridge.send(action as any, extra);
