@@ -75,10 +75,10 @@ function ControlPanel() {
         .eq("session_id", id);
       if (!cancelled) setParticipantsCount(count ?? 0);
 
-      const { data: qs } = await (supabase.from("audience_questions") as any)
+      const { data: qs } = await ((supabase.from("audience_questions") as any)
         .select("*")
         .eq("session_id", id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }));
       if (!cancelled) setQuestions(qs ?? []);
     }
 
@@ -104,12 +104,12 @@ function ControlPanel() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "audience_questions" as any, filter: `session_id=eq.${id}` },
+        { event: "*", schema: "public", table: "audience_questions", filter: `session_id=eq.${id}` } as any,
         async () => {
-          const { data: qs } = await (supabase.from("audience_questions") as any)
+          const { data: qs } = await ((supabase.from("audience_questions") as any)
             .select("*")
             .eq("session_id", id)
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: false }));
           setQuestions(qs ?? []);
         },
       )
