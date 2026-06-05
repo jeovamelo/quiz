@@ -37,8 +37,15 @@ function RemoteJoin() {
         .maybeSingle();
       if (cancelled) return;
       setSessionExists(!!s);
+      
       const stored = loadStoredRemote(id);
-      if (stored?.name) setName(stored.name);
+      const draft = localStorage.getItem(`qp:remote_name_draft:${id}`);
+      if (draft) {
+        setName(draft);
+        localStorage.removeItem(`qp:remote_name_draft:${id}`);
+      } else if (stored?.name) {
+        setName(stored.name);
+      }
     })();
     return () => {
       cancelled = true;
@@ -56,6 +63,10 @@ function RemoteJoin() {
   }, [authUser]);
 
   async function loginWithGoogle() {
+    // Preserva o nome se o usuário já começou a digitar
+    if (name.trim()) {
+      localStorage.setItem(`qp:remote_name_draft:${id}`, name.trim());
+    }
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.href,
     });
