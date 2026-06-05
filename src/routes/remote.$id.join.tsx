@@ -139,9 +139,9 @@ function RemoteJoin() {
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#A6193C] to-[#F68B1F] shadow-lg">
             <Smartphone className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight">Solicitar Controle Remoto</h1>
+          <h1 className="text-3xl font-black tracking-tight">Ativar Controle</h1>
           <p className="mt-2 text-sm text-[#9CA3AF]">
-            Faça login com Google e aguarde a aprovação do palestrante.
+            Identifique-se para solicitar acesso ao controle remoto.
           </p>
         </div>
 
