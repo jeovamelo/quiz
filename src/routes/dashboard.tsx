@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, Presentation, Gamepad2, ChevronLeft, ChevronRight, QrCode, BarChart3, PanelRight, PowerOff, Eye, EyeOff, Award } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, Presentation, Gamepad2, ChevronLeft, ChevronRight, QrCode, BarChart3, PanelRight, PowerOff, Eye, EyeOff, Award, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
