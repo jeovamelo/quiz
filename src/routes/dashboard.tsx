@@ -227,7 +227,10 @@ function Dashboard() {
       }
     }
     setStartModalId(null);
-    openPresentationPopup(session.id, () => setShowPopupWarning(true));
+    // Pequeno delay para garantir que o Supabase processou as atualizações antes de abrir o Cockpit
+    setTimeout(() => {
+      openPresentationPopup(session.id, () => setShowPopupWarning(true));
+    }, 200);
   }
 
   async function deletePresentation(presentationId: string) {
