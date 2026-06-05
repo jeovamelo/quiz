@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, AArrowDown, AArrowUp, LogOut, Download } from "lucide-react";
+import { Loader2, AArrowDown, AArrowUp, LogOut, Download, MicOff } from "lucide-react";
 import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -918,8 +918,15 @@ function Join() {
         </div>
       )}
 
-      {aiQuestionsEnabled && sessionId && (
+      {aiQuestionsEnabled && sessionId && session?.mic_enabled !== false && (
         <AudienceQuestionPanel sessionId={sessionId} />
+      )}
+      {aiQuestionsEnabled && sessionId && session?.mic_enabled === false && (
+        <div className="mt-4 rounded-2xl border border-dashed border-[#262D3D] bg-[#131722]/50 p-6 text-center">
+          <MicOff className="mx-auto h-8 w-8 text-[#3A4255]" />
+          <p className="mt-2 text-xs font-bold text-[#3A4255] uppercase tracking-widest">Microfone Fechado</p>
+          <p className="mt-1 text-[10px] text-[#262D3D]">O palestrante desativou novas perguntas no momento.</p>
+        </div>
       )}
     </div>
   );

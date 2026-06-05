@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, Presentation, Gamepad2, ChevronLeft, ChevronRight, QrCode, BarChart3, PanelRight, PowerOff, Eye, EyeOff, Award } from "lucide-react";
+import { Plus, Play, Pencil, FileText, Loader2, Trash2, CalendarPlus, Calendar, Trophy, Home, LogOut, Smartphone, Zap, Radio, Presentation, Gamepad2, ChevronLeft, ChevronRight, QrCode, BarChart3, PanelRight, PowerOff, Eye, EyeOff, Award, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -32,26 +32,23 @@ import { adjustSessionTimeBudget } from "@/lib/ai-script.functions";
  * de navegação, sem abas — para que o palestrante posicione no segundo
  * monitor (projetor) e mantenha o Dashboard aberto na tela principal.
  */
-function openPresentationPopup(sessionId: string) {
+function openPresentationPopup(sessionId: string, onBlock?: () => void) {
   if (typeof window === "undefined") return;
-  // Abre diretamente a janela do projetor — a máquina de estados
-  // interna controla o lobby (QR do Controle Remoto → QR dos
-  // Participantes → Slides) sem rotas intermediárias.
-  const url = `/present/${sessionId}`;
+  
   const scr: any = window.screen || {};
   const width = scr.width || 1280;
   const height = scr.height || 800;
-  // Heurística multimonitor: se o navegador expõe availLeft positivo
-  // (ou se a área disponível for maior que a tela principal), tentamos
-  // posicionar a popup no monitor lateral.
   const availLeft = typeof scr.availLeft === "number" ? scr.availLeft : 0;
-  const left = availLeft > 0 ? availLeft : width;
-  const top = 0;
-  const features = [
+
+  // 1. Janela de Projeção (Público)
+  // Tentamos posicionar no segundo monitor se detectado
+  const projectorUrl = `/present/${sessionId}`;
+  const projectorLeft = availLeft > 0 ? availLeft : width;
+  const projectorFeatures = [
     `width=${width}`,
     `height=${height}`,
-    `left=${left}`,
-    `top=${top}`,
+    `left=${projectorLeft}`,
+    `top=0`,
     "popup=yes",
     "menubar=no",
     "toolbar=no",
@@ -59,12 +56,34 @@ function openPresentationPopup(sessionId: string) {
     "status=no",
     "resizable=yes",
   ].join(",");
-  const win = window.open(url, `ApresentacaoLive-${sessionId}`, features);
-  if (!win) {
-    toast.error("Permita pop-ups deste site para abrir a apresentação em nova janela.");
+
+  const projectorWin = window.open(projectorUrl, `ApresentacaoPublico-${sessionId}`, projectorFeatures);
+
+  // 2. Cockpit do Palestrante (Controle)
+  // Abre no monitor principal
+  const controlUrl = `/control-panel/${sessionId}`;
+  const controlFeatures = [
+    `width=1280`,
+    `height=800`,
+    `left=0`,
+    `top=0`,
+    "popup=yes",
+    "menubar=no",
+    "toolbar=no",
+    "location=no",
+    "status=no",
+    "resizable=yes",
+  ].join(",");
+
+  const controlWin = window.open(controlUrl, `CockpitPalestrante-${sessionId}`, controlFeatures);
+
+  if (!projectorWin || !controlWin) {
+    onBlock?.();
     return;
   }
-  win.focus();
+
+  // Foco no cockpit
+  controlWin.focus();
 }
 
 export const Route = createFileRoute("/dashboard")({
@@ -78,6 +97,7 @@ function Dashboard() {
   const userId = user?.id;
   const isMobile = useIsMobile();
   const [startModalId, setStartModalId] = useState<string | null>(null);
+  const [showPopupWarning, setShowPopupWarning] = useState(false);
 
   /* Mantém heartbeat de pareamento ativo em segundo plano,
      mesmo sem exibir o selo visual no cabeçalho. */
@@ -213,7 +233,7 @@ function Dashboard() {
       }
     }
     setStartModalId(null);
-    openPresentationPopup(session.id);
+    openPresentationPopup(session.id, () => setShowPopupWarning(true));
   }
 
   async function deletePresentation(presentationId: string) {
@@ -416,6 +436,32 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {user && <OnboardingModal user={user} />}
+      <AlertDialog open={showPopupWarning} onOpenChange={setShowPopupWarning}>
+        <AlertDialogContent className="max-w-md border-red-500/20 bg-[#131722] text-white">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10">
+              <ShieldAlert className="h-8 w-8 text-red-500" />
+            </div>
+            <AlertDialogTitle className="text-center text-xl font-black">Pop-ups Bloqueados</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[#9CA3AF]">
+              O navegador impediu a abertura automática das janelas de Projeção e Cockpit. 
+              <br /><br />
+              Por favor, clique no ícone de bloqueio na <strong>barra de endereços</strong> do navegador e selecione <strong>"Sempre permitir pop-ups"</strong> para este site.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogAction 
+              onClick={() => {
+                setShowPopupWarning(false);
+                if (startModalId) startSession(startModalId);
+              }}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Entendi, tentar novamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <StartModeModal
         presentationId={startModalId}
         open={!!startModalId}

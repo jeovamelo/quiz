@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, Send, Loader2, MicOff, Sparkles } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { answerAudienceQuestion } from "@/lib/ai-script.functions";
+import { submitAudienceQuestion } from "@/lib/ai-script.functions";
 
 type Props = {
   sessionId: string;
@@ -17,7 +17,7 @@ export function AudienceQuestionPanel({ sessionId }: Props) {
   const [recState, setRecState] = useState<RecognitionState>("idle");
   const [supported, setSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
-  const sendFn = useServerFn(answerAudienceQuestion);
+  const sendFn = useServerFn(submitAudienceQuestion);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -83,7 +83,7 @@ export function AudienceQuestionPanel({ sessionId }: Props) {
       await sendFn({ data: { sessionId, question: trimmed } });
       setSent(true);
       setText("");
-      toast.success("Pergunta enviada! O palestrante IA vai responder.");
+      toast.success("Pergunta enviada! O palestrante vai analisá-la.");
       setTimeout(() => setSent(false), 4000);
     } catch (err: any) {
       toast.error(err?.message ?? "Falha ao enviar pergunta.");

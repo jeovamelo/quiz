@@ -131,16 +131,83 @@ export const generateSlideScripts = createServerFn({ method: "POST" })
 
 // ============ Audience question answering ============
 
-const AnswerInput = z.object({
+const QuestionSubmitInput = z.object({
   sessionId: z.string().uuid(),
   question: z.string().min(1).max(1000),
+  participantId: z.string().uuid().optional(),
+});
+
+export const submitAudienceQuestion = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => QuestionSubmitInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Verifica se o microfone está habilitado na sessão
+    const { data: sess } = await (supabaseAdmin
+      .from("sessions") as any)
+      .select("mic_enabled")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+
+    if (sess && sess.mic_enabled === false) {
+      throw new Error("O microfone da plateia está desativado pelo palestrante.");
+    }
+
+    const { error } = await ((supabaseAdmin as any)
+      .from("audience_questions"))
+      .insert({
+        session_id: data.sessionId,
+        participant_id: data.participantId,
+        question_text: data.question,
+        status: "pending",
+      });
+
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
+const QuestionStatusInput = z.object({
+  questionId: z.string().uuid(),
+  status: z.enum(["pending", "approved", "ignored", "answered"]),
+});
+
+export const updateAudienceQuestionStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => QuestionStatusInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error } = await ((supabaseAdmin as any)
+      .from("audience_questions"))
+      .update({ status: data.status })
+      .eq("id", data.questionId);
+
+    if (error) throw new Error(error.message);
+
+    // Se aprovado e for modo IA, pode disparar a resposta automática (ou o palestrante decide quando)
+    // Para simplificar, se status for 'answered', o trigger já sincroniza com a sessão.
+    
+    return { success: true };
+  });
+
+const AnswerInput = z.object({
+  sessionId: z.string().uuid(),
+  questionId: z.string().uuid(),
 });
 
 export const answerAudienceQuestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => AnswerInput.parse(d))
   .handler(async ({ data }) => {
-    // Usa admin para ler contexto da sessão (qualquer participante pode perguntar)
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: qRow } = await ((supabaseAdmin as any)
+      .from("audience_questions"))
+      .select("*")
+      .eq("id", data.questionId)
+      .maybeSingle();
+    
+    if (!qRow) throw new Error("Pergunta não encontrada");
 
     const { data: sess } = await supabaseAdmin
       .from("sessions")
@@ -162,7 +229,6 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
       .maybeSingle();
 
     const maxSec = Math.max(5, Number((pres as any)?.ai_max_answer_seconds ?? 30));
-    // ~150 palavras/min → palavras permitidas no orçamento de tempo
     const wordBudget = Math.max(15, Math.round((maxSec / 60) * 150));
 
     const ctx =
@@ -178,46 +244,42 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
           role: "system",
           content:
             "Você é o palestrante virtual (mestre de cerimônias) respondendo perguntas da plateia em PT-BR. " +
-            "TRIAGEM: avalie a RELEVÂNCIA da pergunta em relação ao tema do slide atual e ao roteiro. " +
-            "Se a pergunta for ofensiva, fora de contexto, spam ou repetida, RECUSE educadamente em 1 frase. " +
             "Se for relevante, responda usando APENAS o contexto fornecido (apresentação + roteiro do slide atual). " +
             `Seja conciso: NO MÁXIMO ${wordBudget} palavras (cabe em ${maxSec}s de fala). ` +
             "Fale como uma pessoa explicando ao vivo, respeitando a gestão de tempo. " +
             "NUNCA use markdown — apenas prosa simples para ser lida em voz alta.",
         },
-        { role: "user", content: `${ctx}\n\nPergunta da plateia: ${data.question}` },
+        { role: "user", content: `${ctx}\n\nPergunta da plateia: ${(qRow as any).question_text}` },
       ],
       max_tokens: 400,
       temperature: 0.6,
     });
 
     const answer: string = json.choices?.[0]?.message?.content?.trim() ?? "";
-
-    // === Gestão dinâmica de tempo: contabiliza segundos reais gastos com a resposta ===
     const answerWords = answer.trim().split(/\s+/).filter(Boolean).length;
-    // ~150 palavras/min ≈ 2,5 palavras/s
     const spentSec = Math.max(1, Math.round(answerWords / 2.5));
 
-    // Lê estado atual de tempo da sessão para increment + decidir compensação
     const { data: sessTime } = await (supabaseAdmin.from("sessions") as any)
-      .select(
-        "time_used_seconds, time_budget_seconds, current_slide, presentation_id",
-      )
+      .select("time_used_seconds")
       .eq("id", data.sessionId)
       .maybeSingle();
+    
     const newUsed = Number((sessTime as any)?.time_used_seconds ?? 0) + spentSec;
 
-    await (supabaseAdmin.from("sessions") as any)
-      .update({
-        audience_question: data.question,
-        audience_question_answer: answer,
-        audience_question_at: new Date().toISOString(),
-        time_used_seconds: newUsed,
+    // Atualiza a pergunta para 'answered'
+    await ((supabaseAdmin as any)
+      .from("audience_questions"))
+      .update({ 
+        answer_text: answer,
+        status: "answered"
       })
+      .eq("id", data.questionId);
+
+    // O tempo usado é atualizado na sessão (o trigger cuida do texto da resposta)
+    await (supabaseAdmin.from("sessions") as any)
+      .update({ time_used_seconds: newUsed })
       .eq("id", data.sessionId);
 
-    // Algoritmo de compensação: se o tempo gasto ultrapassou o estimado,
-    // tenta condensar os slides restantes para caber no orçamento total.
     try {
       await maybeAutoCondense(supabaseAdmin, data.sessionId);
     } catch (e) {
