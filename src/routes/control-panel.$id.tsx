@@ -104,7 +104,7 @@ function ControlPanel() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "audience_questions", filter: `session_id=eq.${id}` },
+        { event: "*", schema: "public", table: "audience_questions" as any, filter: `session_id=eq.${id}` },
         async () => {
           const { data: qs } = await (supabase.from("audience_questions") as any)
             .select("*")
