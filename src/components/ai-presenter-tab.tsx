@@ -21,7 +21,7 @@ type Settings = {
   total_duration_minutes: number;
   ai_max_answer_seconds: number;
   ai_personality_instructions: string | null;
-  ai_pro_tts_provider: "openai" | "elevenlabs" | "google" | "gemini" | null;
+  ai_pro_tts_provider: "openai" | "elevenlabs" | "google" | "gemini" | "local_xtts" | null;
   ai_pro_tts_api_key: string | null;
   ai_pro_tts_voice_id: string | null;
   ai_model: "deepseek" | "gemini";
@@ -61,7 +61,17 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
   });
   const [scripts, setScripts] = useState<ScriptRow[]>([]);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [localVoices, setLocalVoices] = useState<string[]>([]);
   const previewRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    if ((settings.ai_pro_tts_provider as any) === "local_xtts") {
+      fetch("http://localhost:8000/voices")
+        .then((res) => res.json())
+        .then((data) => setLocalVoices(data.voices || []))
+        .catch(() => setLocalVoices([]));
+    }
+  }, [settings.ai_pro_tts_provider]);
 
   const generateFn = useServerFn(generateSlideScripts);
   const expandFn = useServerFn(expandSlideScripts);
@@ -300,7 +310,34 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
     }
   }
 
-  function previewVoice(text: string) {
+  async function previewVoice(text: string) {
+    if ((settings.ai_pro_tts_provider as any) === "local_xtts") {
+      if (!settings.ai_pro_tts_voice_id) {
+        toast.error("Por favor, selecione uma voz de referência local primeiro.");
+        return;
+      }
+      try {
+        const res = await fetch("http://localhost:8000/synthesize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text,
+            voice_name: settings.ai_pro_tts_voice_id,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.play();
+      } catch {
+        toast.error("Servidor local desconectado. Certifique-se de que start_server.bat está rodando.");
+      }
+      return;
+    }
+
     if (!window.speechSynthesis) {
       toast.error("Síntese de voz não suportada neste navegador");
       return;
@@ -364,8 +401,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "pro") {
-                  // Se o cérebro for Gemini, sugere Gemini como provedor de voz também
-                  patch("ai_pro_tts_provider", settings.ai_model === "gemini" ? "gemini" : "google");
+                  patch("ai_pro_tts_provider", "local_xtts" as any);
                 } else {
                   patch("ai_pro_tts_provider", null);
                   patch("ai_voice", val || null);
@@ -374,7 +410,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
             >
               <option value="">Padrão do sistema (pt-BR)</option>
-              <option value="pro">✨ Voz IA Pro (Google Cloud / Gemini / ElevenLabs)</option>
+              <option value="pro">✨ Voz IA Pro (Google Cloud / Gemini / ElevenLabs / Local XTTS)</option>
               <optgroup label="Vozes do Navegador">
                 {ptVoices.map((v) => (
                   <option key={v.name} value={v.name}>
@@ -384,7 +420,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               </optgroup>
             </select>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              Selecione "Voz IA Pro" para habilitar vozes profissionais e o motor Gemini.
+              Selecione "Voz IA Pro" para habilitar vozes profissionais, o motor Gemini ou XTTS local.
             </p>
           </div>
 
@@ -406,10 +442,12 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
                     if (provider === "openai") patch("ai_pro_tts_voice_id", "alloy");
                     else if (provider === "gemini") patch("ai_pro_tts_voice_id", "[neutral]");
                     else if (provider === "google") patch("ai_pro_tts_voice_id", "pt-BR-Studio-A");
+                    else if (provider === "local_xtts") patch("ai_pro_tts_voice_id", localVoices[0] || "");
                     else patch("ai_pro_tts_voice_id", "");
                   }}
                   className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
                 >
+                  <option value="local_xtts">Motor Local (XTTS v2)</option>
                   <option value="openai">OpenAI (TTS-1)</option>
                   <option value="elevenlabs">ElevenLabs</option>
                   <option value="google">Google Cloud (Neural2 / Studio)</option>
@@ -465,6 +503,19 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
                     <option value="[excited]">Animado / Entusiasmado</option>
                     <option value="[calm]">Calmo / Sereno</option>
                     <option value="[professional]">Profissional / Sério</option>
+                  </select>
+                ) : (settings.ai_pro_tts_provider as any) === "local_xtts" ? (
+                  <select
+                    value={settings.ai_pro_tts_voice_id ?? ""}
+                    onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
+                    className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecione uma amostra local</option>
+                    {localVoices.map((voice) => (
+                      <option key={voice} value={voice}>
+                        {voice}
+                      </option>
+                    ))}
                   </select>
                 ) : (
                   <Input
