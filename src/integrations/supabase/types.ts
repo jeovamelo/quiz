@@ -307,6 +307,7 @@ export type Database = {
           ai_context: string | null
           ai_idle_timeout: number
           ai_max_answer_seconds: number
+          ai_model: string | null
           ai_personality_instructions: string | null
           ai_pro_tts_api_key: string | null
           ai_pro_tts_provider: string | null
@@ -335,6 +336,7 @@ export type Database = {
           ai_context?: string | null
           ai_idle_timeout?: number
           ai_max_answer_seconds?: number
+          ai_model?: string | null
           ai_personality_instructions?: string | null
           ai_pro_tts_api_key?: string | null
           ai_pro_tts_provider?: string | null
@@ -363,6 +365,7 @@ export type Database = {
           ai_context?: string | null
           ai_idle_timeout?: number
           ai_max_answer_seconds?: number
+          ai_model?: string | null
           ai_personality_instructions?: string | null
           ai_pro_tts_api_key?: string | null
           ai_pro_tts_provider?: string | null
