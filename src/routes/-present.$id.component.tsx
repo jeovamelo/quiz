@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
-import { Loader2, Maximize, Tv, Smartphone, QrCode, X, Zap, Trophy, Volume2, Sparkles, Pause, Play, Clock } from "lucide-react";
+import { Loader2, Maximize, Tv, Smartphone, QrCode, X, Zap, Trophy, Volume2, Sparkles, Pause, Play, Clock, BrainCircuit } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1172,6 +1172,20 @@ export function Present() {
               <span className="inline-flex h-3 w-3 animate-ping rounded-full bg-[#F68B1F]" />
               Aguardando sinal do palestrante para iniciar...
             </p>
+          </div>
+        )}
+
+        {/* Indicador de Pensamento da IA */}
+        {session?.ai_thinking && (
+          <div className="absolute top-6 right-6 z-[60] flex items-center gap-3 rounded-2xl border border-primary/20 bg-black/60 px-5 py-3 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in duration-300">
+            <div className="relative">
+              <BrainCircuit className="h-6 w-6 text-primary animate-pulse" />
+              <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary animate-ping" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Palestrante IA</span>
+              <span className="text-sm font-black text-white animate-pulse">Processando dúvida...</span>
+            </div>
           </div>
         )}
 
