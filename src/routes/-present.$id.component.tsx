@@ -632,7 +632,7 @@ export function Present() {
       stopAllSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, aiPresenter.proTtsProvider, presentation?.file_url, session?.presentation_id, session?.is_ready, session?.is_paused]);
+  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, aiPresenter.proTtsProvider, presentation?.file_url, session?.presentation_id, session?.is_ready, session?.is_paused, lastInterruptionAt]);
 
 
   // Fala a resposta de uma pergunta da plateia quando chega
@@ -641,9 +641,78 @@ export function Present() {
     const ans = (session as any)?.audience_question_answer as string | undefined;
     if (!ans || aiPresenter.mode !== "ai" || !session?.is_ready) return;
     
+    // Se for uma pergunta, podemos adicionar uma frase de transição se for interrupção
+    // mas por enquanto apenas falamos a resposta.
     speak(ans);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(session as any)?.audience_question_at]);
+
+  // Lógica de Interrupção por perguntas de Alta Prioridade
+  const answerAudienceQuestionFn = useServerFn(answerAudienceQuestion);
+  useEffect(() => {
+    if (aiPresenter.mode !== "ai" || !id) return;
+
+    const ch = (supabase as any)
+      .channel(`high-priority-questions-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "audience_questions",
+          filter: `session_id=eq.${id}`,
+        },
+        async (payload: any) => {
+          const q = payload.new;
+          // Se for alta prioridade, tenta responder imediatamente interrompendo o roteiro
+          if (q.priority === "high" && q.status === "pending") {
+            try {
+              // Notifica que está processando
+              await (supabase.from("sessions") as any).update({ ai_thinking: true }).eq("id", id);
+              
+              const result = await answerAudienceQuestionFn({ data: { sessionId: id, questionId: q.id } });
+              if (result.answer) {
+                // Transição suave
+                const transition = "Isso é uma ótima pergunta! Sobre esse tema, vale destacar que: ";
+                speak(transition + result.answer, () => {
+                   // Após responder, o useEffect do currentSlide deve re-disparar o script
+                   // se ele foi interrompido. Para forçar isso, podemos "limpar" o que estava falando.
+                   // Na verdade, o speak() já limpa. E como o currentSlide não mudou,
+                   // talvez precisemos de uma forma de retomar.
+                   // Por agora, o usuário pediu "retomando o roteiro logo em seguida".
+                   // Vou re-chamar o carregamento do script.
+                   const event = new CustomEvent("present:resume-script");
+                   window.dispatchEvent(event);
+                });
+              }
+            } catch (e) {
+              console.error("Failed to auto-answer high priority question", e);
+            } finally {
+              await (supabase.from("sessions") as any).update({ ai_thinking: false }).eq("id", id);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [id, aiPresenter.mode]);
+
+  // Listener para retomar script após interrupção
+  useEffect(() => {
+    const handler = () => {
+       // Força a re-execução do useEffect do script mudando um estado interno ou apenas disparando a lógica
+       // Para simplicidade, vou apenas repetir a lógica de busca e fala.
+       // Mas o ideal seria o useEffect do currentSlide observar um "trigger" de retomada.
+       setLastInterruptionAt(Date.now());
+    };
+    window.addEventListener("present:resume-script", handler);
+    return () => window.removeEventListener("present:resume-script", handler);
+  }, []);
+
+  const [lastInterruptionAt, setLastInterruptionAt] = useState(0);
 
   const slideQuestion = useMemo(
     () => questions.find((q) => q.slide_number === currentSlide) || null,
