@@ -24,6 +24,7 @@ type Settings = {
   ai_pro_tts_provider: "openai" | "elevenlabs" | "google" | null;
   ai_pro_tts_api_key: string | null;
   ai_pro_tts_voice_id: string | null;
+  ai_model: "deepseek" | "gemini";
 };
 
 type ScriptRow = {
@@ -56,6 +57,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
     ai_pro_tts_provider: null,
     ai_pro_tts_api_key: null,
     ai_pro_tts_voice_id: null,
+    ai_model: "deepseek",
   });
   const [scripts, setScripts] = useState<ScriptRow[]>([]);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -71,7 +73,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
       setLoading(true);
       const { data: pres } = await (supabase.from("presentations") as any)
         .select(
-          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_voice_pitch, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds, ai_personality_instructions, ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id",
+          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_voice_pitch, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds, ai_personality_instructions, ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id, ai_model",
         )
         .eq("id", presentationId)
         .maybeSingle();
@@ -91,6 +93,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
           ai_pro_tts_provider: (pres.ai_pro_tts_provider as any) ?? null,
           ai_pro_tts_api_key: pres.ai_pro_tts_api_key ?? null,
           ai_pro_tts_voice_id: pres.ai_pro_tts_voice_id ?? null,
+          ai_model: (pres.ai_model as any) ?? "deepseek",
         });
       }
       const { data: sc } = await (supabase.from("slide_scripts") as any)
@@ -323,6 +326,18 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
             >
               <option value="human">Apresentação Humana</option>
               <option value="ai">Palestrante IA (autônomo)</option>
+            </select>
+          </div>
+          
+          <div>
+            <Label className="text-xs">Modelo de Inteligência (Cérebro)</Label>
+            <select
+              value={settings.ai_model}
+              onChange={(e) => patch("ai_model", e.target.value as any)}
+              className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
+            >
+              <option value="deepseek">DeepSeek (Chat V3)</option>
+              <option value="gemini">Google Gemini (2.0 Flash)</option>
             </select>
           </div>
 
