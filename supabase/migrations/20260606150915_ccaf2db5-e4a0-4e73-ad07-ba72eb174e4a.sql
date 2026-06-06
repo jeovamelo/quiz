@@ -1,0 +1,2 @@
+ALTER TABLE public.presentations ADD COLUMN IF NOT EXISTS ai_voice_pitch DOUBLE PRECISION DEFAULT 0.0;
+COMMENT ON COLUMN public.presentations.ai_voice_pitch IS 'Tom da voz da IA para provedores que suportam (ex: Google TTS: -20.0 a 20.0)';
