@@ -405,6 +405,8 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          elevenlabs_api_key: string | null
+          elevenlabs_voice_id: string | null
           full_name: string | null
           id: string
           onboarding_completed: boolean
@@ -417,6 +419,8 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          elevenlabs_api_key?: string | null
+          elevenlabs_voice_id?: string | null
           full_name?: string | null
           id?: string
           onboarding_completed?: boolean
@@ -429,6 +433,8 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          elevenlabs_api_key?: string | null
+          elevenlabs_voice_id?: string | null
           full_name?: string | null
           id?: string
           onboarding_completed?: boolean

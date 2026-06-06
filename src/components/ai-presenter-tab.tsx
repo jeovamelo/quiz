@@ -71,6 +71,22 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
   useEffect(() => {
     (async () => {
       setLoading(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      let defaultApiKey = "";
+      let defaultVoiceId = "";
+      if (user) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("elevenlabs_api_key, elevenlabs_voice_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (prof) {
+          defaultApiKey = prof.elevenlabs_api_key || "";
+          defaultVoiceId = prof.elevenlabs_voice_id || "";
+        }
+      }
+
       const { data: pres } = await (supabase.from("presentations") as any)
         .select(
           "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_voice_pitch, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds, ai_personality_instructions, ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id, ai_model",
@@ -91,8 +107,8 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
           ai_max_answer_seconds: Number(pres.ai_max_answer_seconds ?? 30),
           ai_personality_instructions: pres.ai_personality_instructions ?? null,
           ai_pro_tts_provider: (pres.ai_pro_tts_provider as any) ?? null,
-          ai_pro_tts_api_key: pres.ai_pro_tts_api_key ?? null,
-          ai_pro_tts_voice_id: pres.ai_pro_tts_voice_id ?? null,
+          ai_pro_tts_api_key: pres.ai_pro_tts_api_key || defaultApiKey || null,
+          ai_pro_tts_voice_id: pres.ai_pro_tts_voice_id || defaultVoiceId || null,
           ai_model: (pres.ai_model as any) ?? "deepseek",
         });
       }
