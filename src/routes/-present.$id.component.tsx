@@ -552,15 +552,59 @@ export function Present() {
 
   // ============ Palestrante IA: TTS por slide + auto-avanço ============
   const ttsTimeoutRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    if (aiPresenter.mode !== "ai" || !presentation || !session?.is_ready || session?.is_paused) return;
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const generateProTTSFn = useServerFn(generateProTTS);
 
-    // Cancela qualquer fala/timeout anterior
+  const stopAllSpeech = useCallback(() => {
     window.speechSynthesis.cancel();
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
     if (ttsTimeoutRef.current) {
       window.clearTimeout(ttsTimeoutRef.current);
       ttsTimeoutRef.current = null;
+    }
+  }, []);
+
+  async function speak(text: string, onEnd?: () => void) {
+    stopAllSpeech();
+    
+    // Prioriza Voz IA Pro
+    if (aiPresenter.proTtsProvider) {
+      try {
+        const result = await generateProTTSFn({ data: { presentationId: session?.presentation_id, text } });
+        if (result.audioBase64) {
+          const audio = new Audio(result.audioBase64);
+          currentAudioRef.current = audio;
+          audio.onended = () => {
+            currentAudioRef.current = null;
+            onEnd?.();
+          };
+          audio.play();
+          return;
+        }
+      } catch (e) {
+        console.error("Pro TTS failed, falling back to browser", e);
+      }
+    }
+
+    // Fallback para Voz do Navegador
+    const u = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find((x) => x.name === aiPresenter.voice);
+    if (v) u.voice = v;
+    u.lang = v?.lang ?? "pt-BR";
+    u.rate = aiPresenter.rate;
+    u.onend = onEnd ?? null;
+    window.speechSynthesis.speak(u);
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (aiPresenter.mode !== "ai" || !presentation || !session?.is_ready || session?.is_paused) {
+      stopAllSpeech();
+      return;
     }
 
     let cancelled = false;
@@ -573,47 +617,31 @@ export function Present() {
       if (cancelled) return;
       const text = (row?.script_text as string) || "";
       if (!text) return;
-      const u = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      const v = voices.find((x) => x.name === aiPresenter.voice);
-      if (v) u.voice = v;
-      u.lang = v?.lang ?? "pt-BR";
-      u.rate = aiPresenter.rate;
-      u.onend = () => {
+
+      speak(text, () => {
         if (aiPresenter.idleTimeout > 0 && !cancelled) {
           ttsTimeoutRef.current = window.setTimeout(() => {
             setSlide(currentSlide + 1, { direction: "next" });
           }, aiPresenter.idleTimeout * 1000);
         }
-      };
-      window.speechSynthesis.speak(u);
+      });
     })();
 
     return () => {
       cancelled = true;
-      window.speechSynthesis.cancel();
-      if (ttsTimeoutRef.current) {
-        window.clearTimeout(ttsTimeoutRef.current);
-        ttsTimeoutRef.current = null;
-      }
+      stopAllSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, presentation?.file_url, session?.presentation_id, session?.is_ready]);
+  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, aiPresenter.proTtsProvider, presentation?.file_url, session?.presentation_id, session?.is_ready, session?.is_paused]);
 
 
   // Fala a resposta de uma pergunta da plateia quando chega
   useEffect(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (typeof window === "undefined") return;
     const ans = (session as any)?.audience_question_answer as string | undefined;
     if (!ans || aiPresenter.mode !== "ai" || !session?.is_ready) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(ans);
-    const voices = window.speechSynthesis.getVoices();
-    const v = voices.find((x) => x.name === aiPresenter.voice);
-    if (v) u.voice = v;
-    u.lang = v?.lang ?? "pt-BR";
-    u.rate = aiPresenter.rate;
-    window.speechSynthesis.speak(u);
+    
+    speak(ans);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(session as any)?.audience_question_at]);
 
