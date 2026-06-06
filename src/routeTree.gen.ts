@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VozRouteImport } from './routes/voz'
 import { Route as MeuHistoricoRouteImport } from './routes/meu-historico'
 import { Route as LoginQrRouteImport } from './routes/login-qr'
 import { Route as JoinRouteImport } from './routes/join'
@@ -32,6 +33,11 @@ import { Route as PresentIdPairRouteImport } from './routes/present.$id.pair'
 import { Route as EventIdPodiumRouteImport } from './routes/event.$id.podium'
 import { Route as EventIdClassificacaoGeralRouteImport } from './routes/event.$id.classificacao-geral'
 
+const VozRoute = VozRouteImport.update({
+  id: '/voz',
+  path: '/voz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MeuHistoricoRoute = MeuHistoricoRouteImport.update({
   id: '/meu-historico',
   path: '/meu-historico',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/join': typeof JoinRoute
   '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
+  '/voz': typeof VozRoute
   '/control-panel/$id': typeof ControlPanelIdRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/join': typeof JoinRoute
   '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
+  '/voz': typeof VozRoute
   '/control-panel/$id': typeof ControlPanelIdRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/join': typeof JoinRoute
   '/login-qr': typeof LoginQrRoute
   '/meu-historico': typeof MeuHistoricoRoute
+  '/voz': typeof VozRoute
   '/control-panel/$id': typeof ControlPanelIdRoute
   '/event/$id': typeof EventIdRouteWithChildren
   '/event/new': typeof EventNewRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login-qr'
     | '/meu-historico'
+    | '/voz'
     | '/control-panel/$id'
     | '/event/$id'
     | '/event/new'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login-qr'
     | '/meu-historico'
+    | '/voz'
     | '/control-panel/$id'
     | '/event/$id'
     | '/event/new'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/login-qr'
     | '/meu-historico'
+    | '/voz'
     | '/control-panel/$id'
     | '/event/$id'
     | '/event/new'
@@ -298,6 +310,7 @@ export interface RootRouteChildren {
   JoinRoute: typeof JoinRoute
   LoginQrRoute: typeof LoginQrRoute
   MeuHistoricoRoute: typeof MeuHistoricoRoute
+  VozRoute: typeof VozRoute
   ControlPanelIdRoute: typeof ControlPanelIdRoute
   EventIdRoute: typeof EventIdRouteWithChildren
   EventNewRoute: typeof EventNewRoute
@@ -314,6 +327,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/voz': {
+      id: '/voz'
+      path: '/voz'
+      fullPath: '/voz'
+      preLoaderRoute: typeof VozRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/meu-historico': {
       id: '/meu-historico'
       path: '/meu-historico'
@@ -516,6 +536,7 @@ const rootRouteChildren: RootRouteChildren = {
   JoinRoute: JoinRoute,
   LoginQrRoute: LoginQrRoute,
   MeuHistoricoRoute: MeuHistoricoRoute,
+  VozRoute: VozRoute,
   ControlPanelIdRoute: ControlPanelIdRoute,
   EventIdRoute: EventIdRouteWithChildren,
   EventNewRoute: EventNewRoute,
