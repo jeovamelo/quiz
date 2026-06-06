@@ -19,6 +19,10 @@ type Settings = {
   ai_questions_enabled: boolean;
   total_duration_minutes: number;
   ai_max_answer_seconds: number;
+  ai_personality_instructions: string | null;
+  ai_pro_tts_provider: "openai" | "elevenlabs" | null;
+  ai_pro_tts_api_key: string | null;
+  ai_pro_tts_voice_id: string | null;
 };
 
 type ScriptRow = {
@@ -46,6 +50,10 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
     ai_questions_enabled: false,
     total_duration_minutes: 0,
     ai_max_answer_seconds: 30,
+    ai_personality_instructions: null,
+    ai_pro_tts_provider: null,
+    ai_pro_tts_api_key: null,
+    ai_pro_tts_voice_id: null,
   });
   const [scripts, setScripts] = useState<ScriptRow[]>([]);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -61,7 +69,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
       setLoading(true);
       const { data: pres } = await (supabase.from("presentations") as any)
         .select(
-          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds",
+          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds, ai_personality_instructions, ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id",
         )
         .eq("id", presentationId)
         .maybeSingle();
@@ -76,6 +84,10 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
           ai_questions_enabled: !!pres.ai_questions_enabled,
           total_duration_minutes: Number(pres.total_duration_minutes ?? 0),
           ai_max_answer_seconds: Number(pres.ai_max_answer_seconds ?? 30),
+          ai_personality_instructions: pres.ai_personality_instructions ?? null,
+          ai_pro_tts_provider: (pres.ai_pro_tts_provider as any) ?? null,
+          ai_pro_tts_api_key: pres.ai_pro_tts_api_key ?? null,
+          ai_pro_tts_voice_id: pres.ai_pro_tts_voice_id ?? null,
         });
       }
       const { data: sc } = await (supabase.from("slide_scripts") as any)
