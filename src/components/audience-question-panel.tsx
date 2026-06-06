@@ -24,6 +24,43 @@ export function AudienceQuestionPanel({ sessionId, participantId }: Props) {
   const sendFn = useServerFn(submitAudienceQuestion);
 
   useEffect(() => {
+    if (!sessionId) return;
+    
+    // Escuta mudanças na sessão para saber se a IA está pensando ou se o mic foi fechado
+    const ch = (supabase as any)
+      .channel(`audience-session-${sessionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "sessions",
+          filter: `id=eq.${sessionId}`,
+        },
+        (payload: any) => {
+          if (payload.new) {
+            setIsThinking(!!payload.new.ai_thinking);
+            setMicEnabled(payload.new.mic_enabled !== false);
+          }
+        }
+      )
+      .subscribe();
+
+    // Load inicial
+    (async () => {
+      const { data } = await supabase.from("sessions").select("ai_thinking, mic_enabled").eq("id", sessionId).maybeSingle();
+      if (data) {
+        setIsThinking(!!(data as any).ai_thinking);
+        setMicEnabled((data as any).mic_enabled !== false);
+      }
+    })();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [sessionId]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const SR =
       (window as any).SpeechRecognition ||
