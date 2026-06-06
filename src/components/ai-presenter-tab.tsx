@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Clock, Loader2, Mic, RotateCcw, Save, Sparkles, Volume2, Wand2 } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Mic, RotateCcw, Save, Sparkles, Volume2, Wand2, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
