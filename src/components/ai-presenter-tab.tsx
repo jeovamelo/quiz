@@ -383,7 +383,15 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
                 <Label className="text-xs">Provedor</Label>
                 <select
                   value={settings.ai_pro_tts_provider}
-                  onChange={(e) => patch("ai_pro_tts_provider", e.target.value as any)}
+                  onChange={(e) => {
+                    const provider = e.target.value;
+                    patch("ai_pro_tts_provider", provider as any);
+                    // Reset voice ID when provider changes to a valid default
+                    if (provider === "openai") patch("ai_pro_tts_voice_id", "alloy");
+                    else if (provider === "gemini") patch("ai_pro_tts_voice_id", "[neutral]");
+                    else if (provider === "google") patch("ai_pro_tts_voice_id", "pt-BR-Studio-A");
+                    else patch("ai_pro_tts_voice_id", "");
+                  }}
                   className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
                 >
                   <option value="openai">OpenAI (TTS-1)</option>
@@ -391,7 +399,6 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
                   <option value="google">Google Cloud (Neural2 / Studio)</option>
                   <option value="gemini">Gemini Multimodal (Beta)</option>
                 </select>
-
               </div>
               <div>
                 <Label className="text-xs">API Key</Label>
@@ -404,13 +411,53 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
                 />
               </div>
               <div>
-                <Label className="text-xs">Voice ID / Model</Label>
-                <Input
-                  placeholder={settings.ai_pro_tts_provider === "openai" ? "alloy, echo, fable, onyx, nova, shimmer" : settings.ai_pro_tts_provider === "google" ? "Nome da voz (ex: pt-BR-Studio-A)" : settings.ai_pro_tts_provider === "gemini" ? "Expressividade (ex: [excited])" : "ID da voz no ElevenLabs"}
-                  value={settings.ai_pro_tts_voice_id ?? ""}
-                  onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
-                  className="mt-1 bg-[#0E1015]"
-                />
+                <Label className="text-xs">Voz / Modelo</Label>
+                {settings.ai_pro_tts_provider === "openai" ? (
+                  <select
+                    value={settings.ai_pro_tts_voice_id ?? "alloy"}
+                    onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
+                    className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
+                  >
+                    <option value="alloy">Alloy (Versátil)</option>
+                    <option value="echo">Echo (Maduro)</option>
+                    <option value="fable">Fable (Narrativo)</option>
+                    <option value="onyx">Onyx (Autoridade)</option>
+                    <option value="nova">Nova (Energético)</option>
+                    <option value="shimmer">Shimmer (Suave)</option>
+                  </select>
+                ) : settings.ai_pro_tts_provider === "google" ? (
+                  <select
+                    value={settings.ai_pro_tts_voice_id ?? "pt-BR-Studio-A"}
+                    onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
+                    className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
+                  >
+                    <option value="pt-BR-Studio-A">Studio A (Feminina Premium)</option>
+                    <option value="pt-BR-Studio-B">Studio B (Masculina Premium)</option>
+                    <option value="pt-BR-Neural2-A">Neural2 A (Feminina)</option>
+                    <option value="pt-BR-Neural2-B">Neural2 B (Masculina)</option>
+                    <option value="pt-BR-Neural2-C">Neural2 C (Feminina 2)</option>
+                    <option value="pt-BR-Wavenet-A">Wavenet A (Clássica Fem)</option>
+                    <option value="pt-BR-Wavenet-B">Wavenet B (Clássica Masc)</option>
+                  </select>
+                ) : settings.ai_pro_tts_provider === "gemini" ? (
+                  <select
+                    value={settings.ai_pro_tts_voice_id ?? "[neutral]"}
+                    onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
+                    className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
+                  >
+                    <option value="[neutral]">Neutro (Padrão)</option>
+                    <option value="[excited]">Animado / Entusiasmado</option>
+                    <option value="[calm]">Calmo / Sereno</option>
+                    <option value="[professional]">Profissional / Sério</option>
+                  </select>
+                ) : (
+                  <Input
+                    placeholder="ID da voz no ElevenLabs"
+                    value={settings.ai_pro_tts_voice_id ?? ""}
+                    onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
+                    className="mt-1 bg-[#0E1015]"
+                  />
+                )}
               </div>
               <p className="col-span-full text-[10px] text-muted-foreground">
                 As vozes profissionais geram áudio com entonação natural. Deixe em branco para usar fallbacks padrão.
