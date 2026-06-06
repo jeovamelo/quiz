@@ -1,5 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Speaker } from "@/components/palestrante-ia/Speaker";
+import { LocalAIChat } from "@/components/palestrante-ia/LocalAIChat";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -521,6 +523,22 @@ function VoiceCloningPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* ── Ferramentas Locais: Voz Nativa + IA Local ── */}
+        <div className="md:col-span-3 space-y-3 mt-2">
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <span className="text-[#F68B1F]">▸</span> Ferramentas Locais do Apresentador
+            </h2>
+            <p className="text-xs text-[#9CA3AF] mt-1">
+              Motor de voz e IA rodando 100% no navegador — sem custos e sem internet após o primeiro carregamento.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Speaker />
+            <LocalAIChat />
+          </div>
         </div>
       </main>
 
