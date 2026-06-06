@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
-import { Loader2, Maximize, Tv, Smartphone, QrCode, X, Zap, Trophy, Volume2, Sparkles, Pause, Play, Clock } from "lucide-react";
+import { Loader2, Maximize, Tv, Smartphone, QrCode, X, Zap, Trophy, Volume2, Sparkles, Pause, Play, Clock, BrainCircuit } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +23,8 @@ import { GiantQrOverlay } from "@/components/giant-qr-overlay";
 import { RankingOverlay } from "@/components/ranking-overlay";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
 import { useAudioSynthesizer } from "@/hooks/use-audio-synthesizer";
+import { useServerFn } from "@tanstack/react-start";
+import { generateProTTS, answerAudienceQuestion } from "@/lib/ai-script.functions";
 
 type Question = {
   id: string;
@@ -49,7 +51,9 @@ export function Present() {
     rate: number;
     idleTimeout: number;
     questionsEnabled: boolean;
-  }>({ mode: "human", voice: null, rate: 1, idleTimeout: 0, questionsEnabled: false });
+    proTtsProvider: string | null;
+    proTtsVoiceId: string | null;
+  }>({ mode: "human", voice: null, rate: 1, idleTimeout: 0, questionsEnabled: false, proTtsProvider: null, proTtsVoiceId: null });
   const [nextPresentationId, setNextPresentationId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
@@ -68,6 +72,7 @@ export function Present() {
   // do controle manualmente (X/Esc), liberando a transição para o
   // QR de participantes.
   const [pairFlowDone, setPairFlowDone] = useState(false);
+  const [lastInterruptionAt, setLastInterruptionAt] = useState(0);
   const [remotesCount, setRemotesCount] = useState(0);
   // Frames flutuantes — agora sincronizados pelas colunas booleanas da
   // sessão (show_join_qr, show_ranking, show_pair_qr). Isso garante
@@ -374,7 +379,7 @@ export function Present() {
       if (s) {
         const { data: p } = await supabase
           .from("presentations")
-          .select("file_url, title, event_id, sort_order, default_time_limit, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled")
+          .select("file_url, title, event_id, sort_order, default_time_limit, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled, ai_pro_tts_provider, ai_pro_tts_voice_id")
           .eq("id", s.presentation_id)
           .single();
         if (p) {
@@ -390,6 +395,8 @@ export function Present() {
             rate: Number((p as any).ai_voice_rate ?? 1),
             idleTimeout: Number((p as any).ai_idle_timeout ?? 0),
             questionsEnabled: !!(p as any).ai_questions_enabled,
+            proTtsProvider: (p as any).ai_pro_tts_provider ?? null,
+            proTtsVoiceId: (p as any).ai_pro_tts_voice_id ?? null,
           });
           // Buscar próxima apresentação do mesmo evento (sort_order > atual)
           if ((p as any).event_id) {
@@ -546,15 +553,59 @@ export function Present() {
 
   // ============ Palestrante IA: TTS por slide + auto-avanço ============
   const ttsTimeoutRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    if (aiPresenter.mode !== "ai" || !presentation || !session?.is_ready || session?.is_paused) return;
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const generateProTTSFn = useServerFn(generateProTTS);
 
-    // Cancela qualquer fala/timeout anterior
+  const stopAllSpeech = useCallback(() => {
     window.speechSynthesis.cancel();
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
     if (ttsTimeoutRef.current) {
       window.clearTimeout(ttsTimeoutRef.current);
       ttsTimeoutRef.current = null;
+    }
+  }, []);
+
+  async function speak(text: string, onEnd?: () => void) {
+    stopAllSpeech();
+    
+    // Prioriza Voz IA Pro
+    if (aiPresenter.proTtsProvider) {
+      try {
+        const result = await generateProTTSFn({ data: { presentationId: session?.presentation_id, text } });
+        if (result.audioBase64) {
+          const audio = new Audio(result.audioBase64);
+          currentAudioRef.current = audio;
+          audio.onended = () => {
+            currentAudioRef.current = null;
+            onEnd?.();
+          };
+          audio.play();
+          return;
+        }
+      } catch (e) {
+        console.error("Pro TTS failed, falling back to browser", e);
+      }
+    }
+
+    // Fallback para Voz do Navegador
+    const u = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find((x) => x.name === aiPresenter.voice);
+    if (v) u.voice = v;
+    u.lang = v?.lang ?? "pt-BR";
+    u.rate = aiPresenter.rate;
+    u.onend = onEnd ?? null;
+    window.speechSynthesis.speak(u);
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (aiPresenter.mode !== "ai" || !presentation || !session?.is_ready || session?.is_paused) {
+      stopAllSpeech();
+      return;
     }
 
     let cancelled = false;
@@ -567,49 +618,104 @@ export function Present() {
       if (cancelled) return;
       const text = (row?.script_text as string) || "";
       if (!text) return;
-      const u = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      const v = voices.find((x) => x.name === aiPresenter.voice);
-      if (v) u.voice = v;
-      u.lang = v?.lang ?? "pt-BR";
-      u.rate = aiPresenter.rate;
-      u.onend = () => {
+
+      speak(text, () => {
         if (aiPresenter.idleTimeout > 0 && !cancelled) {
           ttsTimeoutRef.current = window.setTimeout(() => {
             setSlide(currentSlide + 1, { direction: "next" });
           }, aiPresenter.idleTimeout * 1000);
         }
-      };
-      window.speechSynthesis.speak(u);
+      });
     })();
 
     return () => {
       cancelled = true;
-      window.speechSynthesis.cancel();
-      if (ttsTimeoutRef.current) {
-        window.clearTimeout(ttsTimeoutRef.current);
-        ttsTimeoutRef.current = null;
-      }
+      stopAllSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, presentation?.file_url, session?.presentation_id, session?.is_ready]);
+  }, [currentSlide, aiPresenter.mode, aiPresenter.voice, aiPresenter.rate, aiPresenter.idleTimeout, aiPresenter.proTtsProvider, presentation?.file_url, session?.presentation_id, session?.is_ready, session?.is_paused, lastInterruptionAt]);
 
 
   // Fala a resposta de uma pergunta da plateia quando chega
   useEffect(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (typeof window === "undefined") return;
     const ans = (session as any)?.audience_question_answer as string | undefined;
     if (!ans || aiPresenter.mode !== "ai" || !session?.is_ready) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(ans);
-    const voices = window.speechSynthesis.getVoices();
-    const v = voices.find((x) => x.name === aiPresenter.voice);
-    if (v) u.voice = v;
-    u.lang = v?.lang ?? "pt-BR";
-    u.rate = aiPresenter.rate;
-    window.speechSynthesis.speak(u);
+    
+    // Se for uma pergunta, podemos adicionar uma frase de transição se for interrupção
+    // mas por enquanto apenas falamos a resposta.
+    speak(ans);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(session as any)?.audience_question_at]);
+
+  // Lógica de Interrupção por perguntas de Alta Prioridade
+  const answerAudienceQuestionFn = useServerFn(answerAudienceQuestion);
+  useEffect(() => {
+    if (aiPresenter.mode !== "ai" || !id) return;
+
+    const ch = (supabase as any)
+      .channel(`high-priority-questions-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "audience_questions",
+          filter: `session_id=eq.${id}`,
+        },
+        async (payload: any) => {
+          const q = payload.new;
+          // Evita processar a mesma pergunta várias vezes se o status mudar mas continuar alta prioridade
+          // Usamos o payload.old para verificar se a prioridade MUDOU para alta ou se é nova
+          const wasHigh = payload.old?.priority === "high";
+          
+          if (q.priority === "high" && q.status === "pending" && !wasHigh) {
+            try {
+              // Notifica que está processando
+              await (supabase.from("sessions") as any).update({ ai_thinking: true }).eq("id", id);
+              
+              const result = await answerAudienceQuestionFn({ data: { sessionId: id, questionId: q.id } });
+              if (result.answer) {
+                // Transição suave
+                const transition = "Isso é uma ótima pergunta! Sobre esse tema, vale destacar que: ";
+                speak(transition + result.answer, () => {
+                   // Após responder, o useEffect do currentSlide deve re-disparar o script
+                   // se ele foi interrompido. Para forçar isso, podemos "limpar" o que estava falando.
+                   // Na verdade, o speak() já limpa. E como o currentSlide não mudou,
+                   // talvez precisemos de uma forma de retomar.
+                   // Por agora, o usuário pediu "retomando o roteiro logo em seguida".
+                   // Vou re-chamar o carregamento do script.
+                   const event = new CustomEvent("present:resume-script");
+                   window.dispatchEvent(event);
+                });
+              }
+            } catch (e) {
+              console.error("Failed to auto-answer high priority question", e);
+            } finally {
+              await (supabase.from("sessions") as any).update({ ai_thinking: false }).eq("id", id);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [id, aiPresenter.mode]);
+
+  // Listener para retomar script após interrupção
+  useEffect(() => {
+    const handler = () => {
+       // Força a re-execução do useEffect do script mudando um estado interno ou apenas disparando a lógica
+       // Para simplicidade, vou apenas repetir a lógica de busca e fala.
+       // Mas o ideal seria o useEffect do currentSlide observar um "trigger" de retomada.
+       setLastInterruptionAt(Date.now());
+    };
+    window.addEventListener("present:resume-script", handler);
+    return () => window.removeEventListener("present:resume-script", handler);
+  }, []);
+
 
   const slideQuestion = useMemo(
     () => questions.find((q) => q.slide_number === currentSlide) || null,
@@ -1069,6 +1175,20 @@ export function Present() {
               <span className="inline-flex h-3 w-3 animate-ping rounded-full bg-[#F68B1F]" />
               Aguardando sinal do palestrante para iniciar...
             </p>
+          </div>
+        )}
+
+        {/* Indicador de Pensamento da IA */}
+        {session?.ai_thinking && (
+          <div className="absolute top-6 right-6 z-[60] flex items-center gap-3 rounded-2xl border border-primary/20 bg-black/60 px-5 py-3 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in duration-300">
+            <div className="relative">
+              <BrainCircuit className="h-6 w-6 text-primary animate-pulse" />
+              <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary animate-ping" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Palestrante IA</span>
+              <span className="text-sm font-black text-white animate-pulse">Processando dúvida...</span>
+            </div>
           </div>
         )}
 

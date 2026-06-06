@@ -756,7 +756,7 @@ function Join() {
           <span className="font-semibold text-foreground">{correctCount}</span>
         </p>
         {aiQuestionsEnabled && sessionId && (
-          <AudienceQuestionPanel sessionId={sessionId} />
+          <AudienceQuestionPanel sessionId={sessionId} participantId={participantId} />
         )}
       </div>
     );
@@ -919,7 +919,7 @@ function Join() {
       )}
 
       {aiQuestionsEnabled && sessionId && session?.mic_enabled !== false && (
-        <AudienceQuestionPanel sessionId={sessionId} />
+        <AudienceQuestionPanel sessionId={sessionId} participantId={participantId} />
       )}
       {aiQuestionsEnabled && sessionId && session?.mic_enabled === false && (
         <div className="mt-4 rounded-2xl border border-dashed border-[#262D3D] bg-[#131722]/50 p-6 text-center">

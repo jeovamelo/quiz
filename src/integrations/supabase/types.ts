@@ -69,6 +69,54 @@ export type Database = {
           },
         ]
       }
+      audience_questions: {
+        Row: {
+          answer_text: string | null
+          created_at: string | null
+          id: string
+          participant_id: string | null
+          priority: string | null
+          question_text: string
+          session_id: string
+          status: string
+        }
+        Insert: {
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          participant_id?: string | null
+          priority?: string | null
+          question_text: string
+          session_id: string
+          status?: string
+        }
+        Update: {
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          participant_id?: string | null
+          priority?: string | null
+          question_text?: string
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audience_questions_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_questions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           answer_count: number
@@ -259,6 +307,10 @@ export type Database = {
           ai_context: string | null
           ai_idle_timeout: number
           ai_max_answer_seconds: number
+          ai_personality_instructions: string | null
+          ai_pro_tts_api_key: string | null
+          ai_pro_tts_provider: string | null
+          ai_pro_tts_voice_id: string | null
           ai_questions_enabled: boolean
           ai_voice: string | null
           ai_voice_rate: number
@@ -282,6 +334,10 @@ export type Database = {
           ai_context?: string | null
           ai_idle_timeout?: number
           ai_max_answer_seconds?: number
+          ai_personality_instructions?: string | null
+          ai_pro_tts_api_key?: string | null
+          ai_pro_tts_provider?: string | null
+          ai_pro_tts_voice_id?: string | null
           ai_questions_enabled?: boolean
           ai_voice?: string | null
           ai_voice_rate?: number
@@ -305,6 +361,10 @@ export type Database = {
           ai_context?: string | null
           ai_idle_timeout?: number
           ai_max_answer_seconds?: number
+          ai_personality_instructions?: string | null
+          ai_pro_tts_api_key?: string | null
+          ai_pro_tts_provider?: string | null
+          ai_pro_tts_voice_id?: string | null
           ai_questions_enabled?: boolean
           ai_voice?: string | null
           ai_voice_rate?: number
@@ -524,6 +584,7 @@ export type Database = {
           active_question_id: string | null
           ai_adjusting: boolean
           ai_last_adjustment_at: string | null
+          ai_thinking: boolean | null
           audience_question: string | null
           audience_question_answer: string | null
           audience_question_at: string | null
@@ -536,6 +597,7 @@ export type Database = {
           is_paused: boolean
           is_ready: boolean
           last_resume_at: string | null
+          mic_enabled: boolean | null
           mode: string
           presentation_id: string
           question_expires_at: string | null
@@ -555,6 +617,7 @@ export type Database = {
           active_question_id?: string | null
           ai_adjusting?: boolean
           ai_last_adjustment_at?: string | null
+          ai_thinking?: boolean | null
           audience_question?: string | null
           audience_question_answer?: string | null
           audience_question_at?: string | null
@@ -567,6 +630,7 @@ export type Database = {
           is_paused?: boolean
           is_ready?: boolean
           last_resume_at?: string | null
+          mic_enabled?: boolean | null
           mode?: string
           presentation_id: string
           question_expires_at?: string | null
@@ -586,6 +650,7 @@ export type Database = {
           active_question_id?: string | null
           ai_adjusting?: boolean
           ai_last_adjustment_at?: string | null
+          ai_thinking?: boolean | null
           audience_question?: string | null
           audience_question_answer?: string | null
           audience_question_at?: string | null
@@ -598,6 +663,7 @@ export type Database = {
           is_paused?: boolean
           is_ready?: boolean
           last_resume_at?: string | null
+          mic_enabled?: boolean | null
           mode?: string
           presentation_id?: string
           question_expires_at?: string | null

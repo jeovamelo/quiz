@@ -203,11 +203,19 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     const { data: qRow } = await ((supabaseAdmin as any)
       .from("audience_questions"))
-      .select("*")
+      .select(`
+        *,
+        participant:participants(name)
+      `)
       .eq("id", data.questionId)
       .maybeSingle();
     
     if (!qRow) throw new Error("Pergunta não encontrada");
+
+    // Ativa flag de pensamento na sessão
+    await (supabaseAdmin.from("sessions") as any)
+      .update({ ai_thinking: true })
+      .eq("id", data.sessionId);
 
     const { data: sess } = await supabaseAdmin
       .from("sessions")
@@ -218,9 +226,23 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     const { data: pres } = await supabaseAdmin
       .from("presentations")
-      .select("title, ai_context, ai_max_answer_seconds")
+      .select("title, ai_context, ai_max_answer_seconds, ai_personality_instructions")
       .eq("id", sess.presentation_id)
       .maybeSingle();
+
+    // Busca histórico recente para contexto conversacional (últimas 3 perguntas respondidas)
+    const { data: history } = await ((supabaseAdmin as any)
+      .from("audience_questions"))
+      .select("question_text, answer_text")
+      .eq("session_id", data.sessionId)
+      .eq("status", "answered")
+      .order("created_at", { ascending: false })
+      .limit(3);
+
+    const historyCtx = (history || [])
+      .reverse()
+      .map((h: any) => `P: ${h.question_text}\nR: ${h.answer_text}`)
+      .join("\n\n");
 
     const { data: script } = await (supabaseAdmin.from("slide_scripts") as any)
       .select("script_text")
@@ -231,11 +253,16 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
     const maxSec = Math.max(5, Number((pres as any)?.ai_max_answer_seconds ?? 30));
     const wordBudget = Math.max(15, Math.round((maxSec / 60) * 150));
 
+    const participantName = (qRow as any).participant?.name || "Participante";
+    const personality = (pres as any)?.ai_personality_instructions || 
+      "Você é um palestrante virtual (mestre de cerimônias) respondendo perguntas da plateia em PT-BR.";
+
     const ctx =
       `Apresentação: ${pres?.title ?? "(sem título)"}\n` +
       `Contexto geral: ${pres?.ai_context ?? "(nenhum)"}\n` +
       `Slide atual: ${sess.current_slide}\n` +
-      `Roteiro do slide atual:\n${script?.script_text ?? "(não disponível)"}`;
+      `Roteiro do slide atual:\n${script?.script_text ?? "(não disponível)"}\n\n` +
+      `Histórico da conversa:\n${historyCtx || "(início da conversa)"}`;
 
     const json = await callDeepseek({
       model: "deepseek-chat",
@@ -243,13 +270,17 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
         {
           role: "system",
           content:
-            "Você é o palestrante virtual (mestre de cerimônias) respondendo perguntas da plateia em PT-BR. " +
-            "Se for relevante, responda usando APENAS o contexto fornecido (apresentação + roteiro do slide atual). " +
-            `Seja conciso: NO MÁXIMO ${wordBudget} palavras (cabe em ${maxSec}s de fala). ` +
-            "Fale como uma pessoa explicando ao vivo, respeitando a gestão de tempo. " +
-            "NUNCA use markdown — apenas prosa simples para ser lida em voz alta.",
+            `${personality}\n\n` +
+            "REGRAS DE OURO:\n" +
+            "1. Comporte-se como um assistente conversacional inteligente.\n" +
+            "2. Se for uma pergunta de acompanhamento, use o 'Histórico da conversa' para manter o contexto.\n" +
+            "3. Identifique o usuário pelo nome se fornecido.\n" +
+            "4. Responda de forma fluida, como se estivesse conversando ao vivo.\n" +
+            "5. Se for relevante, use o contexto do slide atual.\n" +
+            `6. Seja conciso: NO MÁXIMO ${wordBudget} palavras (cabe em ${maxSec}s de fala).\n` +
+            "7. NUNCA use markdown ou formatação especial — apenas texto puro para ser lido em voz alta.",
         },
-        { role: "user", content: `${ctx}\n\nPergunta da plateia: ${(qRow as any).question_text}` },
+        { role: "user", content: `${ctx}\n\nPergunta de ${participantName}: ${(qRow as any).question_text}` },
       ],
       max_tokens: 400,
       temperature: 0.6,
@@ -277,7 +308,10 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     // O tempo usado é atualizado na sessão (o trigger cuida do texto da resposta)
     await (supabaseAdmin.from("sessions") as any)
-      .update({ time_used_seconds: newUsed })
+      .update({ 
+        time_used_seconds: newUsed,
+        ai_thinking: false 
+      })
       .eq("id", data.sessionId);
 
     try {
@@ -287,6 +321,83 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
     }
 
     return { answer, spentSec };
+  });
+
+// ============ Professional TTS generation ============
+
+const TTSInput = z.object({
+  presentationId: z.string().uuid(),
+  text: z.string().min(1).max(5000),
+});
+
+export const generateProTTS = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => TTSInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: pres } = await supabaseAdmin
+      .from("presentations")
+      .select("ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id")
+      .eq("id", data.presentationId)
+      .maybeSingle();
+
+    if (!pres || !pres.ai_pro_tts_provider || !pres.ai_pro_tts_api_key) {
+      throw new Error("Configurações de Voz IA Pro ausentes");
+    }
+
+    const provider = pres.ai_pro_tts_provider;
+    const apiKey = pres.ai_pro_tts_api_key;
+    const voiceId = pres.ai_pro_tts_voice_id || (provider === "openai" ? "alloy" : "");
+
+    if (provider === "openai") {
+      const res = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: data.text,
+          voice: voiceId || "alloy",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error("OpenAI TTS error", res.status, err);
+        throw new Error(`Erro no OpenAI TTS (${res.status})`);
+      }
+
+      const buffer = await res.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      return { audioBase64: `data:audio/mpeg;base64,${base64}` };
+    } else if (provider === "elevenlabs") {
+      const vid = voiceId || "21m00Tcm4TlvDq8ikWAM"; // Rachel default
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}`, {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: data.text,
+          model_id: "eleven_multilingual_v2",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error("ElevenLabs TTS error", res.status, err);
+        throw new Error(`Erro no ElevenLabs TTS (${res.status})`);
+      }
+
+      const buffer = await res.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      return { audioBase64: `data:audio/mpeg;base64,${base64}` };
+    }
+
+    throw new Error("Provedor de voz não suportado");
   });
 
 // ============ Dynamic time management helpers ============

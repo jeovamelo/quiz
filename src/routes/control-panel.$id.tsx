@@ -375,7 +375,15 @@ function ControlPanel() {
               <div className="rounded-3xl border border-[#262D3D] bg-[#131722] p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <Sparkles className={`h-5 w-5 ${session.mode === 'ai' ? 'text-primary' : 'text-[#3A4255]'}`} />
-                  <div className={`h-2 w-2 rounded-full ${session.mode === 'ai' ? 'bg-primary' : 'bg-[#3A4255]'}`} />
+                  <div className="flex items-center gap-2">
+                    {session.ai_thinking && (
+                      <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-primary animate-pulse border border-primary/20">
+                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        Processando
+                      </div>
+                    )}
+                    <div className={`h-2 w-2 rounded-full ${session.mode === 'ai' ? 'bg-primary' : 'bg-[#3A4255]'}`} />
+                  </div>
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">Motor de IA</p>
                 <p className="text-lg font-black">{session.mode === 'ai' ? 'Ativo' : 'Manual'}</p>
