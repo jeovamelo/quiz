@@ -363,6 +363,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
                 >
                   <option value="openai">OpenAI (TTS-1)</option>
                   <option value="elevenlabs">ElevenLabs</option>
+                  <option value="google">Google Cloud (Neural2 / Studio)</option>
                 </select>
               </div>
               <div>
@@ -378,7 +379,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               <div>
                 <Label className="text-xs">Voice ID / Model</Label>
                 <Input
-                  placeholder={settings.ai_pro_tts_provider === "openai" ? "alloy, echo, fable, onyx, nova, shimmer" : "ID da voz no ElevenLabs"}
+                  placeholder={settings.ai_pro_tts_provider === "openai" ? "alloy, echo, fable, onyx, nova, shimmer" : settings.ai_pro_tts_provider === "google" ? "Nome da voz (ex: pt-BR-Studio-A)" : "ID da voz no ElevenLabs"}
                   value={settings.ai_pro_tts_voice_id ?? ""}
                   onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
                   className="mt-1 bg-[#0E1015]"
@@ -400,8 +401,20 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               value={settings.ai_voice_rate}
               onChange={(e) => patch("ai_voice_rate", Number(e.target.value))}
               className="bg-transparent"
-            />
-          </div>
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs">Tom (Pitch)</Label>
+              <Input
+                type="range"
+                min={0.5}
+                max={2}
+                step={0.1}
+                value={1.0} // TODO: persistir e carregar este estado
+                className="bg-transparent"
+              />
+            </div>
 
           <div>
             <Label className="text-xs">
