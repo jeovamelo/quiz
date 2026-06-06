@@ -582,7 +582,7 @@ export function Present() {
           currentAudioRef.current = audio;
           audio.onended = () => {
             currentAudioRef.current = null;
-            onEnd?.();
+            if (onEnd) onEnd();
           };
           audio.play();
           return;
