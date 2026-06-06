@@ -3,8 +3,79 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-async function callDeepseek(body: any): Promise<any> {
+async function callAI(body: any, model: "deepseek" | "gemini" = "deepseek"): Promise<any> {
+  if (model === "gemini") {
+    const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!key) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY ausente");
+    
+    // Converte formato OpenAI/DeepSeek para Gemini
+    const geminiBody = {
+      contents: body.messages.map((m: any) => ({
+        role: m.role === "system" ? "user" : m.role,
+        parts: [{ text: m.role === "system" ? `INSTRUÇÃO DE SISTEMA:\n${m.content}` : m.content }]
+      })),
+      generationConfig: {
+        temperature: body.temperature ?? 0.7,
+        maxOutputTokens: body.max_tokens ?? 2048,
+      }
+    };
+
+    // Se tiver ferramentas, adiciona (Gemini usa formato diferente)
+    if (body.tools) {
+      (geminiBody as any).tools = [{
+        function_declarations: body.tools.map((t: any) => ({
+          name: t.function.name,
+          description: t.function.description,
+          parameters: t.function.parameters
+        }))
+      }];
+      if (body.tool_choice) {
+        (geminiBody as any).tool_config = {
+          function_calling_config: {
+            mode: "ANY",
+            allowed_function_names: [body.tool_choice.function.name]
+          }
+        };
+      }
+    }
+
+    const res = await fetch(`${GEMINI_URL}?key=${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(geminiBody),
+    });
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.error("Gemini error", res.status, t);
+      throw new Error(`Falha no Gemini (${res.status})`);
+    }
+
+    const json = await res.json();
+    
+    // Mapeia resposta do Gemini de volta para o formato esperado (compatível com o que o código já usa)
+    const candidate = json.candidates?.[0];
+    const call = candidate?.content?.parts?.find((p: any) => p.functionCall);
+    
+    return {
+      choices: [{
+        message: {
+          content: candidate?.content?.parts?.[0]?.text,
+          tool_calls: call ? [{
+            function: {
+              name: call.functionCall.name,
+              arguments: JSON.stringify(call.functionCall.args)
+            }
+          }] : undefined
+        },
+        finish_reason: candidate?.finishReason === "STOP" ? "stop" : candidate?.finishReason?.toLowerCase()
+      }]
+    };
+  }
+
+  // DeepSeek (Original)
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) throw new Error("DEEPSEEK_API_KEY ausente");
   const res = await fetch(DEEPSEEK_URL, {
@@ -41,7 +112,7 @@ export const generateSlideScripts = createServerFn({ method: "POST" })
     // Verifica que o usuário é dono
     const { data: pres } = await supabase
       .from("presentations")
-      .select("id, title")
+      .select("id, title, ai_model")
       .eq("id", data.presentationId)
       .maybeSingle();
     if (!pres) throw new Error("Apresentação não encontrada");
@@ -62,7 +133,7 @@ export const generateSlideScripts = createServerFn({ method: "POST" })
       `Texto dos slides:\n${truncated}\n\n` +
       `Gere ${data.numPages} roteiros, um para cada slide na ordem.`;
 
-    const json = await callDeepseek({
+    const json = await callAI({
       model: "deepseek-chat",
       messages: [
         { role: "system", content: sys },
@@ -97,7 +168,7 @@ export const generateSlideScripts = createServerFn({ method: "POST" })
       tool_choice: { type: "function", function: { name: "generate_scripts" } },
       max_tokens: 8000,
       temperature: 0.7,
-    });
+    }, (pres as any)?.ai_model || "deepseek");
 
     const toolCall = json.choices?.[0]?.message?.tool_calls?.[0];
     const raw: string = toolCall?.function?.arguments ?? "";
@@ -226,7 +297,7 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     const { data: pres } = await supabaseAdmin
       .from("presentations")
-      .select("title, ai_context, ai_max_answer_seconds, ai_personality_instructions")
+      .select("title, ai_context, ai_max_answer_seconds, ai_personality_instructions, ai_model")
       .eq("id", sess.presentation_id)
       .maybeSingle();
 
@@ -264,7 +335,7 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
       `Roteiro do slide atual:\n${script?.script_text ?? "(não disponível)"}\n\n` +
       `Histórico da conversa:\n${historyCtx || "(início da conversa)"}`;
 
-    const json = await callDeepseek({
+    const json = await callAI({
       model: "deepseek-chat",
       messages: [
         {
@@ -284,7 +355,7 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
       ],
       max_tokens: 400,
       temperature: 0.6,
-    });
+    }, (pres as any)?.ai_model || "deepseek");
 
     const answer: string = json.choices?.[0]?.message?.content?.trim() ?? "";
     const answerWords = answer.trim().split(/\s+/).filter(Boolean).length;
@@ -437,7 +508,7 @@ async function condenseRemainingForSession(
 ) {
   const { data: sess } = await supabaseAdmin
     .from("sessions")
-    .select("presentation_id, current_slide")
+    .select("presentation_id, current_slide, presentations(ai_model)")
     .eq("id", sessionId)
     .maybeSingle();
   if (!sess) throw new Error("Sessão não encontrada");
@@ -477,7 +548,7 @@ async function condenseRemainingForSession(
       "Vocabulário PT-BR ('tela', 'celular', 'usuário'). Prosa fluida, sem markdown. " +
       "Responda chamando a função condense_scripts.";
 
-    const json = await callDeepseek({
+    const json = await callAI({
       model: "deepseek-chat",
       messages: [
         { role: "system", content: sys },
@@ -515,7 +586,7 @@ async function condenseRemainingForSession(
       tool_choice: { type: "function", function: { name: "condense_scripts" } },
       max_tokens: 8000,
       temperature: 0.5,
-    });
+    }, (sess as any)?.presentations?.ai_model || "deepseek");
 
     const toolCall = json.choices?.[0]?.message?.tool_calls?.[0];
     const raw: string = toolCall?.function?.arguments ?? "";
@@ -660,7 +731,7 @@ export const expandSlideScripts = createServerFn({ method: "POST" })
 
     const { data: pres } = await supabase
       .from("presentations")
-      .select("id, title, ai_context")
+      .select("id, title, ai_context, ai_model")
       .eq("id", data.presentationId)
       .maybeSingle();
     if (!pres) throw new Error("Apresentação não encontrada");
@@ -706,7 +777,7 @@ export const expandSlideScripts = createServerFn({ method: "POST" })
       `Reescreva os ${scripts.length} roteiros abaixo, mantendo o mesmo número de slides e ordem.\n\n` +
       slidesPayload;
 
-    const json = await callDeepseek({
+    const json = await callAI({
       model: "deepseek-chat",
       messages: [
         { role: "system", content: sys },
@@ -741,7 +812,7 @@ export const expandSlideScripts = createServerFn({ method: "POST" })
       tool_choice: { type: "function", function: { name: "expand_scripts" } },
       max_tokens: 12000,
       temperature: 0.7,
-    });
+    }, (pres as any)?.ai_model || "deepseek");
 
     const toolCall = json.choices?.[0]?.message?.tool_calls?.[0];
     const raw: string = toolCall?.function?.arguments ?? "";
