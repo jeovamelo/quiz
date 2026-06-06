@@ -24,7 +24,7 @@ import { RankingOverlay } from "@/components/ranking-overlay";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
 import { useAudioSynthesizer } from "@/hooks/use-audio-synthesizer";
 import { useServerFn } from "@tanstack/react-start";
-import { generateProTTS } from "@/lib/ai-script.functions";
+import { generateProTTS, answerAudienceQuestion } from "@/lib/ai-script.functions";
 
 type Question = {
   id: string;
