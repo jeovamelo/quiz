@@ -756,7 +756,7 @@ function Join() {
           <span className="font-semibold text-foreground">{correctCount}</span>
         </p>
         {aiQuestionsEnabled && sessionId && (
-          <AudienceQuestionPanel sessionId={sessionId} />
+          <AudienceQuestionPanel sessionId={sessionId} participantId={participantId} />
         )}
       </div>
     );
