@@ -337,7 +337,7 @@ export const generateProTTS = createServerFn({ method: "POST" })
 
     const { data: pres } = await supabaseAdmin
       .from("presentations")
-      .select("ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id")
+      .select("ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id, ai_voice_rate")
       .eq("id", data.presentationId)
       .maybeSingle();
 
@@ -408,8 +408,8 @@ export const generateProTTS = createServerFn({ method: "POST" })
           },
           audioConfig: { 
             audioEncoding: "MP3",
-            speakingRate: 1.0, // TODO: integrar com ai_voice_rate
-            pitch: 0.0 // TODO: adicionar pitch nos settings
+            speakingRate: pres.ai_voice_rate || 1.0,
+            pitch: 0.0
           }
         }),
       });

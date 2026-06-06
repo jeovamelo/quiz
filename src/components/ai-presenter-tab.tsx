@@ -20,7 +20,7 @@ type Settings = {
   total_duration_minutes: number;
   ai_max_answer_seconds: number;
   ai_personality_instructions: string | null;
-  ai_pro_tts_provider: "openai" | "elevenlabs" | null;
+  ai_pro_tts_provider: "openai" | "elevenlabs" | "google" | null;
   ai_pro_tts_api_key: string | null;
   ai_pro_tts_voice_id: string | null;
 };
