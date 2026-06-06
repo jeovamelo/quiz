@@ -1,21 +1,25 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Send, Loader2, MicOff, Sparkles } from "lucide-react";
+import { Mic, Send, Loader2, MicOff, Sparkles, BrainCircuit } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { submitAudienceQuestion } from "@/lib/ai-script.functions";
 
 type Props = {
   sessionId: string;
+  participantId?: string | null;
 };
 
 type RecognitionState = "idle" | "listening" | "processing";
 
-export function AudienceQuestionPanel({ sessionId }: Props) {
+export function AudienceQuestionPanel({ sessionId, participantId }: Props) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [recState, setRecState] = useState<RecognitionState>("idle");
   const [supported, setSupported] = useState(true);
+  const [isThinking, setIsThinking] = useState(false);
+  const [micEnabled, setMicEnabled] = useState(true);
   const recognitionRef = useRef<any>(null);
   const sendFn = useServerFn(submitAudienceQuestion);
 
@@ -80,7 +84,7 @@ export function AudienceQuestionPanel({ sessionId }: Props) {
     }
     setSending(true);
     try {
-      await sendFn({ data: { sessionId, question: trimmed } });
+      await sendFn({ data: { sessionId, question: trimmed, participantId: participantId || undefined } });
       setSent(true);
       setText("");
       toast.success("Pergunta enviada! O palestrante vai analisá-la.");
@@ -92,8 +96,20 @@ export function AudienceQuestionPanel({ sessionId }: Props) {
     }
   }
 
+  if (!micEnabled) return null;
+
   return (
-    <div className="mt-4 w-full max-w-md space-y-3 rounded-2xl border border-[#7A3FF2]/40 bg-gradient-to-br from-[#1A1530] to-[#0E1015] p-4 shadow-lg">
+    <div className="mt-4 w-full max-w-md space-y-3 rounded-2xl border border-[#7A3FF2]/40 bg-gradient-to-br from-[#1A1530] to-[#0E1015] p-4 shadow-lg relative overflow-hidden">
+      {isThinking && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#A78BFA]/20 text-[#A78BFA]">
+              <BrainCircuit className="h-6 w-6 animate-pulse" />
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#A78BFA] animate-pulse">A IA está processando sua dúvida...</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#A78BFA]">
         <Sparkles className="h-4 w-4" />
         Pergunte ao Palestrante IA
