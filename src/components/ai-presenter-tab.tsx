@@ -21,7 +21,7 @@ type Settings = {
   total_duration_minutes: number;
   ai_max_answer_seconds: number;
   ai_personality_instructions: string | null;
-  ai_pro_tts_provider: "openai" | "elevenlabs" | "google" | null;
+  ai_pro_tts_provider: "openai" | "elevenlabs" | "google" | "gemini" | null;
   ai_pro_tts_api_key: string | null;
   ai_pro_tts_voice_id: string | null;
   ai_model: "deepseek" | "gemini";
@@ -382,7 +382,9 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
                   <option value="openai">OpenAI (TTS-1)</option>
                   <option value="elevenlabs">ElevenLabs</option>
                   <option value="google">Google Cloud (Neural2 / Studio)</option>
+                  <option value="gemini">Gemini Multimodal (Beta)</option>
                 </select>
+
               </div>
               <div>
                 <Label className="text-xs">API Key</Label>
@@ -397,7 +399,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               <div>
                 <Label className="text-xs">Voice ID / Model</Label>
                 <Input
-                  placeholder={settings.ai_pro_tts_provider === "openai" ? "alloy, echo, fable, onyx, nova, shimmer" : settings.ai_pro_tts_provider === "google" ? "Nome da voz (ex: pt-BR-Studio-A)" : "ID da voz no ElevenLabs"}
+                  placeholder={settings.ai_pro_tts_provider === "openai" ? "alloy, echo, fable, onyx, nova, shimmer" : settings.ai_pro_tts_provider === "google" ? "Nome da voz (ex: pt-BR-Studio-A)" : settings.ai_pro_tts_provider === "gemini" ? "Expressividade (ex: [excited])" : "ID da voz no ElevenLabs"}
                   value={settings.ai_pro_tts_voice_id ?? ""}
                   onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
                   className="mt-1 bg-[#0E1015]"

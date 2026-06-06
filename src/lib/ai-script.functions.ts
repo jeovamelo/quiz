@@ -4,6 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_TTS_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent";
+
 
 async function callAI(body: any, model: "deepseek" | "gemini" = "deepseek"): Promise<any> {
   if (model === "gemini") {
@@ -326,7 +328,8 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     const participantName = (qRow as any).participant?.name || "Participante";
     const personality = (pres as any)?.ai_personality_instructions || 
-      "Você é um palestrante virtual (mestre de cerimônias) respondendo perguntas da plateia em PT-BR.";
+      "Você é um palestrante virtual (mestre de cerimônias) do HUBINE respondendo perguntas da plateia em PT-BR. Use o contexto da palestra e dos slides passados para ser preciso.";
+
 
     const ctx =
       `Apresentação: ${pres?.title ?? "(sem título)"}\n` +
@@ -343,13 +346,15 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
           content:
             `${personality}\n\n` +
             "REGRAS DE OURO:\n" +
-            "1. Comporte-se como um assistente conversacional inteligente.\n" +
+            "1. Comporte-se como um assistente conversacional inteligente e facilitador de inovação.\n" +
             "2. Se for uma pergunta de acompanhamento, use o 'Histórico da conversa' para manter o contexto.\n" +
-            "3. Identifique o usuário pelo nome se fornecido.\n" +
+            "3. Identifique o usuário pelo nome se fornecido (ex: 'Excelente pergunta, [Nome]!').\n" +
             "4. Responda de forma fluida, como se estivesse conversando ao vivo.\n" +
-            "5. Se for relevante, use o contexto do slide atual.\n" +
+            "5. Se for relevante, use o contexto do slide atual e slides anteriores.\n" +
             `6. Seja conciso: NO MÁXIMO ${wordBudget} palavras (cabe em ${maxSec}s de fala).\n` +
-            "7. NUNCA use markdown ou formatação especial — apenas texto puro para ser lido em voz alta.",
+            "7. NUNCA use markdown ou formatação especial — apenas texto puro para ser lido em voz alta.\n" +
+            "8. Utilize tags de expressividade se o modelo suportar (ex: [entusiasmado], [pausa]) para naturalidade.",
+
         },
         { role: "user", content: `${ctx}\n\nPergunta de ${participantName}: ${(qRow as any).question_text}` },
       ],
@@ -381,9 +386,11 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
     await (supabaseAdmin.from("sessions") as any)
       .update({ 
         time_used_seconds: newUsed,
-        ai_thinking: false 
+        ai_thinking: false,
+        ai_last_action: `Respondeu pergunta de ${participantName}`
       })
       .eq("id", data.sessionId);
+
 
     try {
       await maybeAutoCondense(supabaseAdmin, data.sessionId);
@@ -494,7 +501,25 @@ export const generateProTTS = createServerFn({ method: "POST" })
 
       const json = await res.json();
       return { audioBase64: `data:audio/mpeg;base64,${json.audioContent}` };
+    } else if (provider === "gemini") {
+      // Uso do Gemini Multimodal Live/TTS (Simulado via rest ou stream se disponível)
+      // Por enquanto, usamos a geração de áudio do Gemini se a chave for a mesma
+      const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Leia este texto com expressividade: ${data.text}` }] }],
+          generationConfig: { response_mime_type: "audio/mpeg" }
+        }),
+      });
+      
+      if (!res.ok) {
+        throw new Error("Gemini TTS não disponível ou erro na requisição");
+      }
+      const json = await res.json();
+      return { audioBase64: `data:audio/mpeg;base64,${json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data}` };
     }
+
 
     throw new Error("Provedor de voz não suportado");
   });
