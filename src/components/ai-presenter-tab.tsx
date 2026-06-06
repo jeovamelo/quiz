@@ -341,14 +341,15 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
             </select>
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <Label className="text-xs">Voz (TTS)</Label>
             <select
               value={settings.ai_pro_tts_provider ? "pro" : (settings.ai_voice ?? "")}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "pro") {
-                  patch("ai_pro_tts_provider", "openai");
+                  // Se o cérebro for Gemini, sugere Gemini como provedor de voz também
+                  patch("ai_pro_tts_provider", settings.ai_model === "gemini" ? "gemini" : "google");
                 } else {
                   patch("ai_pro_tts_provider", null);
                   patch("ai_voice", val || null);
@@ -357,14 +358,20 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
             >
               <option value="">Padrão do sistema (pt-BR)</option>
-              <option value="pro">Voz IA Pro (OpenAI / ElevenLabs)</option>
-              {ptVoices.map((v) => (
-                <option key={v.name} value={v.name}>
-                  {v.name} ({v.lang})
-                </option>
-              ))}
+              <option value="pro">✨ Voz IA Pro (Google Cloud / Gemini / ElevenLabs)</option>
+              <optgroup label="Vozes do Navegador">
+                {ptVoices.map((v) => (
+                  <option key={v.name} value={v.name}>
+                    {v.name} ({v.lang})
+                  </option>
+                ))}
+              </optgroup>
             </select>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Selecione "Voz IA Pro" para habilitar vozes profissionais e o motor Gemini.
+            </p>
           </div>
+
 
           {settings.ai_pro_tts_provider && (
             <div className="col-span-full grid gap-4 rounded-lg border border-[#F68B1F]/30 bg-[#F68B1F]/5 p-4 md:grid-cols-3">
