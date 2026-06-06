@@ -23,6 +23,8 @@ import { GiantQrOverlay } from "@/components/giant-qr-overlay";
 import { RankingOverlay } from "@/components/ranking-overlay";
 import { consumeDashboardOrigin } from "@/lib/dashboard-origin";
 import { useAudioSynthesizer } from "@/hooks/use-audio-synthesizer";
+import { useServerFn } from "@tanstack/react-start";
+import { generateProTTS } from "@/lib/ai-script.functions";
 
 type Question = {
   id: string;
@@ -49,7 +51,9 @@ export function Present() {
     rate: number;
     idleTimeout: number;
     questionsEnabled: boolean;
-  }>({ mode: "human", voice: null, rate: 1, idleTimeout: 0, questionsEnabled: false });
+    proTtsProvider: string | null;
+    proTtsVoiceId: string | null;
+  }>({ mode: "human", voice: null, rate: 1, idleTimeout: 0, questionsEnabled: false, proTtsProvider: null, proTtsVoiceId: null });
   const [nextPresentationId, setNextPresentationId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
@@ -374,7 +378,7 @@ export function Present() {
       if (s) {
         const { data: p } = await supabase
           .from("presentations")
-          .select("file_url, title, event_id, sort_order, default_time_limit, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled")
+          .select("file_url, title, event_id, sort_order, default_time_limit, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled, ai_pro_tts_provider, ai_pro_tts_voice_id")
           .eq("id", s.presentation_id)
           .single();
         if (p) {
@@ -390,6 +394,8 @@ export function Present() {
             rate: Number((p as any).ai_voice_rate ?? 1),
             idleTimeout: Number((p as any).ai_idle_timeout ?? 0),
             questionsEnabled: !!(p as any).ai_questions_enabled,
+            proTtsProvider: (p as any).ai_pro_tts_provider ?? null,
+            proTtsVoiceId: (p as any).ai_pro_tts_voice_id ?? null,
           });
           // Buscar próxima apresentação do mesmo evento (sort_order > atual)
           if ((p as any).event_id) {
