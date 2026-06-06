@@ -72,6 +72,7 @@ export function Present() {
   // do controle manualmente (X/Esc), liberando a transição para o
   // QR de participantes.
   const [pairFlowDone, setPairFlowDone] = useState(false);
+  const [lastInterruptionAt, setLastInterruptionAt] = useState(0);
   const [remotesCount, setRemotesCount] = useState(0);
   // Frames flutuantes — agora sincronizados pelas colunas booleanas da
   // sessão (show_join_qr, show_ranking, show_pair_qr). Isso garante
