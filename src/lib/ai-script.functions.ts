@@ -331,13 +331,14 @@ const TTSInput = z.object({
 });
 
 export const generateProTTS = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => TTSInput.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: pres } = await supabaseAdmin
       .from("presentations")
-      .select("ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id")
+      .select("ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id, ai_voice_rate, ai_voice_pitch")
       .eq("id", data.presentationId)
       .maybeSingle();
 
@@ -395,6 +396,33 @@ export const generateProTTS = createServerFn({ method: "POST" })
       const buffer = await res.arrayBuffer();
       const base64 = Buffer.from(buffer).toString("base64");
       return { audioBase64: `data:audio/mpeg;base64,${base64}` };
+    } else if (provider === "google") {
+      // Endpoint para Google TTS API
+      const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          input: { text: data.text },
+          voice: { 
+            languageCode: "pt-BR",
+            name: voiceId || "pt-BR-Studio-A"
+          },
+          audioConfig: { 
+            audioEncoding: "MP3",
+            speakingRate: pres.ai_voice_rate || 1.0,
+            pitch: pres.ai_voice_pitch || 0.0
+          }
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error("Google TTS error", res.status, err);
+        throw new Error(`Erro no Google Cloud TTS (${res.status})`);
+      }
+
+      const json = await res.json();
+      return { audioBase64: `data:audio/mpeg;base64,${json.audioContent}` };
     }
 
     throw new Error("Provedor de voz não suportado");

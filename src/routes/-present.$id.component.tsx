@@ -53,7 +53,8 @@ export function Present() {
     questionsEnabled: boolean;
     proTtsProvider: string | null;
     proTtsVoiceId: string | null;
-  }>({ mode: "human", voice: null, rate: 1, idleTimeout: 0, questionsEnabled: false, proTtsProvider: null, proTtsVoiceId: null });
+    pitch: number;
+  }>({ mode: "human", voice: null, rate: 1, idleTimeout: 0, questionsEnabled: false, proTtsProvider: null, proTtsVoiceId: null, pitch: 0 });
   const [nextPresentationId, setNextPresentationId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
@@ -379,7 +380,7 @@ export function Present() {
       if (s) {
         const { data: p } = await supabase
           .from("presentations")
-          .select("file_url, title, event_id, sort_order, default_time_limit, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled, ai_pro_tts_provider, ai_pro_tts_voice_id")
+          .select("file_url, title, event_id, sort_order, default_time_limit, presenter_mode, ai_voice, ai_voice_rate, ai_voice_pitch, ai_idle_timeout, ai_questions_enabled, ai_pro_tts_provider, ai_pro_tts_voice_id")
           .eq("id", s.presentation_id)
           .single();
         if (p) {
@@ -397,6 +398,7 @@ export function Present() {
             questionsEnabled: !!(p as any).ai_questions_enabled,
             proTtsProvider: (p as any).ai_pro_tts_provider ?? null,
             proTtsVoiceId: (p as any).ai_pro_tts_voice_id ?? null,
+            pitch: Number((p as any).ai_voice_pitch ?? 0),
           });
           // Buscar próxima apresentação do mesmo evento (sort_order > atual)
           if ((p as any).event_id) {
@@ -580,7 +582,7 @@ export function Present() {
           currentAudioRef.current = audio;
           audio.onended = () => {
             currentAudioRef.current = null;
-            onEnd?.();
+            if (onEnd) onEnd();
           };
           audio.play();
           return;

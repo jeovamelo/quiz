@@ -313,6 +313,7 @@ export type Database = {
           ai_pro_tts_voice_id: string | null
           ai_questions_enabled: boolean
           ai_voice: string | null
+          ai_voice_pitch: number | null
           ai_voice_rate: number
           allow_download: boolean
           chronological_index: number | null
@@ -340,6 +341,7 @@ export type Database = {
           ai_pro_tts_voice_id?: string | null
           ai_questions_enabled?: boolean
           ai_voice?: string | null
+          ai_voice_pitch?: number | null
           ai_voice_rate?: number
           allow_download?: boolean
           chronological_index?: number | null
@@ -367,6 +369,7 @@ export type Database = {
           ai_pro_tts_voice_id?: string | null
           ai_questions_enabled?: boolean
           ai_voice?: string | null
+          ai_voice_pitch?: number | null
           ai_voice_rate?: number
           allow_download?: boolean
           chronological_index?: number | null

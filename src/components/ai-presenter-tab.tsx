@@ -15,12 +15,13 @@ type Settings = {
   presenter_mode: "human" | "ai";
   ai_voice: string | null;
   ai_voice_rate: number;
+  ai_voice_pitch: number;
   ai_idle_timeout: number;
   ai_questions_enabled: boolean;
   total_duration_minutes: number;
   ai_max_answer_seconds: number;
   ai_personality_instructions: string | null;
-  ai_pro_tts_provider: "openai" | "elevenlabs" | null;
+  ai_pro_tts_provider: "openai" | "elevenlabs" | "google" | null;
   ai_pro_tts_api_key: string | null;
   ai_pro_tts_voice_id: string | null;
 };
@@ -46,6 +47,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
     presenter_mode: "human",
     ai_voice: null,
     ai_voice_rate: 1.0,
+    ai_voice_pitch: 0.0,
     ai_idle_timeout: 0,
     ai_questions_enabled: false,
     total_duration_minutes: 0,
@@ -69,7 +71,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
       setLoading(true);
       const { data: pres } = await (supabase.from("presentations") as any)
         .select(
-          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds, ai_personality_instructions, ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id",
+          "file_url, ai_context, presenter_mode, ai_voice, ai_voice_rate, ai_voice_pitch, ai_idle_timeout, ai_questions_enabled, total_duration_minutes, ai_max_answer_seconds, ai_personality_instructions, ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id",
         )
         .eq("id", presentationId)
         .maybeSingle();
@@ -80,6 +82,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
           presenter_mode: (pres.presenter_mode as any) ?? "human",
           ai_voice: pres.ai_voice ?? null,
           ai_voice_rate: Number(pres.ai_voice_rate ?? 1),
+          ai_voice_pitch: Number(pres.ai_voice_pitch ?? 0),
           ai_idle_timeout: Number(pres.ai_idle_timeout ?? 0),
           ai_questions_enabled: !!pres.ai_questions_enabled,
           total_duration_minutes: Number(pres.total_duration_minutes ?? 0),
@@ -363,6 +366,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
                 >
                   <option value="openai">OpenAI (TTS-1)</option>
                   <option value="elevenlabs">ElevenLabs</option>
+                  <option value="google">Google Cloud (Neural2 / Studio)</option>
                 </select>
               </div>
               <div>
@@ -378,7 +382,7 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               <div>
                 <Label className="text-xs">Voice ID / Model</Label>
                 <Input
-                  placeholder={settings.ai_pro_tts_provider === "openai" ? "alloy, echo, fable, onyx, nova, shimmer" : "ID da voz no ElevenLabs"}
+                  placeholder={settings.ai_pro_tts_provider === "openai" ? "alloy, echo, fable, onyx, nova, shimmer" : settings.ai_pro_tts_provider === "google" ? "Nome da voz (ex: pt-BR-Studio-A)" : "ID da voz no ElevenLabs"}
                   value={settings.ai_pro_tts_voice_id ?? ""}
                   onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
                   className="mt-1 bg-[#0E1015]"
@@ -400,8 +404,21 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               value={settings.ai_voice_rate}
               onChange={(e) => patch("ai_voice_rate", Number(e.target.value))}
               className="bg-transparent"
-            />
-          </div>
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs">Tom (Pitch: {settings.ai_voice_pitch.toFixed(1)})</Label>
+              <Input
+                type="range"
+                min={-20}
+                max={20}
+                step={0.5}
+                value={settings.ai_voice_pitch}
+                onChange={(e) => patch("ai_voice_pitch", Number(e.target.value))}
+                className="bg-transparent"
+              />
+            </div>
 
           <div>
             <Label className="text-xs">
