@@ -323,6 +323,83 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
     return { answer, spentSec };
   });
 
+// ============ Professional TTS generation ============
+
+const TTSInput = z.object({
+  presentationId: z.string().uuid(),
+  text: z.string().min(1).max(5000),
+});
+
+export const generateProTTS = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => TTSInput.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: pres } = await supabaseAdmin
+      .from("presentations")
+      .select("ai_pro_tts_provider, ai_pro_tts_api_key, ai_pro_tts_voice_id")
+      .eq("id", data.presentationId)
+      .maybeSingle();
+
+    if (!pres || !pres.ai_pro_tts_provider || !pres.ai_pro_tts_api_key) {
+      throw new Error("Configurações de Voz IA Pro ausentes");
+    }
+
+    const provider = pres.ai_pro_tts_provider;
+    const apiKey = pres.ai_pro_tts_api_key;
+    const voiceId = pres.ai_pro_tts_voice_id || (provider === "openai" ? "alloy" : "");
+
+    if (provider === "openai") {
+      const res = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: data.text,
+          voice: voiceId || "alloy",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error("OpenAI TTS error", res.status, err);
+        throw new Error(`Erro no OpenAI TTS (${res.status})`);
+      }
+
+      const buffer = await res.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      return { audioBase64: `data:audio/mpeg;base64,${base64}` };
+    } else if (provider === "elevenlabs") {
+      const vid = voiceId || "21m00Tcm4TlvDq8ikWAM"; // Rachel default
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${vid}`, {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: data.text,
+          model_id: "eleven_multilingual_v2",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error("ElevenLabs TTS error", res.status, err);
+        throw new Error(`Erro no ElevenLabs TTS (${res.status})`);
+      }
+
+      const buffer = await res.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+      return { audioBase64: `data:audio/mpeg;base64,${base64}` };
+    }
+
+    throw new Error("Provedor de voz não suportado");
+  });
+
 // ============ Dynamic time management helpers ============
 
 async function condenseRemainingForSession(
