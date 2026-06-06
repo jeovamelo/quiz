@@ -658,15 +658,18 @@ export function Present() {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "audience_questions",
           filter: `session_id=eq.${id}`,
         },
         async (payload: any) => {
           const q = payload.new;
-          // Se for alta prioridade, tenta responder imediatamente interrompendo o roteiro
-          if (q.priority === "high" && q.status === "pending") {
+          // Evita processar a mesma pergunta várias vezes se o status mudar mas continuar alta prioridade
+          // Usamos o payload.old para verificar se a prioridade MUDOU para alta ou se é nova
+          const wasHigh = payload.old?.priority === "high";
+          
+          if (q.priority === "high" && q.status === "pending" && !wasHigh) {
             try {
               // Notifica que está processando
               await (supabase.from("sessions") as any).update({ ai_thinking: true }).eq("id", id);
