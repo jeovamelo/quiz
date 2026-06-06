@@ -101,7 +101,7 @@ const GenInput = z.object({
   pdfText: z.string().min(1).max(200000),
   numPages: z.number().min(1).max(500),
   context: z.string().max(5000).optional().default(""),
-});
+    }, (pres as any)?.ai_model || "deepseek");
 
 export const generateSlideScripts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
