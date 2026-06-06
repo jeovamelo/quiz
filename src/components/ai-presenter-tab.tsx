@@ -324,13 +324,22 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
           </div>
 
           <div>
-            <Label className="text-xs">Voz (TTS do navegador)</Label>
+            <Label className="text-xs">Voz (TTS)</Label>
             <select
-              value={settings.ai_voice ?? ""}
-              onChange={(e) => patch("ai_voice", e.target.value || null)}
+              value={settings.ai_pro_tts_provider ? "pro" : (settings.ai_voice ?? "")}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "pro") {
+                  patch("ai_pro_tts_provider", "openai");
+                } else {
+                  patch("ai_pro_tts_provider", null);
+                  patch("ai_voice", val || null);
+                }
+              }}
               className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
             >
               <option value="">Padrão do sistema (pt-BR)</option>
+              <option value="pro">Voz IA Pro (OpenAI / ElevenLabs)</option>
               {ptVoices.map((v) => (
                 <option key={v.name} value={v.name}>
                   {v.name} ({v.lang})
@@ -338,6 +347,48 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
               ))}
             </select>
           </div>
+
+          {settings.ai_pro_tts_provider && (
+            <div className="col-span-full grid gap-4 rounded-lg border border-[#F68B1F]/30 bg-[#F68B1F]/5 p-4 md:grid-cols-3">
+              <div className="col-span-full flex items-center gap-2 mb-2">
+                <Zap className="h-4 w-4 text-[#F68B1F]" />
+                <span className="text-sm font-bold text-white">Configurações Voz IA Pro</span>
+              </div>
+              <div>
+                <Label className="text-xs">Provedor</Label>
+                <select
+                  value={settings.ai_pro_tts_provider}
+                  onChange={(e) => patch("ai_pro_tts_provider", e.target.value as any)}
+                  className="mt-1 w-full rounded-md border border-[#262D3D] bg-[#0E1015] px-3 py-2 text-sm"
+                >
+                  <option value="openai">OpenAI (TTS-1)</option>
+                  <option value="elevenlabs">ElevenLabs</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">API Key</Label>
+                <Input
+                  type="password"
+                  placeholder="sk-..."
+                  value={settings.ai_pro_tts_api_key ?? ""}
+                  onChange={(e) => patch("ai_pro_tts_api_key", e.target.value)}
+                  className="mt-1 bg-[#0E1015]"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Voice ID / Model</Label>
+                <Input
+                  placeholder={settings.ai_pro_tts_provider === "openai" ? "alloy, echo, fable, onyx, nova, shimmer" : "ID da voz no ElevenLabs"}
+                  value={settings.ai_pro_tts_voice_id ?? ""}
+                  onChange={(e) => patch("ai_pro_tts_voice_id", e.target.value)}
+                  className="mt-1 bg-[#0E1015]"
+                />
+              </div>
+              <p className="col-span-full text-[10px] text-muted-foreground">
+                As vozes profissionais geram áudio com entonação natural. Deixe em branco para usar fallbacks padrão.
+              </p>
+            </div>
+          )}
 
           <div>
             <Label className="text-xs">Velocidade da voz ({settings.ai_voice_rate.toFixed(1)}x)</Label>
@@ -370,20 +421,38 @@ export function AiPresenterTab({ presentationId }: { presentationId: string }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-[#262D3D] bg-[#0E1015]/60 p-3">
-          <div className="flex items-start gap-3">
-            <Mic className="mt-0.5 h-5 w-5 text-[#A6193C]" />
-            <div>
-              <p className="text-sm font-semibold text-white">Modo Perguntas da Plateia</p>
-              <p className="text-[11px] text-muted-foreground">
-                Habilita um campo no celular dos participantes para enviar dúvidas — a IA responde com base no slide atual.
-              </p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border border-[#262D3D] bg-[#0E1015]/60 p-3">
+            <div className="flex items-start gap-3">
+              <Mic className="mt-0.5 h-5 w-5 text-[#A6193C]" />
+              <div>
+                <p className="text-sm font-semibold text-white">Modo Perguntas da Plateia</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Habilita um campo no celular dos participantes para enviar dúvidas — a IA responde com base no slide atual.
+                </p>
+              </div>
             </div>
+            <Switch
+              checked={settings.ai_questions_enabled}
+              onCheckedChange={(v) => patch("ai_questions_enabled", v)}
+            />
           </div>
-          <Switch
-            checked={settings.ai_questions_enabled}
-            onCheckedChange={(v) => patch("ai_questions_enabled", v)}
-          />
+
+          <div className="space-y-2">
+            <Label className="text-xs flex items-center gap-2">
+              <Sparkles className="h-3 w-3 text-[#F68B1F]" />
+              Instruções de Personalidade (System Prompt)
+            </Label>
+            <Textarea
+              placeholder="Ex: Você é um facilitador de inovação do HUBINE. Responda de forma entusiasta, clara, usando analogias do setor financeiro..."
+              value={settings.ai_personality_instructions ?? ""}
+              onChange={(e) => patch("ai_personality_instructions", e.target.value)}
+              className="min-h-[100px] border-[#262D3D] bg-[#0E1015] text-sm"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Define o tom de voz e o comportamento da IA ao responder perguntas e ler o roteiro.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-2">
