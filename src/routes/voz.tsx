@@ -479,7 +479,14 @@ type VoiceRowProps = {
   onSetDefault: () => void;
 };
 
-function VoiceRow({ voice, isDefault, isPlaying, isSetting, onTest, onSetDefault }: VoiceRowProps) {
+function VoiceRow({
+  voice,
+  isDefault,
+  isPlaying,
+  isSetting,
+  onTest,
+  onSetDefault,
+}: VoiceRowProps) {
   return (
     <div className="flex items-center gap-3 p-3.5 rounded-lg bg-secondary/40 border border-border hover:bg-secondary/60 transition-colors">
       <div className="size-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
@@ -487,61 +494,45 @@ function VoiceRow({ voice, isDefault, isPlaying, isSetting, onTest, onSetDefault
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium truncate">{voice.name}</span>
-          {isDefault && (
-            <Badge
-              variant="outline"
-              className="text-xs text-primary border-primary/30 bg-primary/10 shrink-0"
-            >
-              Padrão
-            </Badge>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{voice.voice_id}</p>
+        <p className="font-medium truncate text-sm">{voice.name}</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+          {voice.category}
+        </p>
       </div>
 
-      <div className="flex gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
         <Button
           variant="outline"
           size="sm"
+          className="h-8 w-8 p-0 rounded-full"
           onClick={onTest}
-          className="gap-1.5 min-w-[80px]"
+          disabled={isPlaying}
+          title="Ouvir amostra"
         >
           {isPlaying ? (
-            <>
-              <Square className="size-3 fill-current" />
-              Parar
-            </>
+            <Loader2 className="size-3.5 animate-spin" />
           ) : (
-            <>
-              <Play className="size-3.5" />
-              Testar
-            </>
+            <Play className="size-3.5 fill-current" />
           )}
         </Button>
 
-        <Button
-          variant={isDefault ? "secondary" : "outline"}
-          size="sm"
-          onClick={onSetDefault}
-          disabled={isSetting || isDefault}
-          className="gap-1.5 min-w-[110px]"
-        >
-          {isSetting ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : isDefault ? (
-            <>
-              <Check className="size-3.5" />
-              Padrão
-            </>
-          ) : (
-            <>
-              <Star className="size-3.5" />
-              Definir Padrão
-            </>
-          )}
-        </Button>
+        {isDefault ? (
+          <Badge className="bg-primary/20 text-primary border-primary/30 gap-1 px-2 py-0.5 h-7">
+            <Check className="size-3" />
+            Padrão
+          </Badge>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/10"
+            onClick={onSetDefault}
+            disabled={isSetting}
+          >
+            {isSetting ? <Loader2 className="size-3 animate-spin mr-1.5" /> : <Star className="size-3 mr-1.5" />}
+            Usar
+          </Button>
+        )}
       </div>
     </div>
   );
