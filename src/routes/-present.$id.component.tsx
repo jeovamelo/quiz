@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRequireSpeaker } from "@/hooks/use-auth";
 import { Loader2, Maximize, Tv, Smartphone, QrCode, X, Zap, Trophy, Volume2, Sparkles, Pause, Play, Clock } from "lucide-react";
