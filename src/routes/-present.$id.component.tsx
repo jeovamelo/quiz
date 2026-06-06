@@ -713,7 +713,6 @@ export function Present() {
     return () => window.removeEventListener("present:resume-script", handler);
   }, []);
 
-  const [lastInterruptionAt, setLastInterruptionAt] = useState(0);
 
   const slideQuestion = useMemo(
     () => questions.find((q) => q.slide_number === currentSlide) || null,
