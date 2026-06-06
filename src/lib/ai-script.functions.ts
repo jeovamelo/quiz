@@ -241,7 +241,7 @@ export const answerAudienceQuestion = createServerFn({ method: "POST" })
 
     const historyCtx = (history || [])
       .reverse()
-      .map(h => `P: ${h.question_text}\nR: ${h.answer_text}`)
+      .map((h: any) => `P: ${h.question_text}\nR: ${h.answer_text}`)
       .join("\n\n");
 
     const { data: script } = await (supabaseAdmin.from("slide_scripts") as any)
